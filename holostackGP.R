@@ -369,22 +369,22 @@ holostackGP <- function(
           }
           if (gwas_Gpred == TRUE) {
             if (metagenome_covariate == TRUE) {
-              rep_iteration <- paste("completed repplication","\t","GBLUP","\t","rrBLUP","\t","BRR","\t","BayesA","\t","BayesB","\t","BayesC","\t","BayesL","\t","mStacked","\t",
+              rep_iteration <- paste("completed repplication","\t","GBLUP","\t","rrBLUP","\t","RKHS","\t","BRR","\t","BayesA","\t","BayesB","\t","BayesC","\t","BayesL","\t","mStacked","\t",
                                      "#_samples","\t","#_markers","\t","time_stamp",sep="")
               write(rep_iteration,file=paste(trait,"_progress_gwas_",gene_model,"_metag.txt",sep=""),append=TRUE)
             } else {
-              rep_iteration <- paste("completed repplication","\t","GBLUP","\t","rrBLUP","\t","BRR","\t","BayesA","\t","BayesB","\t","BayesC","\t","BayesL","\t","mStacked","\t",
+              rep_iteration <- paste("completed repplication","\t","GBLUP","\t","rrBLUP","\t","RKHS","\t","BRR","\t","BayesA","\t","BayesB","\t","BayesC","\t","BayesL","\t","mStacked","\t",
                                      "#_samples","\t","#_markers","\t","time_stamp",sep="")
               write(rep_iteration,file=paste(trait,"_progress_gwas_",gene_model,".txt",sep=""),append=TRUE)
             }
           }
           if (gwas_Gpred == FALSE) {
             if (metagenome_covariate == TRUE) {
-              rep_iteration <- paste("completed repplication","\t","GBLUP","\t","rrBLUP","\t","BRR","\t","BayesA","\t","BayesB","\t","BayesC","\t","BayesL","\t","mStacked","\t",
+              rep_iteration <- paste("completed repplication","\t","GBLUP","\t","rrBLUP","\t","RKHS","\t","BRR","\t","BayesA","\t","BayesB","\t","BayesC","\t","BayesL","\t","mStacked","\t",
                                      "#_samples","\t","#_markers","\t","time_stamp",sep="")
               write(rep_iteration,file=paste(trait,"_progress_",gene_model,"_metag.txt",sep=""),append=TRUE)
             } else {
-              rep_iteration <- paste("completed repplication","\t","GBLUP","\t","rrBLUP","\t","BRR","\t","BayesA","\t","BayesB","\t","BayesC","\t","BayesL","\t","mStacked","\t",
+              rep_iteration <- paste("completed repplication","\t","GBLUP","\t","rrBLUP","\t","RKHS","\t","BRR","\t","BayesA","\t","BayesB","\t","BayesC","\t","BayesL","\t","mStacked","\t",
                                      "#_samples","\t","#_markers","\t","time_stamp",sep="")
               write(rep_iteration,file=paste(trait,"_progress_",gene_model,".txt",sep=""),append=TRUE)
             }
