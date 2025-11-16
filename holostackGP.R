@@ -3,7 +3,7 @@
 R_libpath <- NULL  # or a path string to your R library
 
 holostackGP <- function(
-    projname="proj",
+    projname="proj_GP",
     phenofile="Traits.txt",
     genofile="geno_dose.txt",
     metagenomefile="metagenome.txt",

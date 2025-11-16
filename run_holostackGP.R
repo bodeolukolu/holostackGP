@@ -4,7 +4,7 @@ source("https://raw.githubusercontent.com/bodeolukolu/holostackGP/refs/heads/mas
 
 setwd("./")
 
-holostackGP <- function(
+holostackGP(
     projname="FER",
     phenofile="Traits_FER_lsmeans.txt",
     genofile="Zm_2x_rd6_maf0.02_dose.txt",
