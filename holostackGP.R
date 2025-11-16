@@ -55,7 +55,7 @@ holostackGP <- function(
   setwd(wdir)
   GP_run_title <- projname
   traits <- traits
-  if (covariate == "" || covariate == "None" || covariate == "NULL") {
+  if (is.null(covariate)) {
     covariate <- NULL
   } else {
     covariate <- strsplit(covariate, ",")[[1]]
@@ -74,7 +74,7 @@ holostackGP <- function(
   nfold_CV <- as.numeric(k_fold)
   maf_threshold <- as.numeric(maf)
   perc_missing <- as.numeric(geno_missing_rate)
-  if (is.null(subsample_markers) || subsample_markers %in% c("", "None", "NULL")) {
+  if (is.null(subsample_markers)) {
     subsample_markers <- NULL
   } else {
     subsample_markers <- strsplit(subsample_markers, ",")[[1]]
