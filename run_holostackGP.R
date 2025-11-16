@@ -18,6 +18,6 @@ holostackGP <- function(
     maf=0.02,
     geno_missing_rate=0.2,
     subsample_markers=NULL,       # if full data set, set to NULL
-    gene_model=c(Full),           # "Additive", "Dominance", "metagenome or microbiome", Full
+    gene_model=c("Full"),           # "Additive", "Dominance", "metagenome or microbiome", Full
     R_libpath=NULL
 )

@@ -18,7 +18,7 @@ holostackGP <- function(
     gwas_pred=FALSE,
     subsample_markers=NULL,
     topHits=100,
-    gene_model=c(Full),           # "Additive", "Dominance", "metagenome or microbiome", Full
+    gene_model=c("Full"),           # "Additive", "Dominance", "metagenome or microbiome", Full
     R_libpath=NULL
 ) {
   load_packages <- function(pkgs) {
