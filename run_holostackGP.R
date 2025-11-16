@@ -11,7 +11,7 @@ holostackGP <- function(
     metagenomefile="WGS_metagenome.txt",
     ploidy=2,
     traits=c("FER"),
-    covariate=c()"DTA_21","Aflatoxin"),             # c("trait-9","traits-10")
+    covariate=c("DTA_21","Aflatoxin"),             # c("trait-9","traits-10")
     kernels=c("genomic"),       # "metagenomic or microbiome", genomic","holobiont", "metagenomic+genomic or microbiome+genomic"
     CVrep=100,
     k_fold=5,
