@@ -46,7 +46,7 @@ holostackGP <- function(
   if (!is.null(R_libpath) && nzchar(R_libpath)) {.libPaths(R_libpath)}
   rm(list=ls())
 
-  gene_model <- match.arg(gene_model, c("Full","Additive","Dominance","metagenomic","microbiome"))
+  # gene_model <- match.arg(gene_model, c("Full","Additive","Dominance","metagenomic","microbiome"))
 
 
   #############################################################################################################################################################################
