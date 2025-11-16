@@ -87,7 +87,7 @@ holostackGP <- function(
   } else {
     subsample_markers <- as.numeric(subsample_markers)
   }
-  gene_models <- match.arg(gene_model, c("Full","Additive","Dominance","metagenomic","microbiome"))
+  gene_models <- gene_model
   select_gwasGPmodel <- NULL                                       #c("2-dom-ref","3-dom-alt","3-dom-ref")
   ploidy_levels <- as.numeric(ploidy)
 
