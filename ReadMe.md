@@ -21,7 +21,8 @@ BRR (Bayesian Ridge Regression)
 Each model can be run independently or included in the stacked ensemble.
 
 ## How to run holostackGP
-Download the <run_holostackGP.R>, edit parameters and run the pipeline. To submit a batch file for multiple traits and parameters, use the batch_run_holstackGP.sh (implemented with bash). Multiple traits and gene models (Additive, Dominance, metagenome or microbiome and Full or stacking of all models, kernels, gene models) can also be run with the run_holostackGP.R
+Download the <run_holostackGP.R>, edit parameters and run the pipeline. Multiple traits can be run with the run_holostackGP.R or batch_run_holostackGP.R. Additive and Dominance models can be submitted together, while metagenome/microbiome and Full (stacking of all models, kernels, gene models) models should be run independently.
+On unix/Linux, the analysis can also be submitted as a batch file using batch_run_holstackGP.sh and batch_run_holostackGP.R.
 
 
 ## Dependencies
