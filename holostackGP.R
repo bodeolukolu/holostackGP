@@ -3,6 +3,7 @@
 R_libpath <- NULL  # or a path string to your R library
 
 holostackGP <- function(
+    wdir = "./",
     projname="proj_GP",
     phenofile="Traits.txt",
     genofile="geno_dose.txt",
@@ -57,6 +58,7 @@ holostackGP <- function(
   # Specify parameters
   ####################
   # Step 1: Specify covariate if required and import data.
+  setwd(wdir)
   GP_run_title <- projname
   traits <- traits
   if (is.null(covariate) || covariate %in% c("", "None", "NULL")) {
