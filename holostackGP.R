@@ -3,11 +3,11 @@
 holostackGP <- function(
     wdir = "./",
     projname="proj_GP",
-    phenofile="Traits.txt",
+    phenofile=NULL,
     genofile=NULL,
     metagenomefile=NULL,
     ploidy=2,
-    traits=c("trait-1","trait-2"),
+    traits=NULL,                       # c("trait-1","trait-2")
     covariate=NULL,             # c("trait-9","traits-10")
     kernel=NULL,       # "metagenomic or microbiome", genomic","holobiont", "metagenomic+genomic or microbiome+genomic"
     CVrep=100,
@@ -58,11 +58,14 @@ holostackGP <- function(
   } else {
     covariate <- covariate
   }
-  myY <- read.table(phenofile, head = TRUE, sep="\t")
-  myG <- read.table(genofile, head = FALSE, sep="\t")
   if(kernel == "metagenomic") {kernel <- "gBLUP"}
   if(kernel == "genomic") {kernel <- "GBLUP"}
   if(kernel == "holobiont" || kernel == "metagenomic+genomic") {kernel <- "gGBLUP"}
+  if(kernel == "GBLUP"){metagenomefile <- NULL}
+  if(kernel == "gBLUP"){genofile <- NULL}
+  myY <- read.table(phenofile, head = TRUE, sep="\t")
+  if(!is.null(genofile)){myG <- read.table(genofile, head = FALSE, sep="\t")}
+  metagenome_data <- metagenomefile
   gp_model <- kernel
   gwas_Gpred <- gwas_pred
   gwas_model <- "MLM"
@@ -97,7 +100,6 @@ holostackGP <- function(
   metag_zero_inflated <- TRUE
   impute_zeroinflation_metagcov <- FALSE
   corr_coeff <- NULL
-  metagenome_data <- metagenomefile
   metag_method <- "Aitchison"
   entire_metagenome <- TRUE
   crosstrait <- NULL
@@ -2006,7 +2008,7 @@ holostackGP <- function(
                     stopifnot(nrow(Xcov_mat) == nrow(Y.tmasked))
                   }
 
-                  model_gblup <- rrBLUP::mixed.solve(y = Y.tmasked[,1], K = K, X=Xcov_mat)
+                  model_gblup <- rrBLUP::mixed.solve(y = Y.tmasked[,1], K = myKIx, X=Xcov_mat)
                   pred_gblup <- model_gblup$u[test_ids]  # genomic breeding values
 
                   if (!is.null(Additional_models)){
@@ -2607,7 +2609,7 @@ holostackGP <- function(
                     stopifnot(nrow(Xcov_mat) == nrow(Y.tmasked))
                   }
 
-                  model_gblup <- rrBLUP::mixed.solve(y = Y.tmasked[,1], K = K, X=Xcov_mat)
+                  model_gblup <- rrBLUP::mixed.solve(y = Y.tmasked[,1], K = metagKIx, X=Xcov_mat)
                   pred_gblup <- model_gblup$u[test_ids]  # genomic breeding values
 
                   if (!is.null(Additional_models)){
