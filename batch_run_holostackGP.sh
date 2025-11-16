@@ -6,12 +6,12 @@ max_jobs=3     # each trait is run with 5 cores when model stacking is been run,
 
 main () {
 
-declare -a arr=("trit-1" "trait-2")
+declare -a arr=("trait-1" "trait-2")
 projname=proj_GP
 phenofile=Traits.txt
 genofile=geno.txt
 metagenomefile=metagenome.txt
-covariate=
+covariate=trait-10,trait-11
 kernel=genomic,       # "metagenomic or microbiome", genomic","holobiont", "metagenomic+genomic or microbiome+genomic"
 gene_model=c("Full"),         # "Additive", "Dominance", "metagenome or microbiome", Full
 

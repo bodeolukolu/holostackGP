@@ -55,10 +55,19 @@ holostackGP <- function(
   setwd(wdir)
   GP_run_title <- projname
   traits <- traits
-  if (is.null(covariate)) {
+  if (is.null(covariate) || length(covariate) == 0) {
     covariate <- NULL
   } else {
-    covariate <- strsplit(covariate, ",")[[1]]
+    # If user passed a single comma-separated string: "A,B,C"
+    if (length(covariate) == 1) {
+      covariate <- unlist(strsplit(covariate, ","))
+    }
+    # Trim whitespace
+    covariate <- trimws(covariate)
+    # Convert "","None","NULL" → NULL
+    if (all(covariate %in% c("", "None", "NULL"))) {
+      covariate <- NULL
+    }
   }
   myY <- read.table(phenofile, head = TRUE, sep="\t")
   myG <- read.table(genofile, head = FALSE, sep="\t")
@@ -77,9 +86,8 @@ holostackGP <- function(
   if (is.null(subsample_markers)) {
     subsample_markers <- NULL
   } else {
-    subsample_markers <- strsplit(subsample_markers, ",")[[1]]
+    subsample_markers <- as.numeric(subsample_markers)
   }
-  if (!is.null(subsample_markers)) {subsample_markers <- as.numeric(subsample_markers)}
   gene_model <- match.arg(gene_model, c("Full","Additive","Dominance","metagenomic","microbiome"))
   select_gwasGPmodel <- NULL                                       #c("2-dom-ref","3-dom-alt","3-dom-ref")
   ploidy_levels <- as.numeric(ploidy)
