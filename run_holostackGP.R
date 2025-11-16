@@ -4,14 +4,14 @@ source("https://raw.githubusercontent.com/bodeolukolu/holostackGP/refs/heads/mas
 
 setwd("./")
 
-multiomicGWAS <- function(
+holostackGP <- function(
     projname="FER",
     phenofile="Traits_FER_lsmeans.txt",
     genofile="Zm_2x_rd6_maf0.02_dose.txt",
     metagenomefile="WGS_metagenome.txt",
     ploidy=2,
     traits=c("FER"),
-    covariate="DTA_21","Aflatoxin",             # c("trait-9","traits-10")
+    covariate=c()"DTA_21","Aflatoxin"),             # c("trait-9","traits-10")
     kernels=c("genomic"),       # "metagenomic or microbiome", genomic","holobiont", "metagenomic+genomic or microbiome+genomic"
     CVrep=100,
     k_fold=5,

@@ -2,7 +2,7 @@
 
 R_libpath <- NULL  # or a path string to your R library
 
-multiomicGWAS <- function(
+holostackGP <- function(
     projname="proj",
     phenofile="Traits.txt",
     genofile="geno_dose.txt",
