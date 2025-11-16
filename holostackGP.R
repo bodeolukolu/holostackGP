@@ -87,7 +87,7 @@ holostackGP <- function(
   } else {
     subsample_markers <- as.numeric(subsample_markers)
   }
-  gene_models <- unlist(strsplit(gene_models, ","))s
+  gene_models <- unlist(strsplit(gene_models, ","))
   select_gwasGPmodel <- NULL                                       #c("2-dom-ref","3-dom-alt","3-dom-ref")
   ploidy_levels <- as.numeric(ploidy)
 
