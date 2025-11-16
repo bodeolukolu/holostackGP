@@ -1,7 +1,5 @@
 #!/usr/bin/env Rscript
 
-R_libpath <- NULL  # or a path string to your R library
-
 holostackGP <- function(
     wdir = "./",
     projname="proj_GP",
@@ -45,13 +43,10 @@ holostackGP <- function(
     quit(status = 1)
   })
   options(warn = 1)
-  if (is.null(R_libpath) || R_libpath %in% c("", "None", "NULL")) {
-    # do nothing
-  } else {
-    .libPaths(R_libpath)
-  }
-  setwd("./")
+  if (!is.null(R_libpath) && nzchar(R_libpath)) {.libPaths(R_libpath)}
   rm(list=ls())
+
+  gene_model <- match.arg(gene_model, c("Full","Additive","Dominance","metagenomic","microbiome"))
 
 
   #############################################################################################################################################################################
