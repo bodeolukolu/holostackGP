@@ -1,5 +1,7 @@
 #!/usr/bin/env Rscript
 
+R_libpath <- NULL  # or a path string to your R library
+
 multiomicGWAS <- function(
     projname="proj",
     phenofile="Traits.txt",
