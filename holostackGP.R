@@ -96,6 +96,7 @@ holostackGP <- function(
   mtraits <- NULL
   ncores <- 5
   LOCO <- FALSE
+  drop_ind <- ""
 
   #metagenome-based parameters
   mincorr <- 0                                 # minimum correlation coefficient (trait vs subsets of metagenome)

@@ -13,7 +13,7 @@ genofile=geno.txt
 metagenomefile=metagenome.txt
 covariate=trait-10,trait-11
 kernel=genomic,       # "metagenomic or microbiome", genomic","holobiont", "metagenomic+genomic or microbiome+genomic"
-gene_model=c("Full"),         # "Additive", "Dominance", "metagenome or microbiome", Full
+gene_model=c("Full"),         # "Additive", "Dominance", "metagenome or microbiome", "Full" (list independently except for Additive,Dominance)
 
 
 for trait in "${arr[@]}"; do
