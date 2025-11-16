@@ -55,7 +55,7 @@ holostackGP <- function(
   setwd(wdir)
   GP_run_title <- projname
   traits <- traits
-  if (covariate == "" || covariate == "None" || covariate == "NULL"]) {
+  if (covariate == "" || covariate == "None" || covariate == "NULL") {
     covariate <- NULL
   } else {
     covariate <- strsplit(covariate, ",")[[1]]
