@@ -13,7 +13,7 @@ holostackGP(
     ploidy=2,
     traits=args[1],
     covariate=args[6],             # c("trait-9","traits-10")
-    kernel=args[7],       # "metagenomic or microbiome", genomic","holobiont", "metagenomic+genomic or microbiome+genomic"
+    kernel=args[7],       # "metagenomic", genomic","holobiont", "metagenomic+genomic"
     CVrep=100,
     k_fold=5,
     maf=0.02,

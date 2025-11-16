@@ -46,7 +46,6 @@ holostackGP <- function(
   if (!is.null(R_libpath) && nzchar(R_libpath)) {.libPaths(R_libpath)}
 
 
-
   #############################################################################################################################################################################
   # Specify parameters
   ####################
@@ -54,25 +53,16 @@ holostackGP <- function(
   setwd(wdir)
   GP_run_title <- projname
   traits <- traits
-  if (is.null(covariate) || length(covariate) == 0) {
+  if (is.null(covariate)) {
     covariate <- NULL
   } else {
-    # If user passed a single comma-separated string: "A,B,C"
-    if (length(covariate) == 1) {
-      covariate <- unlist(strsplit(covariate, ","))
-    }
-    # Trim whitespace
-    covariate <- trimws(covariate)
-    # Convert "","None","NULL" → NULL
-    if (all(covariate %in% c("", "None", "NULL"))) {
-      covariate <- NULL
-    }
+    covariate <- covariate
   }
   myY <- read.table(phenofile, head = TRUE, sep="\t")
   myG <- read.table(genofile, head = FALSE, sep="\t")
-  if(kernel == "metagenomic" || kernel == "microbiome") {kernel <- "gBLUP"}
+  if(kernel == "metagenomic") {kernel <- "gBLUP"}
   if(kernel == "genomic") {kernel <- "GBLUP"}
-  if(kernel == "holobiont" || kernel == "microbiome+genomic" || kernel == "metagenomic+genomic") {kernel <- "gGBLUP"}
+  if(kernel == "holobiont" || kernel == "metagenomic+genomic") {kernel <- "gGBLUP"}
   gp_model <- kernel
   gwas_Gpred <- gwas_pred
   gwas_model <- "MLM"
@@ -87,7 +77,7 @@ holostackGP <- function(
   } else {
     subsample_markers <- as.numeric(subsample_markers)
   }
-  gene_models <- unlist(strsplit(gene_model, ","))
+  gene_models <- gene_model
   select_gwasGPmodel <- NULL                                       #c("2-dom-ref","3-dom-alt","3-dom-ref")
   ploidy_levels <- as.numeric(ploidy)
 
@@ -112,6 +102,35 @@ holostackGP <- function(
   entire_metagenome <- TRUE
   crosstrait <- NULL
   options(warn=0)
+
+
+  delete_short_files <- function(path = ".") {
+    files <- list.files(path, full.names = TRUE, recursive = TRUE)
+    for (f in files) {
+      if (file.info(f)$isdir) next  # skip directories
+
+      n_lines <- length(readLines(f, n = 2))
+      if (n_lines < 2) {
+        message("Deleting short file: ", f)
+        file.remove(f)
+      }
+    }
+  }
+  delete_empty_dirs <- function(path = ".") {
+    dirs <- list.dirs(path, full.names = TRUE, recursive = TRUE)
+
+    # sort longest path first so we delete deepest directories first
+    dirs <- dirs[order(nchar(dirs), decreasing = TRUE)]
+
+    for (d in dirs) {
+      if (length(list.files(d, recursive = FALSE)) == 0) {
+        message("Deleting empty directory: ", d)
+        unlink(d, recursive = TRUE)
+      }
+    }
+  }
+  delete_short_files("./")
+  delete_empty_dirs("./")
 
 
 

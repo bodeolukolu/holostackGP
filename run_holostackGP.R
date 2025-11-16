@@ -12,7 +12,7 @@ holostackGP(
     ploidy=2,
     traits=c("FER"),
     covariate=c("DTA_21","Aflatoxin"),             # c("trait-9","traits-10")
-    kernel=c("genomic"),       # "metagenomic or microbiome", genomic","holobiont", "metagenomic+genomic or microbiome+genomic"
+    kernel=c("genomic"),       # "metagenomic", genomic","holobiont", "metagenomic+genomic"
     CVrep=100,
     k_fold=5,
     maf=0.02,
