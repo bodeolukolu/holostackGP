@@ -4,12 +4,12 @@ holostackGP <- function(
     wdir = "./",
     projname="proj_GP",
     phenofile="Traits.txt",
-    genofile="geno_dose.txt",
-    metagenomefile="metagenome.txt",
+    genofile=NULL,
+    metagenomefile=NULL,
     ploidy=2,
     traits=c("trait-1","trait-2"),
     covariate=NULL,             # c("trait-9","traits-10")
-    kernel=c("genomic"),       # "metagenomic or microbiome", genomic","holobiont", "metagenomic+genomic or microbiome+genomic"
+    kernel=NULL,       # "metagenomic or microbiome", genomic","holobiont", "metagenomic+genomic or microbiome+genomic"
     CVrep=100,
     k_fold=5,
     maf=0.02,
