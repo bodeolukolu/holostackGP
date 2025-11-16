@@ -1,5 +1,8 @@
 #!/usr/bin/env Rscript
 
+
+source(https://github.com/bodeolukolu/holostackGP/blob/master/holostackGP.R)
+
 multiomicGWAS <- function(
     projname="FER",
     phenofile="Traits_FER_lsmeans.txt",
