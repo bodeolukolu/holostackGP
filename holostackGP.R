@@ -45,7 +45,6 @@ holostackGP <- function(
   options(warn = 1)
   if (!is.null(R_libpath) && nzchar(R_libpath)) {.libPaths(R_libpath)}
 
-  # gene_model <- match.arg(gene_model, c("Full","Additive","Dominance","metagenomic","microbiome"))
 
 
   #############################################################################################################################################################################
@@ -88,7 +87,7 @@ holostackGP <- function(
   } else {
     subsample_markers <- as.numeric(subsample_markers)
   }
-  gene_model <- match.arg(gene_model, c("Full","Additive","Dominance","metagenomic","microbiome"))
+  gene_models <- match.arg(gene_model, c("Full","Additive","Dominance","metagenomic","microbiome"))
   select_gwasGPmodel <- NULL                                       #c("2-dom-ref","3-dom-alt","3-dom-ref")
   ploidy_levels <- as.numeric(ploidy)
 
