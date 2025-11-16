@@ -35,7 +35,6 @@ multiomicGWAS <- function(
 
   # Call it once at the start of your function
   load_packages(pkgs)
-}
 
 
 options(error = function() {

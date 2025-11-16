@@ -1,7 +1,8 @@
 #!/usr/bin/env Rscript
 
+source("https://raw.githubusercontent.com/bodeolukolu/holostackGP/refs/heads/master/holostackGP.R")
 
-source(https://github.com/bodeolukolu/holostackGP/blob/master/holostackGP.R)
+setwd("./")
 
 multiomicGWAS <- function(
     projname="FER",
