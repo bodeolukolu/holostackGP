@@ -9,7 +9,7 @@ holostackGP <- function(
     ploidy=2,
     traits=c("trait-1","trait-2"),
     covariate=NULL,             # c("trait-9","traits-10")
-    kernels=c("genomic"),       # "metagenomic or microbiome", genomic","holobiont", "metagenomic+genomic or microbiome+genomic"
+    kernel=c("genomic"),       # "metagenomic or microbiome", genomic","holobiont", "metagenomic+genomic or microbiome+genomic"
     CVrep=100,
     k_fold=5,
     maf=0.02,
@@ -17,7 +17,7 @@ holostackGP <- function(
     gwas_pred=FALSE,
     subsample_markers=NULL,
     topHits=100,
-    gene_model=c("Full"),           # "Additive", "Dominance", "metagenome or microbiome", Full
+    gene_model=c("Full"),           # "Additive", "Dominance", "metagenome or microbiome", "Full"
     R_libpath=NULL
 ) {
   load_packages <- function(pkgs) {
@@ -44,7 +44,6 @@ holostackGP <- function(
   })
   options(warn = 1)
   if (!is.null(R_libpath) && nzchar(R_libpath)) {.libPaths(R_libpath)}
-  rm(list=ls())
 
   # gene_model <- match.arg(gene_model, c("Full","Additive","Dominance","metagenomic","microbiome"))
 
@@ -81,7 +80,7 @@ holostackGP <- function(
     subsample_markers <- strsplit(subsample_markers, ",")[[1]]
   }
   if (!is.null(subsample_markers)) {subsample_markers <- as.numeric(subsample_markers)}
-  gene_models <- strsplit(gene_model, ",")[[1]]
+  gene_model <- match.arg(gene_model, c("Full","Additive","Dominance","metagenomic","microbiome"))
   select_gwasGPmodel <- NULL                                       #c("2-dom-ref","3-dom-alt","3-dom-ref")
   ploidy_levels <- as.numeric(ploidy)
 
