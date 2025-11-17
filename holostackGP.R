@@ -61,6 +61,7 @@ holostackGP <- function(
   if(kernel == "metagenomic") {kernel <- "gBLUP"}
   if(kernel == "genomic") {kernel <- "GBLUP"}
   if(kernel == "holobiont" || kernel == "metagenomic+genomic") {kernel <- "gGBLUP"}
+  if(gene_model == "metagenome" || gene_model == "microbiome"){kernel <- "gBLUP"}
   if(kernel == "GBLUP"){metagenomefile <- NULL}
   if(kernel == "gBLUP"){genofile <- NULL}
   myY <- read.table(phenofile, head = TRUE, sep="\t")
