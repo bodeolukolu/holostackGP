@@ -65,7 +65,7 @@ holostackGP <- function(
   if(kernel == "GBLUP"){metagenomefile <- NULL}
   if(kernel == "gBLUP"){genofile <- NULL}
   myY <- read.table(phenofile, head = TRUE, sep="\t")
-  if(!is.null(genofile)){myG <- read.table(genofile, head = FALSE, sep="\t")}
+  myG <- read.table(genofile, head = FALSE, sep="\t")
   metagenome_data <- metagenomefile
   gp_model <- kernel
   gwas_Gpred <- gwas_pred
