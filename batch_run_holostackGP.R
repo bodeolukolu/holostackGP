@@ -1,5 +1,6 @@
 #!/usr/bin/env Rscript
 args <- commandArgs(trailingOnly = TRUE)
+stopifnot(length(args) >= 9)
 
 source("https://raw.githubusercontent.com/bodeolukolu/holostackGP/refs/heads/master/holostackGP.R")
 setwd("./")
@@ -24,7 +25,7 @@ holostackGP(
     ploidy=2,
     traits=args[1],
     # for covariates: c("trait-9","traits-10")
-    covariate=args[7],
+    covariate=covariate,
     # "metagenomic", genomic","holobiont", "metagenomic+genomic"
     kernel=args[8],
     CVrep=100,
@@ -34,6 +35,6 @@ holostackGP(
     # if full marker ata set, set to NULL
     subsample_markers=NULL,
     # "Additive", "Dominance", "metagenome or microbiome", "Full"
-    gene_model = args[9],
+    gene_model=gene_model,
     R_libpath=NULL
 )
