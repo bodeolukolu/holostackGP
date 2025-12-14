@@ -6,6 +6,7 @@ setwd("./")
 
 holostackGP(
     projname="FER",
+    MTME=FALSE,
     phenofile="Traits_FER_lsmeans.txt",
     genofile="Zm_2x_rd6_maf0.02_dose.txt",
     metagenomefile="WGS_metagenome.txt",
