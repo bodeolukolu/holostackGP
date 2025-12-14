@@ -44,6 +44,24 @@ holostackGP <- function(
   options(warn = 1)
   if (!is.null(R_libpath) && nzchar(R_libpath)) {.libPaths(R_libpath)}
 
+  ## Validate input files early
+  if (!is.character(phenofile) || !file.exists(phenofile)) {
+    stop("Phenotype file missing or invalid: ", phenofile)
+  }
+
+  if (!is.null(genofile) && (!is.character(genofile) || !file.exists(genofile))) {
+    stop("Genotype file missing or invalid: ", genofile)
+  }
+
+  if (!is.null(metagenomefile) && (!is.character(metagenomefile) || !file.exists(metagenomefile))) {
+    stop("Metagenome file missing or invalid: ", metagenomefile)
+  }
+
+  if (is.null(traits) || length(traits) == 0) {
+    stop("No trait(s) specified for prediction.")
+  }
+
+
 
   #############################################################################################################################################################################
   # Specify parameters
