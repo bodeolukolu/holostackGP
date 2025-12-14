@@ -62,9 +62,8 @@ holostackGP <- function(
   if(tolower(kernel) == "genomic") {kernel <- "GBLUP"}
   if (tolower(kernel) %in% c("holobiont", "metagenomic+genomic")) {kernel <- "gGBLUP"}
   if (tolower(gene_model) %in% c("metagenome", "microbiome")) {kernel <- "gBLUP"}
-  if(kernel == "GBLUP"){metagenomefile <- NULL}
-  myY <- read.table(phenofile, head = TRUE, sep="\t")
-  myG <- read.table(genofile, head = FALSE, sep="\t")
+  myY <- read.table(phenofile, head = TRUE, sep="\t", check.names=FALSE)
+  myG <- read.table(genofile, head = TRUE, sep="\t", check.names=FALSE)
   metagenome_data <- metagenomefile
   gp_model <- kernel
   gwas_Gpred <- gwas_pred
@@ -147,7 +146,7 @@ holostackGP <- function(
         if(gp_model == "gGBLUP"){metagenome_covariate <- TRUE; metag_method <- "Aitchison"}
         if(gp_model == "gBLUP"){gene_models <- "metagenome"; metag_method <- "Aitchison"; metagenome_covariate <- FALSE; myG <- NULL}
         metag_pca <- TRUE
-        dir.create(GP_run_title)
+        dir.create(GP_run_title, showWarnings=FALSE, recursive=TRUE)
         colnames(myY)[1] <- "Taxa"
         myY[,2:ncol(myY)] <- sapply(myY[,2:ncol(myY)],as.numeric)
         if (!is.null(covariate)) {
@@ -554,7 +553,7 @@ holostackGP <- function(
             pop_data$no_missing <- apply(pop_data, MARGIN = 1, FUN = function(x) length(x[is.na(x)]) )
             pop_data <- subset(pop_data, no_missing < ncol(pop_data)*perc_missing)
             pop_data <- subset(pop_data, select=-c(no_missing))
-            set.seed(123)
+            set.seed(100+rep)
             if (is.numeric(subsample_markers)) {pop_data <- sample_n(pop_data, subsample_markers)}
             pop_data <- as.matrix(t(pop_data))
             #Computing the full-autopolyploid matrix based on Slater 2016 (Eq. 8 and 9)
