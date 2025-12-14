@@ -26,8 +26,7 @@ gene_model="Full"
 
 for trait in "${arr[@]}"; do
   echo "Launching genomic prediction for trait: ${trait}"
-  Rscript batch_run_holostackGP.R "${trait}" "$projname" "$MTME" "$phenofile" "$genofile" "$metagenomefile" \
-  "$covariate" "$kernel" "$gene_model" & 
+  Rscript batch_run_holostackGP.R "${trait}" "$projname" "$MTME" "$phenofile" "$genofile" "$metagenomefile" "$covariate" "$kernel" "$gene_model" & 
   sleep 10
   ((count++))
   if (( count % max_jobs == 0 )); then
