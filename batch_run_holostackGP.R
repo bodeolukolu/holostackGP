@@ -20,7 +20,6 @@ holostackGP(
     maf=0.02,
     geno_missing_rate=0.2,
     subsample_markers=NULL,       # if full data set, set to NULL
-    gene_model <- strsplit(args[9], ",", fixed = TRUE)[[1]]             # "Additive", "Dominance", "metagenome or microbiome", Full
-    gene_model <- trimws(gene_model)
+    gene_model <- args[9],             # "Additive", "Dominance", "metagenome or microbiome", Full
     R_libpath=NULL
 )
