@@ -2,7 +2,6 @@
 args <- commandArgs(trailingOnly = TRUE)
 
 source("https://raw.githubusercontent.com/bodeolukolu/holostackGP/refs/heads/master/holostackGP.R")
-
 setwd("./")
 
 covariate <- if (is.na(args[7]) || args[7] == "" || tolower(args[7]) == "null") {
@@ -10,7 +9,6 @@ covariate <- if (is.na(args[7]) || args[7] == "" || tolower(args[7]) == "null") 
 } else {
   trimws(strsplit(args[7], ",", fixed = TRUE)[[1]])
 }
-
 gene_model <- if (is.na(args[9]) || args[9] == "" || tolower(args[9]) == "null") {
   NULL
 } else {

@@ -21,7 +21,7 @@ gene_model="Full"
 
 
 for trait in "${arr[@]}"; do
-  Rscript holostackGP.R ${trait} $projname $MTME $phenofile $genofile $metagenomefile $covariate $kernel $genomic_model & sleep 10
+  Rscript holostackGP.R ${trait} $projname $MTME $phenofile $genofile $metagenomefile $covariate $kernel $gene_model & sleep 10
   ((count++))
   if (( count % max_jobs == 0 )); then
     wait
