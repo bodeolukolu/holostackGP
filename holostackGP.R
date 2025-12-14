@@ -8,9 +8,10 @@ holostackGP <- function(
     genofile=NULL,
     metagenomefile=NULL,
     ploidy=2,
-    traits=NULL,                       # c("trait-1","trait-2")
-    covariate=NULL,             # c("trait-9","traits-10")
-    kernel=NULL,       # "metagenomic or microbiome", genomic","holobiont", "metagenomic+genomic or microbiome+genomic"
+    traits=NULL,
+    covariate=NULL,
+    # "metagenomic or microbiome", genomic","holobiont", "metagenomic+genomic or microbiome+genomic"
+    kernel=NULL,
     CVrep=100,
     k_fold=5,
     maf=0.02,
