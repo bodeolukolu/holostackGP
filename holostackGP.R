@@ -53,8 +53,9 @@ holostackGP <- function(
   if(tolower(kernel) == "genomic") {kernel <- "GBLUP"}
   if (tolower(kernel) %in% c("holobiont", "metagenomic+genomic")) {kernel <- "gGBLUP"}
   if (tolower(gene_model) %in% c("metagenome", "microbiome")) {kernel <- "gBLUP"}
+  if(kernel == "GBLUP"){metagenomefile <- NULL}
   myY <- read.table(phenofile, head = TRUE, sep="\t", check.names=FALSE)
-  myG <- read.table(genofile, head = TRUE, sep="\t", check.names=FALSE)
+  myG <- read.table(genofile, head = FALSE, sep="\t", check.names=FALSE)
   metagenome_data <- metagenomefile
   gp_model <- kernel
   gwas_Gpred <- gwas_pred
@@ -135,7 +136,7 @@ holostackGP <- function(
         if (gene_model == "dominance" || gene_model == "DOMINANCE" ){ gene_model <- "Dominance"}
         if(gp_model == "GBLUP"){metagenome_covariate <- FALSE; metagenome_data <- NULL}
         if(gp_model == "gGBLUP"){metagenome_covariate <- TRUE; metag_method <- "Aitchison"}
-        if(gp_model == "gBLUP"){gene_models <- "metagenome"; metag_method <- "Aitchison"; metagenome_covariate <- FALSE}
+        if(gp_model == "gBLUP"){gene_models <- "metagenome"; metag_method <- "Aitchison"; metagenome_covariate <- FALSE; myG <- NULL}
         metag_pca <- TRUE
         dir.create(GP_run_title, showWarnings=FALSE, recursive=TRUE)
         colnames(myY)[1] <- "Taxa"
