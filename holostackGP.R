@@ -3,6 +3,7 @@
 holostackGP <- function(
     wdir = "./",
     projname="proj_GP",
+    MTME=FALSE,
     phenofile=NULL,
     genofile=NULL,
     metagenomefile=NULL,
