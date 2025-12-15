@@ -22,19 +22,44 @@ holostackGP <- function(
     gene_model="Full",           # "Additive", "Dominance", "metagenome or microbiome", "Full"
     R_libpath=NULL
 ) {
+    load_packages <- function(pkgs, lib = Sys.getenv("R_LIBS_USER")) {
 
-  load_packages <- function(pkgs) {
-    for (p in pkgs) {
-      if (!requireNamespace(p, quietly = TRUE)) {
-        install.packages(p, repos = "https://cloud.r-project.org")
+      if (nzchar(lib)) {
+        .libPaths(c(lib, .libPaths()))
       }
-      suppressPackageStartupMessages(library(p, character.only = TRUE))
+
+      for (p in pkgs) {
+
+        if (!requireNamespace(p, quietly = TRUE)) {
+          message("Installing missing package: ", p)
+
+          tryCatch(
+            install.packages(
+              p,
+              repos = "https://cloud.r-project.org",
+              dependencies = TRUE
+            ),
+            error = function(e) {
+              stop("Failed to install package '", p, "': ", conditionMessage(e))
+            }
+          )
+        }
+
+        ok <- suppressPackageStartupMessages(
+          require(p, character.only = TRUE, quietly = TRUE)
+        )
+
+        if (!ok) {
+          stop("Package '", p, "' is installed but failed to load")
+        }
+      }
+
+      invisible(TRUE)
     }
-  }
-  # List of required packages
-  pkgs <- c("mice", "data.table", "dplyr", "AGHmatrix", "vegan", "compositions",
-            "ggcorrplot", "nlme", "lsmeans", "agricolae", "doParallel", "foreach",
-            "parallel", "rrBLUP", "BGLR", "GWASpoly")
+    pkgs <- c("data.table", "dplyr", "mice", "AGHmatrix", "vegan", "compositions", "ggcorrplot",
+    "nlme", "lsmeans", "agricolae", "parallel", "doParallel", "foreach", "rrBLUP", "BGLR", "GWASpoly")
+
+
 
   #############################################################################################################################################################################
   # Specify parameters
