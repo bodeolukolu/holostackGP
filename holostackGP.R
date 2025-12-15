@@ -466,7 +466,7 @@ holostackGP <- function(
             dY <- dY[dY$Taxa %in% keep_taxa,]
             row.names(metag) <- metag[,1]; metag <- metag[,-1]
             if(clr_transform == TRUE){
-              metag_clr <- as.matrix(clr(metag + 1e-6))
+              metag_clr <- as.matrix(compositions::clr(metag + 1e-6))
             } else {metag_clr <- metag}
             # metag_clrx <- t(metag_clr)
             # write.table(metag_clrx, paste("../clr_",metagenome_data,".txt",sep=""), col.names=TRUE, row.names=T, quote = FALSE, sep = "\t", append=FALSE)
@@ -575,7 +575,7 @@ holostackGP <- function(
             pop_data <- as.matrix(t(pop_data))
             #Computing the full-autopolyploid matrix based on Slater 2016 (Eq. 8 and 9)
             if (gene_model == "Additive"){
-              G_matrix <- Gmatrix(SNPmatrix = pop_data, method = "VanRaden", missingValue = NA,
+              G_matrix <- AGHmatrix::Gmatrix(SNPmatrix = pop_data, method = "VanRaden", missingValue = NA,
                                   maf = maf_threshold, thresh.missing = 1, verify.posdef = FALSE, ploidy = ploidy,
                                   pseudo.diploid = FALSE, integer = TRUE, ratio = FALSE, impute.method = "mode",
                                   ratio.check = FALSE)
@@ -584,21 +584,21 @@ holostackGP <- function(
             if (gene_model == "Dominance"){
               if (ploidy == 2){Gmethod <- "Vitezica"}
               if (ploidy > 2){Gmethod <- "Slater"}
-              G_matrix <- Gmatrix(SNPmatrix = pop_data, method = Gmethod, missingValue = NA,
+              G_matrix <- AGHmatrix::Gmatrix(SNPmatrix = pop_data, method = Gmethod, missingValue = NA,
                                   maf = maf_threshold, thresh.missing = 1, verify.posdef = FALSE, ploidy = ploidy,
                                   pseudo.diploid = FALSE, integer = TRUE, ratio = FALSE, impute.method = "mode",
                                   ratio.check = FALSE)
               myKI <- normalize_kinmat(as.matrix(G_matrix))
             }
             if (gene_model == "Full" || gene_model == "All" ){
-              G_matrix <- Gmatrix(SNPmatrix = pop_data, method = "VanRaden", missingValue = NA,
+              G_matrix <- AGHmatrix::Gmatrix(SNPmatrix = pop_data, method = "VanRaden", missingValue = NA,
                                   maf = maf_threshold, thresh.missing = 1, verify.posdef = FALSE, ploidy = ploidy,
                                   pseudo.diploid = FALSE, integer = TRUE, ratio = FALSE, impute.method = "mode",
                                   ratio.check = FALSE)
               myKI.Add <- normalize_kinmat(as.matrix(G_matrix))
               if (ploidy == 2){Gmethod <- "Vitezica"}
               if (ploidy > 2){Gmethod <- "Slater"}
-              G_matrix <- Gmatrix(SNPmatrix = pop_data, method = Gmethod, missingValue = NA,
+              G_matrix <- AGHmatrix::Gmatrix(SNPmatrix = pop_data, method = Gmethod, missingValue = NA,
                                   maf = maf_threshold, thresh.missing = 1, verify.posdef = FALSE, ploidy = ploidy,
                                   pseudo.diploid = FALSE, integer = TRUE, ratio = FALSE, impute.method = "mode",
                                   ratio.check = FALSE)
