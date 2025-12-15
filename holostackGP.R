@@ -3,7 +3,6 @@
 holostackGP <- function(
     wdir = "./",
     projname="proj_GP",
-    MTME=FALSE,
     phenofile=NULL,
     genofile=NULL,
     metagenomefile=NULL,
@@ -22,42 +21,42 @@ holostackGP <- function(
     gene_model="Full",           # "Additive", "Dominance", "metagenome or microbiome", "Full"
     R_libpath=NULL
 ) {
-    load_packages <- function(pkgs, lib = Sys.getenv("R_LIBS_USER")) {
+  load_packages <- function(pkgs, lib = Sys.getenv("R_LIBS_USER")) {
 
-      if (nzchar(lib)) {
-        .libPaths(c(lib, .libPaths()))
-      }
-
-      for (p in pkgs) {
-
-        if (!requireNamespace(p, quietly = TRUE)) {
-          message("Installing missing package: ", p)
-
-          tryCatch(
-            install.packages(
-              p,
-              repos = "https://cloud.r-project.org",
-              dependencies = TRUE
-            ),
-            error = function(e) {
-              stop("Failed to install package '", p, "': ", conditionMessage(e))
-            }
-          )
-        }
-
-        ok <- suppressPackageStartupMessages(
-          require(p, character.only = TRUE, quietly = TRUE)
-        )
-
-        if (!ok) {
-          stop("Package '", p, "' is installed but failed to load")
-        }
-      }
-
-      invisible(TRUE)
+    if (nzchar(lib)) {
+      .libPaths(c(lib, .libPaths()))
     }
-    pkgs <- c("data.table", "dplyr", "mice", "AGHmatrix", "vegan", "compositions", "ggcorrplot",
-    "nlme", "lsmeans", "agricolae", "parallel", "doParallel", "foreach", "rrBLUP", "BGLR", "GWASpoly")
+
+    for (p in pkgs) {
+
+      if (!requireNamespace(p, quietly = TRUE)) {
+        message("Installing missing package: ", p)
+
+        tryCatch(
+          install.packages(
+            p,
+            repos = "https://cloud.r-project.org",
+            dependencies = TRUE
+          ),
+          error = function(e) {
+            stop("Failed to install package '", p, "': ", conditionMessage(e))
+          }
+        )
+      }
+
+      ok <- suppressPackageStartupMessages(
+        require(p, character.only = TRUE, quietly = TRUE)
+      )
+
+      if (!ok) {
+        stop("Package '", p, "' is installed but failed to load")
+      }
+    }
+
+    invisible(TRUE)
+  }
+  pkgs <- c("data.table", "dplyr", "mice", "AGHmatrix", "vegan", "compositions", "ggcorrplot",
+            "nlme", "lsmeans", "agricolae", "parallel", "doParallel", "foreach", "rrBLUP", "BGLR", "GWASpoly")
 
 
 
@@ -576,32 +575,32 @@ holostackGP <- function(
             #Computing the full-autopolyploid matrix based on Slater 2016 (Eq. 8 and 9)
             if (gene_model == "Additive"){
               G_matrix <- AGHmatrix::Gmatrix(SNPmatrix = pop_data, method = "VanRaden", missingValue = NA,
-                                  maf = maf_threshold, thresh.missing = 1, verify.posdef = FALSE, ploidy = ploidy,
-                                  pseudo.diploid = FALSE, integer = TRUE, ratio = FALSE, impute.method = "mode",
-                                  ratio.check = FALSE)
+                                             maf = maf_threshold, thresh.missing = 1, verify.posdef = FALSE, ploidy = ploidy,
+                                             pseudo.diploid = FALSE, integer = TRUE, ratio = FALSE, impute.method = "mode",
+                                             ratio.check = FALSE)
               myKI <- normalize_kinmat(as.matrix(G_matrix))
             }
             if (gene_model == "Dominance"){
               if (ploidy == 2){Gmethod <- "Vitezica"}
               if (ploidy > 2){Gmethod <- "Slater"}
               G_matrix <- AGHmatrix::Gmatrix(SNPmatrix = pop_data, method = Gmethod, missingValue = NA,
-                                  maf = maf_threshold, thresh.missing = 1, verify.posdef = FALSE, ploidy = ploidy,
-                                  pseudo.diploid = FALSE, integer = TRUE, ratio = FALSE, impute.method = "mode",
-                                  ratio.check = FALSE)
+                                             maf = maf_threshold, thresh.missing = 1, verify.posdef = FALSE, ploidy = ploidy,
+                                             pseudo.diploid = FALSE, integer = TRUE, ratio = FALSE, impute.method = "mode",
+                                             ratio.check = FALSE)
               myKI <- normalize_kinmat(as.matrix(G_matrix))
             }
             if (gene_model == "Full" || gene_model == "All" ){
               G_matrix <- AGHmatrix::Gmatrix(SNPmatrix = pop_data, method = "VanRaden", missingValue = NA,
-                                  maf = maf_threshold, thresh.missing = 1, verify.posdef = FALSE, ploidy = ploidy,
-                                  pseudo.diploid = FALSE, integer = TRUE, ratio = FALSE, impute.method = "mode",
-                                  ratio.check = FALSE)
+                                             maf = maf_threshold, thresh.missing = 1, verify.posdef = FALSE, ploidy = ploidy,
+                                             pseudo.diploid = FALSE, integer = TRUE, ratio = FALSE, impute.method = "mode",
+                                             ratio.check = FALSE)
               myKI.Add <- normalize_kinmat(as.matrix(G_matrix))
               if (ploidy == 2){Gmethod <- "Vitezica"}
               if (ploidy > 2){Gmethod <- "Slater"}
               G_matrix <- AGHmatrix::Gmatrix(SNPmatrix = pop_data, method = Gmethod, missingValue = NA,
-                                  maf = maf_threshold, thresh.missing = 1, verify.posdef = FALSE, ploidy = ploidy,
-                                  pseudo.diploid = FALSE, integer = TRUE, ratio = FALSE, impute.method = "mode",
-                                  ratio.check = FALSE)
+                                             maf = maf_threshold, thresh.missing = 1, verify.posdef = FALSE, ploidy = ploidy,
+                                             pseudo.diploid = FALSE, integer = TRUE, ratio = FALSE, impute.method = "mode",
+                                             ratio.check = FALSE)
               myKI.Dom <- normalize_kinmat(as.matrix(G_matrix))
             }
 
@@ -931,7 +930,7 @@ holostackGP <- function(
                 mgeno <- as.matrix(mgeno)  # ensure matrix
                 mgeno_scaled <- scale(mgeno, center = TRUE, scale = TRUE)
                 rownames(mgeno_scaled) <- common_ids
-            }
+              }
               Y.masked <- as.numeric(Y.masked[[1]])
 
               # compute epistatic kernels
@@ -996,37 +995,78 @@ holostackGP <- function(
                 if(gp_model == "GBLUP"){
                   if (gene_model == "Full" || gene_model == "All"){
                     prepare_covariates <- function(Xcov) {
+
+                      # Return NULL immediately if no covariates
+                      if (is.null(Xcov)) {
+                        return(NULL)
+                      }
+
+                      # Coerce to data.frame safely
                       if (is.list(Xcov) && !is.data.frame(Xcov)) {
                         Xcov_df <- as.data.frame(do.call(cbind, Xcov))
                       } else {
                         Xcov_df <- as.data.frame(Xcov)
                       }
 
-                      # remove intercept to avoid duplication
+                      # Empty data.frame guard
+                      if (ncol(Xcov_df) == 0) {
+                        return(NULL)
+                      }
+
+                      # Drop all-NA or constant columns
+                      keep <- vapply(Xcov_df, function(x) {
+                        !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
+                      }, logical(1))
+                      Xcov_df <- Xcov_df[, keep, drop = FALSE]
+
+                      if (ncol(Xcov_df) == 0) {
+                        return(NULL)
+                      }
+
+                      # Build design matrix (no intercept)
                       Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
 
-                      # drop duplicates
-                      Xcov_mat <- Xcov_mat[, !duplicated(colnames(Xcov_mat)), drop = FALSE]
+                      # Drop duplicate columns after factor expansion
+                      dup <- duplicated(colnames(Xcov_mat))
+                      if (any(dup)) {
+                        Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
+                      }
 
-                      # drop near-zero variance
+                      # Drop near-zero variance columns
                       nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
                       if (any(nzv)) {
-                        message("Dropping ", sum(nzv), " near-zero variance covariates: ",
-                                paste(colnames(Xcov_mat)[nzv], collapse = ", "))
+                        message(
+                          "Dropping ", sum(nzv), " near-zero variance covariates: ",
+                          paste(colnames(Xcov_mat)[nzv], collapse = ", ")
+                        )
                         Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
                       }
 
-                      # enforce full rank
-                      qrX <- qr(Xcov_mat)
-                      if (qrX$rank < ncol(Xcov_mat)) {
-                        drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                        message("Dropping collinear covariates: ",
-                                paste(colnames(Xcov_mat)[drop_idx], collapse = ", "))
-                        Xcov_mat <- Xcov_mat[, qrX$pivot[seq_len(qrX$rank)], drop = FALSE]
+                      # Enforce full rank by dropping collinear columns
+                      if (ncol(Xcov_mat) > 1) {
+                        qrX <- qr(Xcov_mat)
+                        if (qrX$rank < ncol(Xcov_mat)) {
+                          drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
+                          message(
+                            "Dropping collinear covariates: ",
+                            paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
+                          )
+                          keep_idx <- qrX$pivot[seq_len(qrX$rank)]
+                          Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
+                        }
                       }
 
-                      if (ncol(Xcov_mat) == 0) return(NULL)
+                      # Final check: return NULL if no valid covariates left
+                      if (ncol(Xcov_mat) == 0) {
+                        return(NULL)
+                      }
+
                       return(Xcov_mat)
+                    }
+                    # Usage: safely assign or NULL
+                    Xcov_mat <- prepare_covariates(Xcov)
+                    if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
+                      Xcov_mat <- NULL
                     }
 
                     # GBLUP  with rrBLUP package
@@ -1112,37 +1152,75 @@ holostackGP <- function(
                       Z_train <- prepare_rrblup_matrix(geno.A_scaled[train_ids, ], y_train)
                       # --- Covariate preparation ---
                       prepare_covariates <- function(Xcov) {
+
+                        # Return NULL immediately if no covariates
+                        if (is.null(Xcov)) {
+                          return(NULL)
+                        }
+
+                        # Coerce to data.frame safely
                         if (is.list(Xcov) && !is.data.frame(Xcov)) {
                           Xcov_df <- as.data.frame(do.call(cbind, Xcov))
                         } else {
                           Xcov_df <- as.data.frame(Xcov)
                         }
 
-                        Xcov_mat <- model.matrix(~ ., data = Xcov_df)
+                        # Empty data.frame guard
+                        if (ncol(Xcov_df) == 0) {
+                          return(NULL)
+                        }
 
-                        # Drop duplicate columns
-                        Xcov_mat <- Xcov_mat[, !duplicated(colnames(Xcov_mat)), drop = FALSE]
+                        # Drop all-NA or constant columns
+                        keep <- vapply(Xcov_df, function(x) {
+                          !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
+                        }, logical(1))
+                        Xcov_df <- Xcov_df[, keep, drop = FALSE]
+
+                        if (ncol(Xcov_df) == 0) {
+                          return(NULL)
+                        }
+
+                        # Build design matrix (no intercept)
+                        Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
+
+                        # Drop duplicate columns after factor expansion
+                        dup <- duplicated(colnames(Xcov_mat))
+                        if (any(dup)) {
+                          Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
+                        }
 
                         # Drop near-zero variance columns
                         nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
                         if (any(nzv)) {
-                          message("Dropping ", sum(nzv), " near-zero variance covariates: ",
-                                  paste(colnames(Xcov_mat)[nzv], collapse = ", "))
+                          message(
+                            "Dropping ", sum(nzv), " near-zero variance covariates: ",
+                            paste(colnames(Xcov_mat)[nzv], collapse = ", ")
+                          )
                           Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
                         }
 
-                        # Drop collinear columns (full rank check)
-                        qrX <- qr(Xcov_mat)
-                        if (qrX$rank < ncol(Xcov_mat)) {
-                          drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                          message("Dropping collinear covariates: ",
-                                  paste(colnames(Xcov_mat)[drop_idx], collapse = ", "))
-                          keep_idx <- qrX$pivot[seq_len(qrX$rank)]
-                          Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
+                        # Enforce full rank by dropping collinear columns
+                        if (ncol(Xcov_mat) > 1) {
+                          qrX <- qr(Xcov_mat)
+                          if (qrX$rank < ncol(Xcov_mat)) {
+                            drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
+                            message(
+                              "Dropping collinear covariates: ",
+                              paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
+                            )
+                            keep_idx <- qrX$pivot[seq_len(qrX$rank)]
+                            Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
+                          }
+                        }
+
+                        # Final check: return NULL if no valid covariates left
+                        if (ncol(Xcov_mat) == 0) {
+                          return(NULL)
                         }
 
                         return(Xcov_mat)
                       }
+                      # Usage: safely assign or NULL
                       Xcov_mat <- prepare_covariates(Xcov)
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
                         Xcov_mat <- NULL
@@ -1176,37 +1254,75 @@ holostackGP <- function(
                       Z_train <- prepare_rrblup_matrix(geno.D_scaled[train_ids, ], y_train)
                       # --- Covariate preparation ---
                       prepare_covariates <- function(Xcov) {
+
+                        # Return NULL immediately if no covariates
+                        if (is.null(Xcov)) {
+                          return(NULL)
+                        }
+
+                        # Coerce to data.frame safely
                         if (is.list(Xcov) && !is.data.frame(Xcov)) {
                           Xcov_df <- as.data.frame(do.call(cbind, Xcov))
                         } else {
                           Xcov_df <- as.data.frame(Xcov)
                         }
 
-                        Xcov_mat <- model.matrix(~ ., data = Xcov_df)
+                        # Empty data.frame guard
+                        if (ncol(Xcov_df) == 0) {
+                          return(NULL)
+                        }
 
-                        # Drop duplicate columns
-                        Xcov_mat <- Xcov_mat[, !duplicated(colnames(Xcov_mat)), drop = FALSE]
+                        # Drop all-NA or constant columns
+                        keep <- vapply(Xcov_df, function(x) {
+                          !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
+                        }, logical(1))
+                        Xcov_df <- Xcov_df[, keep, drop = FALSE]
+
+                        if (ncol(Xcov_df) == 0) {
+                          return(NULL)
+                        }
+
+                        # Build design matrix (no intercept)
+                        Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
+
+                        # Drop duplicate columns after factor expansion
+                        dup <- duplicated(colnames(Xcov_mat))
+                        if (any(dup)) {
+                          Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
+                        }
 
                         # Drop near-zero variance columns
                         nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
                         if (any(nzv)) {
-                          message("Dropping ", sum(nzv), " near-zero variance covariates: ",
-                                  paste(colnames(Xcov_mat)[nzv], collapse = ", "))
+                          message(
+                            "Dropping ", sum(nzv), " near-zero variance covariates: ",
+                            paste(colnames(Xcov_mat)[nzv], collapse = ", ")
+                          )
                           Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
                         }
 
-                        # Drop collinear columns (full rank check)
-                        qrX <- qr(Xcov_mat)
-                        if (qrX$rank < ncol(Xcov_mat)) {
-                          drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                          message("Dropping collinear covariates: ",
-                                  paste(colnames(Xcov_mat)[drop_idx], collapse = ", "))
-                          keep_idx <- qrX$pivot[seq_len(qrX$rank)]
-                          Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
+                        # Enforce full rank by dropping collinear columns
+                        if (ncol(Xcov_mat) > 1) {
+                          qrX <- qr(Xcov_mat)
+                          if (qrX$rank < ncol(Xcov_mat)) {
+                            drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
+                            message(
+                              "Dropping collinear covariates: ",
+                              paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
+                            )
+                            keep_idx <- qrX$pivot[seq_len(qrX$rank)]
+                            Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
+                          }
+                        }
+
+                        # Final check: return NULL if no valid covariates left
+                        if (ncol(Xcov_mat) == 0) {
+                          return(NULL)
                         }
 
                         return(Xcov_mat)
                       }
+                      # Usage: safely assign or NULL
                       Xcov_mat <- prepare_covariates(Xcov)
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
                         Xcov_mat <- NULL
@@ -1341,46 +1457,87 @@ holostackGP <- function(
                         pred_bayes_all <- as.data.frame(preds_stack)
                         rownames(pred_bayes_all) <- test_ids
                         pred_bayes_OOF <- rbind( pred_bayes_OOF,pred_bayes_all)
-                        }
+                      }
                     }
 
                   } else {
                     prepare_covariates <- function(Xcov) {
+
+                      # Return NULL immediately if no covariates
+                      if (is.null(Xcov)) {
+                        return(NULL)
+                      }
+
+                      # Coerce to data.frame safely
                       if (is.list(Xcov) && !is.data.frame(Xcov)) {
                         Xcov_df <- as.data.frame(do.call(cbind, Xcov))
                       } else {
                         Xcov_df <- as.data.frame(Xcov)
                       }
 
-                      # remove intercept to avoid duplication
+                      # Empty data.frame guard
+                      if (ncol(Xcov_df) == 0) {
+                        return(NULL)
+                      }
+
+                      # Drop all-NA or constant columns
+                      keep <- vapply(Xcov_df, function(x) {
+                        !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
+                      }, logical(1))
+                      Xcov_df <- Xcov_df[, keep, drop = FALSE]
+
+                      if (ncol(Xcov_df) == 0) {
+                        return(NULL)
+                      }
+
+                      # Build design matrix (no intercept)
                       Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
 
-                      # drop duplicates
-                      Xcov_mat <- Xcov_mat[, !duplicated(colnames(Xcov_mat)), drop = FALSE]
+                      # Drop duplicate columns after factor expansion
+                      dup <- duplicated(colnames(Xcov_mat))
+                      if (any(dup)) {
+                        Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
+                      }
 
-                      # drop near-zero variance
+                      # Drop near-zero variance columns
                       nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
                       if (any(nzv)) {
-                        message("Dropping ", sum(nzv), " near-zero variance covariates: ",
-                                paste(colnames(Xcov_mat)[nzv], collapse = ", "))
+                        message(
+                          "Dropping ", sum(nzv), " near-zero variance covariates: ",
+                          paste(colnames(Xcov_mat)[nzv], collapse = ", ")
+                        )
                         Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
                       }
 
-                      # enforce full rank
-                      qrX <- qr(Xcov_mat)
-                      if (qrX$rank < ncol(Xcov_mat)) {
-                        drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                        message("Dropping collinear covariates: ",
-                                paste(colnames(Xcov_mat)[drop_idx], collapse = ", "))
-                        Xcov_mat <- Xcov_mat[, qrX$pivot[seq_len(qrX$rank)], drop = FALSE]
+                      # Enforce full rank by dropping collinear columns
+                      if (ncol(Xcov_mat) > 1) {
+                        qrX <- qr(Xcov_mat)
+                        if (qrX$rank < ncol(Xcov_mat)) {
+                          drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
+                          message(
+                            "Dropping collinear covariates: ",
+                            paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
+                          )
+                          keep_idx <- qrX$pivot[seq_len(qrX$rank)]
+                          Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
+                        }
                       }
 
-                      if (ncol(Xcov_mat) == 0) return(NULL)
+                      # Final check: return NULL if no valid covariates left
+                      if (ncol(Xcov_mat) == 0) {
+                        return(NULL)
+                      }
+
                       return(Xcov_mat)
+                    }
+                    # Usage: safely assign or NULL
+                    Xcov_mat <- prepare_covariates(Xcov)
+                    if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
+                      Xcov_mat <- NULL
                     }
 
                     # GBLUP with rrBLUP package
-                    {          covTraits <- colnames(Y.covmasked)
+                    {covTraits <- colnames(Y.covmasked)
                       gebv_list <- list()
                       for (covt in covTraits){
                         y <- Y.covmasked[[covt]]
@@ -1455,37 +1612,75 @@ holostackGP <- function(
                       Z_train <- prepare_rrblup_matrix(geno_scaled[train_ids, ], y_train)
                       # --- Covariate preparation ---
                       prepare_covariates <- function(Xcov) {
+
+                        # Return NULL immediately if no covariates
+                        if (is.null(Xcov)) {
+                          return(NULL)
+                        }
+
+                        # Coerce to data.frame safely
                         if (is.list(Xcov) && !is.data.frame(Xcov)) {
                           Xcov_df <- as.data.frame(do.call(cbind, Xcov))
                         } else {
                           Xcov_df <- as.data.frame(Xcov)
                         }
 
-                        Xcov_mat <- model.matrix(~ ., data = Xcov_df)
+                        # Empty data.frame guard
+                        if (ncol(Xcov_df) == 0) {
+                          return(NULL)
+                        }
 
-                        # Drop duplicate columns
-                        Xcov_mat <- Xcov_mat[, !duplicated(colnames(Xcov_mat)), drop = FALSE]
+                        # Drop all-NA or constant columns
+                        keep <- vapply(Xcov_df, function(x) {
+                          !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
+                        }, logical(1))
+                        Xcov_df <- Xcov_df[, keep, drop = FALSE]
+
+                        if (ncol(Xcov_df) == 0) {
+                          return(NULL)
+                        }
+
+                        # Build design matrix (no intercept)
+                        Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
+
+                        # Drop duplicate columns after factor expansion
+                        dup <- duplicated(colnames(Xcov_mat))
+                        if (any(dup)) {
+                          Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
+                        }
 
                         # Drop near-zero variance columns
                         nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
                         if (any(nzv)) {
-                          message("Dropping ", sum(nzv), " near-zero variance covariates: ",
-                                  paste(colnames(Xcov_mat)[nzv], collapse = ", "))
+                          message(
+                            "Dropping ", sum(nzv), " near-zero variance covariates: ",
+                            paste(colnames(Xcov_mat)[nzv], collapse = ", ")
+                          )
                           Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
                         }
 
-                        # Drop collinear columns (full rank check)
-                        qrX <- qr(Xcov_mat)
-                        if (qrX$rank < ncol(Xcov_mat)) {
-                          drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                          message("Dropping collinear covariates: ",
-                                  paste(colnames(Xcov_mat)[drop_idx], collapse = ", "))
-                          keep_idx <- qrX$pivot[seq_len(qrX$rank)]
-                          Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
+                        # Enforce full rank by dropping collinear columns
+                        if (ncol(Xcov_mat) > 1) {
+                          qrX <- qr(Xcov_mat)
+                          if (qrX$rank < ncol(Xcov_mat)) {
+                            drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
+                            message(
+                              "Dropping collinear covariates: ",
+                              paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
+                            )
+                            keep_idx <- qrX$pivot[seq_len(qrX$rank)]
+                            Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
+                          }
+                        }
+
+                        # Final check: return NULL if no valid covariates left
+                        if (ncol(Xcov_mat) == 0) {
+                          return(NULL)
                         }
 
                         return(Xcov_mat)
                       }
+                      # Usage: safely assign or NULL
                       Xcov_mat <- prepare_covariates(Xcov)
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
                         Xcov_mat <- NULL
@@ -1594,37 +1789,78 @@ holostackGP <- function(
                 if(gp_model == "gBLUP"){
                   if (gene_model == "Full" || gene_model == "All"){
                     prepare_covariates <- function(Xcov) {
+
+                      # Return NULL immediately if no covariates
+                      if (is.null(Xcov)) {
+                        return(NULL)
+                      }
+
+                      # Coerce to data.frame safely
                       if (is.list(Xcov) && !is.data.frame(Xcov)) {
                         Xcov_df <- as.data.frame(do.call(cbind, Xcov))
                       } else {
                         Xcov_df <- as.data.frame(Xcov)
                       }
 
-                      # remove intercept to avoid duplication
+                      # Empty data.frame guard
+                      if (ncol(Xcov_df) == 0) {
+                        return(NULL)
+                      }
+
+                      # Drop all-NA or constant columns
+                      keep <- vapply(Xcov_df, function(x) {
+                        !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
+                      }, logical(1))
+                      Xcov_df <- Xcov_df[, keep, drop = FALSE]
+
+                      if (ncol(Xcov_df) == 0) {
+                        return(NULL)
+                      }
+
+                      # Build design matrix (no intercept)
                       Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
 
-                      # drop duplicates
-                      Xcov_mat <- Xcov_mat[, !duplicated(colnames(Xcov_mat)), drop = FALSE]
+                      # Drop duplicate columns after factor expansion
+                      dup <- duplicated(colnames(Xcov_mat))
+                      if (any(dup)) {
+                        Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
+                      }
 
-                      # drop near-zero variance
+                      # Drop near-zero variance columns
                       nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
                       if (any(nzv)) {
-                        message("Dropping ", sum(nzv), " near-zero variance covariates: ",
-                                paste(colnames(Xcov_mat)[nzv], collapse = ", "))
+                        message(
+                          "Dropping ", sum(nzv), " near-zero variance covariates: ",
+                          paste(colnames(Xcov_mat)[nzv], collapse = ", ")
+                        )
                         Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
                       }
 
-                      # enforce full rank
-                      qrX <- qr(Xcov_mat)
-                      if (qrX$rank < ncol(Xcov_mat)) {
-                        drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                        message("Dropping collinear covariates: ",
-                                paste(colnames(Xcov_mat)[drop_idx], collapse = ", "))
-                        Xcov_mat <- Xcov_mat[, qrX$pivot[seq_len(qrX$rank)], drop = FALSE]
+                      # Enforce full rank by dropping collinear columns
+                      if (ncol(Xcov_mat) > 1) {
+                        qrX <- qr(Xcov_mat)
+                        if (qrX$rank < ncol(Xcov_mat)) {
+                          drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
+                          message(
+                            "Dropping collinear covariates: ",
+                            paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
+                          )
+                          keep_idx <- qrX$pivot[seq_len(qrX$rank)]
+                          Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
+                        }
                       }
 
-                      if (ncol(Xcov_mat) == 0) return(NULL)
+                      # Final check: return NULL if no valid covariates left
+                      if (ncol(Xcov_mat) == 0) {
+                        return(NULL)
+                      }
+
                       return(Xcov_mat)
+                    }
+                    # Usage: safely assign or NULL
+                    Xcov_mat <- prepare_covariates(Xcov)
+                    if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
+                      Xcov_mat <- NULL
                     }
 
                     # GBLUP  with rrBLUP package
@@ -1710,37 +1946,75 @@ holostackGP <- function(
                       Z_train <- prepare_rrblup_matrix(mgeno_scaled[train_ids, ], y_train)
                       # --- Covariate preparation ---
                       prepare_covariates <- function(Xcov) {
+
+                        # Return NULL immediately if no covariates
+                        if (is.null(Xcov)) {
+                          return(NULL)
+                        }
+
+                        # Coerce to data.frame safely
                         if (is.list(Xcov) && !is.data.frame(Xcov)) {
                           Xcov_df <- as.data.frame(do.call(cbind, Xcov))
                         } else {
                           Xcov_df <- as.data.frame(Xcov)
                         }
 
-                        Xcov_mat <- model.matrix(~ ., data = Xcov_df)
+                        # Empty data.frame guard
+                        if (ncol(Xcov_df) == 0) {
+                          return(NULL)
+                        }
 
-                        # Drop duplicate columns
-                        Xcov_mat <- Xcov_mat[, !duplicated(colnames(Xcov_mat)), drop = FALSE]
+                        # Drop all-NA or constant columns
+                        keep <- vapply(Xcov_df, function(x) {
+                          !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
+                        }, logical(1))
+                        Xcov_df <- Xcov_df[, keep, drop = FALSE]
+
+                        if (ncol(Xcov_df) == 0) {
+                          return(NULL)
+                        }
+
+                        # Build design matrix (no intercept)
+                        Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
+
+                        # Drop duplicate columns after factor expansion
+                        dup <- duplicated(colnames(Xcov_mat))
+                        if (any(dup)) {
+                          Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
+                        }
 
                         # Drop near-zero variance columns
                         nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
                         if (any(nzv)) {
-                          message("Dropping ", sum(nzv), " near-zero variance covariates: ",
-                                  paste(colnames(Xcov_mat)[nzv], collapse = ", "))
+                          message(
+                            "Dropping ", sum(nzv), " near-zero variance covariates: ",
+                            paste(colnames(Xcov_mat)[nzv], collapse = ", ")
+                          )
                           Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
                         }
 
-                        # Drop collinear columns (full rank check)
-                        qrX <- qr(Xcov_mat)
-                        if (qrX$rank < ncol(Xcov_mat)) {
-                          drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                          message("Dropping collinear covariates: ",
-                                  paste(colnames(Xcov_mat)[drop_idx], collapse = ", "))
-                          keep_idx <- qrX$pivot[seq_len(qrX$rank)]
-                          Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
+                        # Enforce full rank by dropping collinear columns
+                        if (ncol(Xcov_mat) > 1) {
+                          qrX <- qr(Xcov_mat)
+                          if (qrX$rank < ncol(Xcov_mat)) {
+                            drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
+                            message(
+                              "Dropping collinear covariates: ",
+                              paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
+                            )
+                            keep_idx <- qrX$pivot[seq_len(qrX$rank)]
+                            Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
+                          }
+                        }
+
+                        # Final check: return NULL if no valid covariates left
+                        if (ncol(Xcov_mat) == 0) {
+                          return(NULL)
                         }
 
                         return(Xcov_mat)
                       }
+                      # Usage: safely assign or NULL
                       Xcov_mat <- prepare_covariates(Xcov)
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
                         Xcov_mat <- NULL
@@ -1851,37 +2125,78 @@ holostackGP <- function(
                     }
                   } else {
                     prepare_covariates <- function(Xcov) {
+
+                      # Return NULL immediately if no covariates
+                      if (is.null(Xcov)) {
+                        return(NULL)
+                      }
+
+                      # Coerce to data.frame safely
                       if (is.list(Xcov) && !is.data.frame(Xcov)) {
                         Xcov_df <- as.data.frame(do.call(cbind, Xcov))
                       } else {
                         Xcov_df <- as.data.frame(Xcov)
                       }
 
-                      # remove intercept to avoid duplication
+                      # Empty data.frame guard
+                      if (ncol(Xcov_df) == 0) {
+                        return(NULL)
+                      }
+
+                      # Drop all-NA or constant columns
+                      keep <- vapply(Xcov_df, function(x) {
+                        !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
+                      }, logical(1))
+                      Xcov_df <- Xcov_df[, keep, drop = FALSE]
+
+                      if (ncol(Xcov_df) == 0) {
+                        return(NULL)
+                      }
+
+                      # Build design matrix (no intercept)
                       Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
 
-                      # drop duplicates
-                      Xcov_mat <- Xcov_mat[, !duplicated(colnames(Xcov_mat)), drop = FALSE]
+                      # Drop duplicate columns after factor expansion
+                      dup <- duplicated(colnames(Xcov_mat))
+                      if (any(dup)) {
+                        Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
+                      }
 
-                      # drop near-zero variance
+                      # Drop near-zero variance columns
                       nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
                       if (any(nzv)) {
-                        message("Dropping ", sum(nzv), " near-zero variance covariates: ",
-                                paste(colnames(Xcov_mat)[nzv], collapse = ", "))
+                        message(
+                          "Dropping ", sum(nzv), " near-zero variance covariates: ",
+                          paste(colnames(Xcov_mat)[nzv], collapse = ", ")
+                        )
                         Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
                       }
 
-                      # enforce full rank
-                      qrX <- qr(Xcov_mat)
-                      if (qrX$rank < ncol(Xcov_mat)) {
-                        drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                        message("Dropping collinear covariates: ",
-                                paste(colnames(Xcov_mat)[drop_idx], collapse = ", "))
-                        Xcov_mat <- Xcov_mat[, qrX$pivot[seq_len(qrX$rank)], drop = FALSE]
+                      # Enforce full rank by dropping collinear columns
+                      if (ncol(Xcov_mat) > 1) {
+                        qrX <- qr(Xcov_mat)
+                        if (qrX$rank < ncol(Xcov_mat)) {
+                          drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
+                          message(
+                            "Dropping collinear covariates: ",
+                            paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
+                          )
+                          keep_idx <- qrX$pivot[seq_len(qrX$rank)]
+                          Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
+                        }
                       }
 
-                      if (ncol(Xcov_mat) == 0) return(NULL)
+                      # Final check: return NULL if no valid covariates left
+                      if (ncol(Xcov_mat) == 0) {
+                        return(NULL)
+                      }
+
                       return(Xcov_mat)
+                    }
+                    # Usage: safely assign or NULL
+                    Xcov_mat <- prepare_covariates(Xcov)
+                    if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
+                      Xcov_mat <- NULL
                     }
 
                     # GBLUP with rrBLUP package
@@ -1962,37 +2277,75 @@ holostackGP <- function(
                       Z_train <- prepare_rrblup_matrix(mgeno_scaled[train_ids, ], y_train)
                       # --- Covariate preparation ---
                       prepare_covariates <- function(Xcov) {
+
+                        # Return NULL immediately if no covariates
+                        if (is.null(Xcov)) {
+                          return(NULL)
+                        }
+
+                        # Coerce to data.frame safely
                         if (is.list(Xcov) && !is.data.frame(Xcov)) {
                           Xcov_df <- as.data.frame(do.call(cbind, Xcov))
                         } else {
                           Xcov_df <- as.data.frame(Xcov)
                         }
 
-                        Xcov_mat <- model.matrix(~ ., data = Xcov_df)
+                        # Empty data.frame guard
+                        if (ncol(Xcov_df) == 0) {
+                          return(NULL)
+                        }
 
-                        # Drop duplicate columns
-                        Xcov_mat <- Xcov_mat[, !duplicated(colnames(Xcov_mat)), drop = FALSE]
+                        # Drop all-NA or constant columns
+                        keep <- vapply(Xcov_df, function(x) {
+                          !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
+                        }, logical(1))
+                        Xcov_df <- Xcov_df[, keep, drop = FALSE]
+
+                        if (ncol(Xcov_df) == 0) {
+                          return(NULL)
+                        }
+
+                        # Build design matrix (no intercept)
+                        Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
+
+                        # Drop duplicate columns after factor expansion
+                        dup <- duplicated(colnames(Xcov_mat))
+                        if (any(dup)) {
+                          Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
+                        }
 
                         # Drop near-zero variance columns
                         nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
                         if (any(nzv)) {
-                          message("Dropping ", sum(nzv), " near-zero variance covariates: ",
-                                  paste(colnames(Xcov_mat)[nzv], collapse = ", "))
+                          message(
+                            "Dropping ", sum(nzv), " near-zero variance covariates: ",
+                            paste(colnames(Xcov_mat)[nzv], collapse = ", ")
+                          )
                           Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
                         }
 
-                        # Drop collinear columns (ensure full rank)
-                        qrX <- qr(Xcov_mat)
-                        if (qrX$rank < ncol(Xcov_mat)) {
-                          drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                          message("Dropping collinear covariates: ",
-                                  paste(colnames(Xcov_mat)[drop_idx], collapse = ", "))
-                          keep_idx <- qrX$pivot[seq_len(qrX$rank)]
-                          Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
+                        # Enforce full rank by dropping collinear columns
+                        if (ncol(Xcov_mat) > 1) {
+                          qrX <- qr(Xcov_mat)
+                          if (qrX$rank < ncol(Xcov_mat)) {
+                            drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
+                            message(
+                              "Dropping collinear covariates: ",
+                              paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
+                            )
+                            keep_idx <- qrX$pivot[seq_len(qrX$rank)]
+                            Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
+                          }
+                        }
+
+                        # Final check: return NULL if no valid covariates left
+                        if (ncol(Xcov_mat) == 0) {
+                          return(NULL)
                         }
 
                         return(Xcov_mat)
                       }
+                      # Usage: safely assign or NULL
                       Xcov_mat <- prepare_covariates(Xcov)
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
                         Xcov_mat <- NULL
@@ -2092,59 +2445,766 @@ holostackGP <- function(
                         pred_bayes_all <- as.data.frame(preds)
                         rownames(pred_bayes_all) <- test_ids
                         pred_bayes_OOF <- rbind(pred_bayes_OOF,pred_bayes_all)
+                      }
                     }
                   }
-                }
-                if(gp_model == "gGBLUP"){
-                  if (gene_model == "Full" || gene_model == "All"){
-                    prepare_covariates <- function(Xcov) {
-                      if (is.list(Xcov) && !is.data.frame(Xcov)) {
-                        Xcov_df <- as.data.frame(do.call(cbind, Xcov))
-                      } else {
-                        Xcov_df <- as.data.frame(Xcov)
+                  if(gp_model == "gGBLUP"){
+                    if (gene_model == "Full" || gene_model == "All"){
+                      prepare_covariates <- function(Xcov) {
+
+                        # Return NULL immediately if no covariates
+                        if (is.null(Xcov)) {
+                          return(NULL)
+                        }
+
+                        # Coerce to data.frame safely
+                        if (is.list(Xcov) && !is.data.frame(Xcov)) {
+                          Xcov_df <- as.data.frame(do.call(cbind, Xcov))
+                        } else {
+                          Xcov_df <- as.data.frame(Xcov)
+                        }
+
+                        # Empty data.frame guard
+                        if (ncol(Xcov_df) == 0) {
+                          return(NULL)
+                        }
+
+                        # Drop all-NA or constant columns
+                        keep <- vapply(Xcov_df, function(x) {
+                          !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
+                        }, logical(1))
+                        Xcov_df <- Xcov_df[, keep, drop = FALSE]
+
+                        if (ncol(Xcov_df) == 0) {
+                          return(NULL)
+                        }
+
+                        # Build design matrix (no intercept)
+                        Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
+
+                        # Drop duplicate columns after factor expansion
+                        dup <- duplicated(colnames(Xcov_mat))
+                        if (any(dup)) {
+                          Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
+                        }
+
+                        # Drop near-zero variance columns
+                        nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
+                        if (any(nzv)) {
+                          message(
+                            "Dropping ", sum(nzv), " near-zero variance covariates: ",
+                            paste(colnames(Xcov_mat)[nzv], collapse = ", ")
+                          )
+                          Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
+                        }
+
+                        # Enforce full rank by dropping collinear columns
+                        if (ncol(Xcov_mat) > 1) {
+                          qrX <- qr(Xcov_mat)
+                          if (qrX$rank < ncol(Xcov_mat)) {
+                            drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
+                            message(
+                              "Dropping collinear covariates: ",
+                              paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
+                            )
+                            keep_idx <- qrX$pivot[seq_len(qrX$rank)]
+                            Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
+                          }
+                        }
+
+                        # Final check: return NULL if no valid covariates left
+                        if (ncol(Xcov_mat) == 0) {
+                          return(NULL)
+                        }
+
+                        return(Xcov_mat)
+                      }
+                      # Usage: safely assign or NULL
+                      Xcov_mat <- prepare_covariates(Xcov)
+                      if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
+                        Xcov_mat <- NULL
                       }
 
-                      # remove intercept to avoid duplication
-                      Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
+                      # GBLUP  with rrBLUP package
+                      pred_list <- list()
+                      for (kernel_name in names(kernels)) {
+                        K <- kernels[[kernel_name]]
+                        covTraits <- colnames(Y.covmasked)
+                        gebv_list <- list()
+                        for (covt in covTraits){
+                          y <- Y.covmasked[[covt]]
+                          # remove NA individuals (mixed.solve handles but safer)
+                          ok <- !is.na(y)
+                          sol <- mixed.solve(y = y[ok], K = K[ok, ok, drop = FALSE])
+                          # sol$u is GEBV vector for individuals with y; bring back into full n vector
+                          u_full <- rep(NA, nrow(Y.covmasked))
+                          u_full[which(ok)] <- sol$u[rownames(K)[ok]]   # name-align
+                          gebv_list[[covt]] <- u_full
+                        }
+                        Y.tmasked <- as.data.frame(Y.masked)
+                        for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
+                        Xcov <- Y.tmasked[, -1, drop = FALSE]
+                        Xcov_mat <- prepare_covariates(Xcov)
+                        if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
+                          message("⚠️ No valid covariates left, setting Xcov_mat = NULL")
+                          Xcov_mat <- NULL
+                        } else {
+                          # Optional: impute missing values
+                          if (anyNA(Xcov_mat)) {
+                            message("Replacing NA covariate values with column means")
+                            Xcov_mat <- apply(Xcov_mat, 2, function(col) {
+                              ifelse(is.na(col), mean(col, na.rm = TRUE), col)
+                            })
+                            Xcov_mat <- as.matrix(Xcov_mat)
+                          }
+                        }
+                        # ---- Handle cases where covariates are dropped ----
+                        if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
+                          Xcov_mat <- NULL   # rrBLUP accepts NULL
+                        } else {
+                          # make sure it's a matrix
+                          Xcov_mat <- as.matrix(Xcov_mat)
 
-                      # drop duplicates
-                      Xcov_mat <- Xcov_mat[, !duplicated(colnames(Xcov_mat)), drop = FALSE]
+                          # if rownames missing, assign from Y.tmasked
+                          if (is.null(rownames(Xcov_mat))) {
+                            rownames(Xcov_mat) <- rownames(Y.tmasked)
+                          }
 
-                      # drop near-zero variance
-                      nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
-                      if (any(nzv)) {
-                        message("Dropping ", sum(nzv), " near-zero variance covariates: ",
-                                paste(colnames(Xcov_mat)[nzv], collapse = ", "))
-                        Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
+                          # if nrow mismatch, force alignment by merging
+                          if (nrow(Xcov_mat) != nrow(Y.tmasked)) {
+                            Xcov_mat <- Xcov_mat[match(rownames(Y.tmasked), rownames(Xcov_mat)), , drop = FALSE]
+                          }
+
+                          stopifnot(nrow(Xcov_mat) == nrow(Y.tmasked))
+                        }
+
+                        model_gblup <- rrBLUP::mixed.solve(y = Y.tmasked[,1], K = K, X=Xcov_mat)
+                        pred_gblup <- model_gblup$u[test_ids]
+                        pred_list[[kernel_name]] <- pred_gblup
+                      }
+                      pred_gblup_all <- do.call(cbind, pred_list)
+                      rownames(pred_gblup_all) <- test_ids
+                      pred_gblup <- pred_gblup_all
+
+                      if (!is.null(Additional_models)){
+                        # rrBLUP marker effects model: K_A
+                        train_ids <- which(!is.na(Y.masked))
+                        y_train <- Y.masked[train_ids]
+                        geno.A_scaled <- as.matrix(geno.A_scaled)
+                        mode(geno.A_scaled) <- "numeric"
+                        # --- SNP preparation ---
+                        prepare_rrblup_matrix <- function(Z, y) {
+                          Z <- as.matrix(Z)
+                          mode(Z) <- "numeric"
+                          keep_cols <- apply(Z, 2, function(col) {
+                            all(is.finite(col)) && var(col, na.rm = TRUE) > 1e-8
+                          })
+                          Z_clean <- Z[, keep_cols, drop = FALSE]
+                          Z_clean <- scale(Z_clean, center = TRUE, scale = FALSE)
+                          stopifnot(nrow(Z_clean) == length(y))
+                          stopifnot(!anyNA(Z_clean), !any(is.infinite(Z_clean)))
+                          return(Z_clean)
+                        }
+                        Z_train <- prepare_rrblup_matrix(geno.A_scaled[train_ids, ], y_train)
+                        # --- Covariate preparation ---
+                        prepare_covariates <- function(Xcov) {
+
+                          # Return NULL immediately if no covariates
+                          if (is.null(Xcov)) {
+                            return(NULL)
+                          }
+
+                          # Coerce to data.frame safely
+                          if (is.list(Xcov) && !is.data.frame(Xcov)) {
+                            Xcov_df <- as.data.frame(do.call(cbind, Xcov))
+                          } else {
+                            Xcov_df <- as.data.frame(Xcov)
+                          }
+
+                          # Empty data.frame guard
+                          if (ncol(Xcov_df) == 0) {
+                            return(NULL)
+                          }
+
+                          # Drop all-NA or constant columns
+                          keep <- vapply(Xcov_df, function(x) {
+                            !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
+                          }, logical(1))
+                          Xcov_df <- Xcov_df[, keep, drop = FALSE]
+
+                          if (ncol(Xcov_df) == 0) {
+                            return(NULL)
+                          }
+
+                          # Build design matrix (no intercept)
+                          Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
+
+                          # Drop duplicate columns after factor expansion
+                          dup <- duplicated(colnames(Xcov_mat))
+                          if (any(dup)) {
+                            Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
+                          }
+
+                          # Drop near-zero variance columns
+                          nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
+                          if (any(nzv)) {
+                            message(
+                              "Dropping ", sum(nzv), " near-zero variance covariates: ",
+                              paste(colnames(Xcov_mat)[nzv], collapse = ", ")
+                            )
+                            Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
+                          }
+
+                          # Enforce full rank by dropping collinear columns
+                          if (ncol(Xcov_mat) > 1) {
+                            qrX <- qr(Xcov_mat)
+                            if (qrX$rank < ncol(Xcov_mat)) {
+                              drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
+                              message(
+                                "Dropping collinear covariates: ",
+                                paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
+                              )
+                              keep_idx <- qrX$pivot[seq_len(qrX$rank)]
+                              Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
+                            }
+                          }
+
+                          # Final check: return NULL if no valid covariates left
+                          if (ncol(Xcov_mat) == 0) {
+                            return(NULL)
+                          }
+
+                          return(Xcov_mat)
+                        }
+                        # Usage: safely assign or NULL
+                        Xcov_mat <- prepare_covariates(Xcov)
+                        if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
+                          Xcov_mat <- NULL
+                        }
+                        # --- rrBLUP model ---
+                        model_rrblup <- rrBLUP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
+                        # --- Prediction ---
+                        kept_snps <- colnames(Z_train)
+                        Z_test <- geno.A_scaled[test_ids, kept_snps, drop = FALSE]
+                        Z_test <- scale(Z_test, center = colMeans(geno.A_scaled[train_ids, kept_snps]), scale = FALSE)
+                        pred_rrblup_A <- as.vector(Z_test %*% model_rrblup$u)
+
+
+                        # rrBLUP marker effects model: K_D
+                        train_ids <- which(!is.na(Y.masked))
+                        y_train <- Y.masked[train_ids]
+                        geno.D_scaled <- as.matrix(geno.D_scaled)
+                        mode(geno.D_scaled) <- "numeric"
+                        # --- SNP preparation ---
+                        prepare_rrblup_matrix <- function(Z, y) {
+                          Z <- as.matrix(Z)
+                          mode(Z) <- "numeric"
+                          keep_cols <- apply(Z, 2, function(col) {
+                            all(is.finite(col)) && var(col, na.rm = TRUE) > 1e-8
+                          })
+                          Z_clean <- Z[, keep_cols, drop = FALSE]
+                          Z_clean <- scale(Z_clean, center = TRUE, scale = FALSE)
+                          stopifnot(nrow(Z_clean) == length(y))
+                          stopifnot(!anyNA(Z_clean), !any(is.infinite(Z_clean)))
+                          return(Z_clean)
+                        }
+                        Z_train <- prepare_rrblup_matrix(geno.D_scaled[train_ids, ], y_train)
+                        # --- Covariate preparation ---
+                        prepare_covariates <- function(Xcov) {
+
+                          # Return NULL immediately if no covariates
+                          if (is.null(Xcov)) {
+                            return(NULL)
+                          }
+
+                          # Coerce to data.frame safely
+                          if (is.list(Xcov) && !is.data.frame(Xcov)) {
+                            Xcov_df <- as.data.frame(do.call(cbind, Xcov))
+                          } else {
+                            Xcov_df <- as.data.frame(Xcov)
+                          }
+
+                          # Empty data.frame guard
+                          if (ncol(Xcov_df) == 0) {
+                            return(NULL)
+                          }
+
+                          # Drop all-NA or constant columns
+                          keep <- vapply(Xcov_df, function(x) {
+                            !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
+                          }, logical(1))
+                          Xcov_df <- Xcov_df[, keep, drop = FALSE]
+
+                          if (ncol(Xcov_df) == 0) {
+                            return(NULL)
+                          }
+
+                          # Build design matrix (no intercept)
+                          Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
+
+                          # Drop duplicate columns after factor expansion
+                          dup <- duplicated(colnames(Xcov_mat))
+                          if (any(dup)) {
+                            Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
+                          }
+
+                          # Drop near-zero variance columns
+                          nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
+                          if (any(nzv)) {
+                            message(
+                              "Dropping ", sum(nzv), " near-zero variance covariates: ",
+                              paste(colnames(Xcov_mat)[nzv], collapse = ", ")
+                            )
+                            Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
+                          }
+
+                          # Enforce full rank by dropping collinear columns
+                          if (ncol(Xcov_mat) > 1) {
+                            qrX <- qr(Xcov_mat)
+                            if (qrX$rank < ncol(Xcov_mat)) {
+                              drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
+                              message(
+                                "Dropping collinear covariates: ",
+                                paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
+                              )
+                              keep_idx <- qrX$pivot[seq_len(qrX$rank)]
+                              Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
+                            }
+                          }
+
+                          # Final check: return NULL if no valid covariates left
+                          if (ncol(Xcov_mat) == 0) {
+                            return(NULL)
+                          }
+
+                          return(Xcov_mat)
+                        }
+                        # Usage: safely assign or NULL
+                        Xcov_mat <- prepare_covariates(Xcov)
+                        if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
+                          Xcov_mat <- NULL
+                        }
+                        # --- rrBLUP model ---
+                        model_rrblup <- rrBLUP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
+                        # --- Prediction ---
+                        kept_snps <- colnames(Z_train)
+                        Z_test <- geno.D_scaled[test_ids, kept_snps, drop = FALSE]
+                        Z_test <- scale(Z_test, center = colMeans(geno.D_scaled[train_ids, kept_snps]), scale = FALSE)
+                        pred_rrblup_D <- as.vector(Z_test %*% model_rrblup$u)
+
+                        # rrBLUP marker effects model: K_M
+                        train_ids <- which(!is.na(Y.masked))
+                        y_train <- Y.masked[train_ids]
+                        mgeno_scaled <- as.matrix(mgeno_scaled)
+                        mode(mgeno_scaled) <- "numeric"
+                        # --- SNP preparation ---
+                        prepare_rrblup_matrix <- function(Z, y) {
+                          Z <- as.matrix(Z)
+                          mode(Z) <- "numeric"
+                          keep_cols <- apply(Z, 2, function(col) {
+                            all(is.finite(col)) && var(col, na.rm = TRUE) > 1e-8
+                          })
+                          Z_clean <- Z[, keep_cols, drop = FALSE]
+                          Z_clean <- scale(Z_clean, center = TRUE, scale = FALSE)
+                          stopifnot(nrow(Z_clean) == length(y))
+                          stopifnot(!anyNA(Z_clean), !any(is.infinite(Z_clean)))
+                          return(Z_clean)
+                        }
+                        Z_train <- prepare_rrblup_matrix(mgeno_scaled[train_ids, ], y_train)
+                        # --- Covariate preparation ---
+                        prepare_covariates <- function(Xcov) {
+
+                          # Return NULL immediately if no covariates
+                          if (is.null(Xcov)) {
+                            return(NULL)
+                          }
+
+                          # Coerce to data.frame safely
+                          if (is.list(Xcov) && !is.data.frame(Xcov)) {
+                            Xcov_df <- as.data.frame(do.call(cbind, Xcov))
+                          } else {
+                            Xcov_df <- as.data.frame(Xcov)
+                          }
+
+                          # Empty data.frame guard
+                          if (ncol(Xcov_df) == 0) {
+                            return(NULL)
+                          }
+
+                          # Drop all-NA or constant columns
+                          keep <- vapply(Xcov_df, function(x) {
+                            !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
+                          }, logical(1))
+                          Xcov_df <- Xcov_df[, keep, drop = FALSE]
+
+                          if (ncol(Xcov_df) == 0) {
+                            return(NULL)
+                          }
+
+                          # Build design matrix (no intercept)
+                          Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
+
+                          # Drop duplicate columns after factor expansion
+                          dup <- duplicated(colnames(Xcov_mat))
+                          if (any(dup)) {
+                            Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
+                          }
+
+                          # Drop near-zero variance columns
+                          nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
+                          if (any(nzv)) {
+                            message(
+                              "Dropping ", sum(nzv), " near-zero variance covariates: ",
+                              paste(colnames(Xcov_mat)[nzv], collapse = ", ")
+                            )
+                            Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
+                          }
+
+                          # Enforce full rank by dropping collinear columns
+                          if (ncol(Xcov_mat) > 1) {
+                            qrX <- qr(Xcov_mat)
+                            if (qrX$rank < ncol(Xcov_mat)) {
+                              drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
+                              message(
+                                "Dropping collinear covariates: ",
+                                paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
+                              )
+                              keep_idx <- qrX$pivot[seq_len(qrX$rank)]
+                              Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
+                            }
+                          }
+
+                          # Final check: return NULL if no valid covariates left
+                          if (ncol(Xcov_mat) == 0) {
+                            return(NULL)
+                          }
+
+                          return(Xcov_mat)
+                        }
+                        # Usage: safely assign or NULL
+                        Xcov_mat <- prepare_covariates(Xcov)
+                        if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
+                          Xcov_mat <- NULL
+                        }
+                        # --- rrBLUP model ---
+                        model_rrblup <- rrBLUP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
+                        # --- Prediction ---
+                        kept_snps <- colnames(Z_train)
+                        Z_test <- mgeno_scaled[test_ids, kept_snps, drop = FALSE]
+                        Z_test <- scale(Z_test, center = colMeans(mgeno_scaled[train_ids, kept_snps]), scale = FALSE)
+                        pred_rrblup_M <- as.vector(Z_test %*% model_rrblup$u)
+
+
+                        # RHKs with BGLR package
+                        pred_list <- list()
+                        for (kernel_name in names(kernels)) {
+                          K <- kernels[[kernel_name]]
+                          covTraits <- colnames(Y.covmasked)
+                          gebv_list <- list()
+                          for(covt in covTraits){
+                            y <- Y.covmasked[[covt]]
+                            ok <- !is.na(y)
+                            fm <- BGLR(y = y[ok],  ETA = list(list(K=K[ok, ok], model = "RKHS")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                            b <- fm$ETA[[1]]$u  # 'u' contains the random effects / GEBVs for the n_obs
+                            # Create full-length vector aligned with original y
+                            gebv_full <- rep(NA, length(y))
+                            gebv_full[ok] <- as.numeric(b)
+                            gebv_list[[covt]] <- gebv_full
+                          }
+                          Y.tmasked <- as.data.frame(Y.masked)
+                          for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
+                          Xcov_mat <- as.matrix(Y.tmasked[, -1, drop = FALSE])
+                          train_idx <- which(!is.na(Y.tmasked[,1]))
+                          test_idx  <- which(is.na(Y.tmasked[,1]))
+                          y_train <- Y.tmasked[train_idx, 1]
+                          K_train <- K[train_idx, train_idx]
+                          X_train <- Xcov_mat[train_idx, , drop = FALSE]
+                          fit <- BGLR(y = y_train, ETA = list(list(K = K_train, model = "RKHS"), list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                          u_train <- as.numeric(fit$ETA[[1]]$u)
+                          K_test_train <- K[test_idx, train_idx]
+                          pred_test <- K_test_train %*% u_train
+                          pred_list[[kernel_name]] <- as.numeric(pred_test)
+                        }
+                        pred_rkhs_all <- do.call(cbind, pred_list)
+                        rownames(pred_rkhs_all) <- rownames(Y.tmasked)[test_idx]
+
+                        #--- Stack RKHS models ---
+                        y_test <- Y.raw[rownames(Y.raw) %in% test_ids, ]
+                        rkhs_stack <- data.frame(y = y_test, rkhs  = pred_rkhs_all)
+                        colnames(rkhs_stack)[1:2] <- colnames(y_test)
+                        formula_rkhs <- as.formula(paste(trait, "~", paste(colnames(rkhs_stack)[-c(1:2)], collapse = " + ")))
+                        fit_stack  <- lm(formula_rkhs, data = rkhs_stack)
+                        pred_rkhs <- predict(fit_stack, newdata = rkhs_stack)
+
+
+                        # Bayesian-based genomic predictions
+                        bayes_models <- c("BRR", "BayesA", "BayesB", "BayesC", "BL")  # BL = Bayesian Lasso
+                        gc()
+                        if(any(grepl("Bayes",unlist(Additional_models)))){
+                          # Function to fit a single Bayesian model for one phenotype and one or more multiple covariates
+                          run_independent_bayes <- function(model_name, Y.masked, Y.covmasked, geno.A_scaled, geno.D_scaled, mgeno_scaled, nIter, burnIn) {
+                            covTraits <- colnames(Y.covmasked)
+                            # ---- Additive step ----
+                            gebv_list <- list()
+                            for (covt in covTraits) {
+                              y <- Y.covmasked[[covt]]
+                              ok <- !is.na(y)
+                              fm <- BGLR(y = y[ok], ETA = list(list(X = geno.A_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                              b <- fm$ETA[[1]]$b
+                              gebv_full <- rep(NA, length(y))
+                              gebv_full[ok] <- as.numeric(geno.A_scaled[ok, , drop = FALSE] %*% b)
+                              gebv_list[[covt]] <- gebv_full
+                            }
+                            Y.tmasked <- as.data.frame(Y.masked)
+                            for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
+                            train_idx <- which(!is.na(Y.tmasked[,1]))
+                            test_idx  <- which(is.na(Y.tmasked[,1]))
+                            y_train <- Y.tmasked[train_idx, 1]
+                            X_train <- as.matrix(Y.tmasked[train_idx, -1, drop = FALSE])
+                            X_test  <- as.matrix(Y.tmasked[test_idx, -1, drop = FALSE])
+                            fit_A <- BGLR(y = y_train, ETA = list(list(X = geno.A_scaled[train_idx, , drop = FALSE], model = model_name),list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                            yHat_all_A <- rep(NA, nrow(Y.tmasked))
+                            yHat_all_A[train_idx] <- fit_A$yHat
+                            b_markersA <- fit_A$ETA[[1]]$b
+                            b_fixedA   <- fit_A$ETA[[2]]$b
+                            X_test[is.na(X_test)] <- 0
+                            marker_part <- if (!is.null(b_markersA)) geno.A_scaled[test_idx, , drop = FALSE] %*% b_markersA else 0
+                            fixed_part  <- if (!is.null(b_fixedA))   X_test %*% b_fixedA else 0
+                            pred_A <- as.numeric(marker_part + fixed_part)
+                            # pred_A <- as.numeric(geno.A_scaled[test_idx, , drop = FALSE] %*% b_markersA + X_test %*% b_fixedA)
+                            # ---- Dominance step ----
+                            gebv_list <- list()
+                            for (covt in covTraits) {
+                              y <- Y.covmasked[[covt]]
+                              ok <- !is.na(y)
+                              fm <- BGLR(y = y[ok], ETA = list(list(X = geno.D_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                              b <- fm$ETA[[1]]$b
+                              gebv_full <- rep(NA, length(y))
+                              gebv_full[ok] <- as.numeric(geno.D_scaled[ok, , drop = FALSE] %*% b)
+                              gebv_list[[covt]] <- gebv_full
+                            }
+                            Y.tmasked <- as.data.frame(Y.masked)
+                            for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
+                            train_idx <- which(!is.na(Y.tmasked[,1]))
+                            test_idx  <- which(is.na(Y.tmasked[,1]))
+                            y_train <- Y.tmasked[train_idx, 1]
+                            X_train <- as.matrix(Y.tmasked[train_idx, -1, drop = FALSE])
+                            X_test  <- as.matrix(Y.tmasked[test_idx, -1, drop = FALSE])
+                            fit_D <- BGLR(y = y_train, ETA = list( list(X = geno.D_scaled[train_idx, , drop = FALSE], model = model_name), list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                            yHat_all_D <- rep(NA, nrow(Y.tmasked))
+                            yHat_all_D[train_idx] <- fit_D$yHat
+                            b_markersD <- fit_D$ETA[[1]]$b
+                            b_fixedD   <- fit_D$ETA[[2]]$b
+                            X_test[is.na(X_test)] <- 0
+                            marker_part <- if (!is.null(b_markersD)) geno.D_scaled[test_idx, , drop = FALSE] %*% b_markersD else 0
+                            fixed_part  <- if (!is.null(b_fixedD))   X_test %*% b_fixedD else 0
+                            pred_D <- as.numeric(marker_part + fixed_part)
+                            # pred_D <- as.numeric(geno.D_scaled[test_idx, , drop = FALSE] %*% b_markersD + X_test %*% b_fixedD)
+                            # ---- Metagenome step ----
+                            gebv_list <- list()
+                            for (covt in covTraits) {
+                              y <- Y.covmasked[[covt]]
+                              ok <- !is.na(y)
+                              fm <- BGLR(y = y[ok], ETA = list(list(X = mgeno_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                              b <- fm$ETA[[1]]$b
+                              gebv_full <- rep(NA, length(y))
+                              gebv_full[ok] <- as.numeric(mgeno_scaled[ok, , drop = FALSE] %*% b)
+                              gebv_list[[covt]] <- gebv_full
+                            }
+                            Y.tmasked <- as.data.frame(Y.masked)
+                            for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
+                            train_idx <- which(!is.na(Y.tmasked[,1]))
+                            test_idx  <- which(is.na(Y.tmasked[,1]))
+                            y_train <- Y.tmasked[train_idx, 1]
+                            X_train <- as.matrix(Y.tmasked[train_idx, -1, drop = FALSE])
+                            X_test  <- as.matrix(Y.tmasked[test_idx, -1, drop = FALSE])
+                            fit_M <- BGLR(y = y_train, ETA = list(list(X = mgeno_scaled[train_idx, , drop = FALSE], model = model_name),list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                            yHat_all_M <- rep(NA, nrow(Y.tmasked))
+                            yHat_all_M[train_idx] <- fit_M$yHat
+                            b_markersM <- fit_M$ETA[[1]]$b
+                            b_fixedM   <- fit_M$ETA[[2]]$b
+                            X_test[is.na(X_test)] <- 0
+                            marker_part <- if (!is.null(b_markersM)) mgeno_scaled[test_idx, , drop = FALSE] %*% b_markersM else 0
+                            fixed_part  <- if (!is.null(b_fixedM))   X_test %*% b_fixedM else 0
+                            pred_M <- as.numeric(marker_part + fixed_part)
+                            # ---- Return predictions for test set ----
+                            return(data.frame(pred_A = pred_A, pred_D = pred_D, pred_M = pred_M, row.names = rownames(Y.tmasked)[test_idx]))
+                          }
+
+                          # Wrapper to run all models in parallel
+                          run_parallel_stack <- function(Y.masked, Y.covmasked, geno.A_scaled, geno.D_scaled, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
+                            cl <- makeCluster(n.cores)
+                            clusterEvalQ(cl, library(BGLR))
+                            clusterExport(cl, varlist = c("Y.masked", "Y.covmasked", "geno.A_scaled", "geno.D_scaled", "mgeno_scaled", "nIter", "burnIn", "run_independent_bayes"), envir = environment())
+                            preds_list <- parLapply(cl, bayes_models, function(model) {
+                              run_independent_bayes(model, Y.masked = Y.masked, Y.covmasked = Y.covmasked,geno.A_scaled = geno.A_scaled, geno.D_scaled = geno.D_scaled, mgeno_scaled = mgeno_scaled, nIter = nIter, burnIn = burnIn)
+                            })
+                            stopCluster(cl)
+                            names(preds_list) <- bayes_models
+                            return(preds_list)
+                          }
+
+                          # Run all Bayesian models in parallel
+                          preds_stack <- run_parallel_stack(Y.masked = Y.masked, Y.covmasked = Y.covmasked, geno.A_scaled = geno.A_scaled, geno.D_scaled = geno.D_scaled, mgeno_scaled = mgeno_scaled, nIter = nIter, burnIn = burnIn, n.cores = ncores)
+
+                          # Stack predictions using lm for each model
+                          stacked_preds <- lapply(preds_stack, function(pred_df) {
+                            test_rows <- which(is.na(Y.masked))
+                            y_test <- as.numeric(Y.raw[test_rows, 2])
+
+                            stack_df <- data.frame(y = y_test, pred_A = pred_df$pred_A, pred_D = pred_df$pred_D, pred_M = pred_df$pred_M)
+                            stack_df <- stack_df[complete.cases(stack_df), ]
+
+                            if (nrow(stack_df) == 0) {
+                              warning("No valid rows to fit linear model.")
+                              return(rep(NA, length(test_rows)))
+                            }
+
+                            # Stacking model: combine pred_A and pred_D
+                            fit <- lm(y ~ pred_A + pred_D + pred_M, data = stack_df)
+                            predict(fit, newdata = stack_df)
+                          })
+
+                          # stacked_preds is a named list of prediction vectors for each bayes model
+                          names(stacked_preds) <- bayes_models
+                          pred_brr <- data.frame(ID = test_ids, Prediction = stacked_preds[["BRR"]])
+                          pred_bayesA <- data.frame(ID = test_ids, Prediction = stacked_preds[["BayesA"]])
+                          pred_bayesB <- data.frame(ID = test_ids, Prediction = stacked_preds[["BayesB"]])
+                          pred_bayesC <- data.frame(ID = test_ids, Prediction = stacked_preds[["BayesC"]])
+                          pred_bayesLasso <- data.frame(ID = test_ids, Prediction = stacked_preds[["BL"]])
+
+                          if(!("rrBLUP" %in% Additional_models)){
+                            stack_allmodels <- data.frame(y = Y.raw[rownames(Y.raw) %in% test_ids,2], BRR = pred_brr$Prediction, BayesA = pred_bayesA$Prediction,
+                                                          BayesB = pred_bayesB$Prediction, BayesC = pred_bayesC$Prediction, BayesLasso = pred_bayesLasso$Prediction)
+                          } else {
+                            stack_allmodels <- data.frame(y = Y.raw[rownames(Y.raw) %in% test_ids,2], GBLUP = pred_gblup, rrBLUP = pred_rrblup, RKHS = pred_rkhs, BRR = pred_brr$Prediction,
+                                                          BayesA = pred_bayesA$Prediction, BayesB = pred_bayesB$Prediction, BayesC = pred_bayesC$Prediction, BayesLasso = pred_bayesLasso$Prediction)
+                          }
+                          stack_allmodels_scaled <- as.data.frame(scale(stack_allmodels[, -1]))
+                          stack_allmodels_scaled$y <- stack_allmodels$y
+                          stack_allmodels <-  stack_allmodels_scaled
+                          if(!("rrBLUP" %in% Additional_models)){
+                            fit_stack <- lm(y ~ BRR + BayesA + BayesB + BayesC + BayesLasso, data = stack_allmodels)
+                          } else {
+                            fit_stack <- lm(y ~ GBLUP + rrBLUP + RKHS + BRR + BayesA + BayesB + BayesC + BayesLasso, data = stack_allmodels)
+                          }
+                          stacked_prediction <- predict(fit_stack, newdata = stack_allmodels)
+                          stack_allmodels$StackedPrediction <- stacked_prediction
+                          cor(stack_allmodels$y, stack_allmodels$StackedPrediction)
+                        } else {
+                          stack_allmodels <- data.frame(y = Y.raw[rownames(Y.raw) %in% test_ids,2], GBLUP = pred_gblup, rrBLUP = pred_rrblup)
+                          stack_allmodels_scaled <- as.data.frame(scale(stack_allmodels[, -1]))
+                          stack_allmodels_scaled$y <- stack_allmodels$y
+                          stack_allmodels <-  stack_allmodels_scaled
+                          fit_stack <- lm(y ~ GBLUP + rrBLUP, data = stack_allmodels)
+                          stacked_prediction <- predict(fit_stack, newdata = stack_allmodels)
+                          stack_allmodels$StackedPrediction <- stacked_prediction
+                          cor(stack_allmodels$y, stack_allmodels$StackedPrediction)
+                        }
+                      }
+                    } else {
+                      prepare_covariates <- function(Xcov) {
+
+                        # Return NULL immediately if no covariates
+                        if (is.null(Xcov)) {
+                          return(NULL)
+                        }
+
+                        # Coerce to data.frame safely
+                        if (is.list(Xcov) && !is.data.frame(Xcov)) {
+                          Xcov_df <- as.data.frame(do.call(cbind, Xcov))
+                        } else {
+                          Xcov_df <- as.data.frame(Xcov)
+                        }
+
+                        # Empty data.frame guard
+                        if (ncol(Xcov_df) == 0) {
+                          return(NULL)
+                        }
+
+                        # Drop all-NA or constant columns
+                        keep <- vapply(Xcov_df, function(x) {
+                          !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
+                        }, logical(1))
+                        Xcov_df <- Xcov_df[, keep, drop = FALSE]
+
+                        if (ncol(Xcov_df) == 0) {
+                          return(NULL)
+                        }
+
+                        # Build design matrix (no intercept)
+                        Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
+
+                        # Drop duplicate columns after factor expansion
+                        dup <- duplicated(colnames(Xcov_mat))
+                        if (any(dup)) {
+                          Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
+                        }
+
+                        # Drop near-zero variance columns
+                        nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
+                        if (any(nzv)) {
+                          message(
+                            "Dropping ", sum(nzv), " near-zero variance covariates: ",
+                            paste(colnames(Xcov_mat)[nzv], collapse = ", ")
+                          )
+                          Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
+                        }
+
+                        # Enforce full rank by dropping collinear columns
+                        if (ncol(Xcov_mat) > 1) {
+                          qrX <- qr(Xcov_mat)
+                          if (qrX$rank < ncol(Xcov_mat)) {
+                            drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
+                            message(
+                              "Dropping collinear covariates: ",
+                              paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
+                            )
+                            keep_idx <- qrX$pivot[seq_len(qrX$rank)]
+                            Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
+                          }
+                        }
+
+                        # Final check: return NULL if no valid covariates left
+                        if (ncol(Xcov_mat) == 0) {
+                          return(NULL)
+                        }
+
+                        return(Xcov_mat)
+                      }
+                      # Usage: safely assign or NULL
+                      Xcov_mat <- prepare_covariates(Xcov)
+                      if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
+                        Xcov_mat <- NULL
                       }
 
-                      # enforce full rank
-                      qrX <- qr(Xcov_mat)
-                      if (qrX$rank < ncol(Xcov_mat)) {
-                        drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                        message("Dropping collinear covariates: ",
-                                paste(colnames(Xcov_mat)[drop_idx], collapse = ", "))
-                        Xcov_mat <- Xcov_mat[, qrX$pivot[seq_len(qrX$rank)], drop = FALSE]
-                      }
-
-                      if (ncol(Xcov_mat) == 0) return(NULL)
-                      return(Xcov_mat)
-                    }
-
-                    # GBLUP  with rrBLUP package
-                    pred_list <- list()
-                    for (kernel_name in names(kernels)) {
-                      K <- kernels[[kernel_name]]
+                      # GBLUP with rrBLUP package
                       covTraits <- colnames(Y.covmasked)
                       gebv_list <- list()
                       for (covt in covTraits){
                         y <- Y.covmasked[[covt]]
                         # remove NA individuals (mixed.solve handles but safer)
                         ok <- !is.na(y)
-                        sol <- mixed.solve(y = y[ok], K = K[ok, ok, drop = FALSE])
+                        sol <- mixed.solve(y = y[ok], K = myKIx[ok, ok, drop = FALSE])
                         # sol$u is GEBV vector for individuals with y; bring back into full n vector
                         u_full <- rep(NA, nrow(Y.covmasked))
-                        u_full[which(ok)] <- sol$u[rownames(K)[ok]]   # name-align
+                        u_full[which(ok)] <- sol$u[rownames(myKIx)[ok]]   # name-align
+                        gebv_list[[covt]] <- u_full
+                      }
+                      Y.tmasked <- as.data.frame(Y.masked)
+                      for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
+                      Xcov <- Y.tmasked[,-1]
+                      model_gblup_g <- rrBLUP::mixed.solve(y = Y.tmasked[,1], K = myKIx, X=Xcov)
+                      pred_gblup_g <- model_gblup_g$u[test_ids]  # genomic breeding values
+                      gebv_list <- list()
+                      for (covt in covTraits){
+                        y <- Y.covmasked[[covt]]
+                        # remove NA individuals (mixed.solve handles but safer)
+                        ok <- !is.na(y)
+                        sol <- mixed.solve(y = y[ok], K =metagKIx[ok, ok, drop = FALSE])
+                        # sol$u is GEBV vector for individuals with y; bring back into full n vector
+                        u_full <- rep(NA, nrow(Y.covmasked))
+                        u_full[which(ok)] <- sol$u[rownames(metagKIx)[ok]]   # name-align
                         gebv_list[[covt]] <- u_full
                       }
                       Y.tmasked <- as.data.frame(Y.masked)
@@ -2184,219 +3244,25 @@ holostackGP <- function(
                         stopifnot(nrow(Xcov_mat) == nrow(Y.tmasked))
                       }
 
-                      model_gblup <- rrBLUP::mixed.solve(y = Y.tmasked[,1], K = K, X=Xcov_mat)
-                      pred_gblup <- model_gblup$u[test_ids]
-                      pred_list[[kernel_name]] <- pred_gblup
-                    }
-                    pred_gblup_all <- do.call(cbind, pred_list)
-                    rownames(pred_gblup_all) <- test_ids
-                    pred_gblup <- pred_gblup_all
+                      model_gblup_m <- rrBLUP::mixed.solve(y = Y.tmasked[,1], K = metagKIx, X=Xcov_mat)
+                      pred_gblup_m <- model_gblup_m$u[test_ids]  # genomic breeding values
 
-                    if (!is.null(Additional_models)){
-                      # rrBLUP marker effects model: K_A
-                      train_ids <- which(!is.na(Y.masked))
-                      y_train <- Y.masked[train_ids]
-                      geno.A_scaled <- as.matrix(geno.A_scaled)
-                      mode(geno.A_scaled) <- "numeric"
-                      # --- SNP preparation ---
-                      prepare_rrblup_matrix <- function(Z, y) {
-                        Z <- as.matrix(Z)
-                        mode(Z) <- "numeric"
-                        keep_cols <- apply(Z, 2, function(col) {
-                          all(is.finite(col)) && var(col, na.rm = TRUE) > 1e-8
-                        })
-                        Z_clean <- Z[, keep_cols, drop = FALSE]
-                        Z_clean <- scale(Z_clean, center = TRUE, scale = FALSE)
-                        stopifnot(nrow(Z_clean) == length(y))
-                        stopifnot(!anyNA(Z_clean), !any(is.infinite(Z_clean)))
-                        return(Z_clean)
-                      }
-                      Z_train <- prepare_rrblup_matrix(geno.A_scaled[train_ids, ], y_train)
-                      # --- Covariate preparation ---
-                      prepare_covariates <- function(Xcov) {
-                        if (is.list(Xcov) && !is.data.frame(Xcov)) {
-                          Xcov_df <- as.data.frame(do.call(cbind, Xcov))
-                        } else {
-                          Xcov_df <- as.data.frame(Xcov)
-                        }
+                      #--- Define stacking function for two GBLUP models ---
+                      y_test <- Y.raw[rownames(Y.raw) %in% test_ids, ]
+                      gblup_stack <- data.frame(y = y_test, geno  = pred_gblup_g, micro = pred_gblup_m)
+                      colnames(gblup_stack)[1:2] <- colnames(y_test)
+                      formula_gblup <- paste0(trait," ~ geno + micro")
+                      fit_stack  <- lm(formula_gblup, data = gblup_stack)
+                      pred_gblup <- predict(fit_stack, newdata = gblup_stack)
 
-                        Xcov_mat <- model.matrix(~ ., data = Xcov_df)
-
-                        # Drop duplicate columns
-                        Xcov_mat <- Xcov_mat[, !duplicated(colnames(Xcov_mat)), drop = FALSE]
-
-                        # Drop near-zero variance columns
-                        nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
-                        if (any(nzv)) {
-                          message("Dropping ", sum(nzv), " near-zero variance covariates: ",
-                                  paste(colnames(Xcov_mat)[nzv], collapse = ", "))
-                          Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
-                        }
-
-                        # Drop collinear columns (full rank check)
-                        qrX <- qr(Xcov_mat)
-                        if (qrX$rank < ncol(Xcov_mat)) {
-                          drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                          message("Dropping collinear covariates: ",
-                                  paste(colnames(Xcov_mat)[drop_idx], collapse = ", "))
-                          keep_idx <- qrX$pivot[seq_len(qrX$rank)]
-                          Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
-                        }
-
-                        return(Xcov_mat)
-                      }
-                      Xcov_mat <- prepare_covariates(Xcov)
-                      if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
-                        Xcov_mat <- NULL
-                      }
-                      # --- rrBLUP model ---
-                      model_rrblup <- rrBLUP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
-                      # --- Prediction ---
-                      kept_snps <- colnames(Z_train)
-                      Z_test <- geno.A_scaled[test_ids, kept_snps, drop = FALSE]
-                      Z_test <- scale(Z_test, center = colMeans(geno.A_scaled[train_ids, kept_snps]), scale = FALSE)
-                      pred_rrblup_A <- as.vector(Z_test %*% model_rrblup$u)
-
-
-                      # rrBLUP marker effects model: K_D
-                      train_ids <- which(!is.na(Y.masked))
-                      y_train <- Y.masked[train_ids]
-                      geno.D_scaled <- as.matrix(geno.D_scaled)
-                      mode(geno.D_scaled) <- "numeric"
-                      # --- SNP preparation ---
-                      prepare_rrblup_matrix <- function(Z, y) {
-                        Z <- as.matrix(Z)
-                        mode(Z) <- "numeric"
-                        keep_cols <- apply(Z, 2, function(col) {
-                          all(is.finite(col)) && var(col, na.rm = TRUE) > 1e-8
-                        })
-                        Z_clean <- Z[, keep_cols, drop = FALSE]
-                        Z_clean <- scale(Z_clean, center = TRUE, scale = FALSE)
-                        stopifnot(nrow(Z_clean) == length(y))
-                        stopifnot(!anyNA(Z_clean), !any(is.infinite(Z_clean)))
-                        return(Z_clean)
-                      }
-                      Z_train <- prepare_rrblup_matrix(geno.D_scaled[train_ids, ], y_train)
-                      # --- Covariate preparation ---
-                      prepare_covariates <- function(Xcov) {
-                        if (is.list(Xcov) && !is.data.frame(Xcov)) {
-                          Xcov_df <- as.data.frame(do.call(cbind, Xcov))
-                        } else {
-                          Xcov_df <- as.data.frame(Xcov)
-                        }
-
-                        Xcov_mat <- model.matrix(~ ., data = Xcov_df)
-
-                        # Drop duplicate columns
-                        Xcov_mat <- Xcov_mat[, !duplicated(colnames(Xcov_mat)), drop = FALSE]
-
-                        # Drop near-zero variance columns
-                        nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
-                        if (any(nzv)) {
-                          message("Dropping ", sum(nzv), " near-zero variance covariates: ",
-                                  paste(colnames(Xcov_mat)[nzv], collapse = ", "))
-                          Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
-                        }
-
-                        # Drop collinear columns (full rank check)
-                        qrX <- qr(Xcov_mat)
-                        if (qrX$rank < ncol(Xcov_mat)) {
-                          drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                          message("Dropping collinear covariates: ",
-                                  paste(colnames(Xcov_mat)[drop_idx], collapse = ", "))
-                          keep_idx <- qrX$pivot[seq_len(qrX$rank)]
-                          Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
-                        }
-
-                        return(Xcov_mat)
-                      }
-                      Xcov_mat <- prepare_covariates(Xcov)
-                      if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
-                        Xcov_mat <- NULL
-                      }
-                      # --- rrBLUP model ---
-                      model_rrblup <- rrBLUP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
-                      # --- Prediction ---
-                      kept_snps <- colnames(Z_train)
-                      Z_test <- geno.D_scaled[test_ids, kept_snps, drop = FALSE]
-                      Z_test <- scale(Z_test, center = colMeans(geno.D_scaled[train_ids, kept_snps]), scale = FALSE)
-                      pred_rrblup_D <- as.vector(Z_test %*% model_rrblup$u)
-
-                      # rrBLUP marker effects model: K_M
-                      train_ids <- which(!is.na(Y.masked))
-                      y_train <- Y.masked[train_ids]
-                      mgeno_scaled <- as.matrix(mgeno_scaled)
-                      mode(mgeno_scaled) <- "numeric"
-                      # --- SNP preparation ---
-                      prepare_rrblup_matrix <- function(Z, y) {
-                        Z <- as.matrix(Z)
-                        mode(Z) <- "numeric"
-                        keep_cols <- apply(Z, 2, function(col) {
-                          all(is.finite(col)) && var(col, na.rm = TRUE) > 1e-8
-                        })
-                        Z_clean <- Z[, keep_cols, drop = FALSE]
-                        Z_clean <- scale(Z_clean, center = TRUE, scale = FALSE)
-                        stopifnot(nrow(Z_clean) == length(y))
-                        stopifnot(!anyNA(Z_clean), !any(is.infinite(Z_clean)))
-                        return(Z_clean)
-                      }
-                      Z_train <- prepare_rrblup_matrix(mgeno_scaled[train_ids, ], y_train)
-                      # --- Covariate preparation ---
-                      prepare_covariates <- function(Xcov) {
-                        if (is.list(Xcov) && !is.data.frame(Xcov)) {
-                          Xcov_df <- as.data.frame(do.call(cbind, Xcov))
-                        } else {
-                          Xcov_df <- as.data.frame(Xcov)
-                        }
-
-                        Xcov_mat <- model.matrix(~ ., data = Xcov_df)
-
-                        # Drop duplicate columns
-                        Xcov_mat <- Xcov_mat[, !duplicated(colnames(Xcov_mat)), drop = FALSE]
-
-                        # Drop near-zero variance columns
-                        nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
-                        if (any(nzv)) {
-                          message("Dropping ", sum(nzv), " near-zero variance covariates: ",
-                                  paste(colnames(Xcov_mat)[nzv], collapse = ", "))
-                          Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
-                        }
-
-                        # Drop collinear columns (full rank check)
-                        qrX <- qr(Xcov_mat)
-                        if (qrX$rank < ncol(Xcov_mat)) {
-                          drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                          message("Dropping collinear covariates: ",
-                                  paste(colnames(Xcov_mat)[drop_idx], collapse = ", "))
-                          keep_idx <- qrX$pivot[seq_len(qrX$rank)]
-                          Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
-                        }
-
-                        return(Xcov_mat)
-                      }
-                      Xcov_mat <- prepare_covariates(Xcov)
-                      if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
-                        Xcov_mat <- NULL
-                      }
-                      # --- rrBLUP model ---
-                      model_rrblup <- rrBLUP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
-                      # --- Prediction ---
-                      kept_snps <- colnames(Z_train)
-                      Z_test <- mgeno_scaled[test_ids, kept_snps, drop = FALSE]
-                      Z_test <- scale(Z_test, center = colMeans(mgeno_scaled[train_ids, kept_snps]), scale = FALSE)
-                      pred_rrblup_M <- as.vector(Z_test %*% model_rrblup$u)
-
-
-                      # RHKs with BGLR package
-                      pred_list <- list()
-                      for (kernel_name in names(kernels)) {
-                        K <- kernels[[kernel_name]]
+                      if (!is.null(Additional_models)){
+                        # metagenomic RHKs with BGLR package
                         covTraits <- colnames(Y.covmasked)
                         gebv_list <- list()
                         for(covt in covTraits){
                           y <- Y.covmasked[[covt]]
                           ok <- !is.na(y)
-                          fm <- BGLR(y = y[ok],  ETA = list(list(K=K[ok, ok], model = "RKHS")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                          fm <- BGLR(y = y[ok],  ETA = list(list(K=metagKIx[ok, ok], model = "RKHS")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
                           b <- fm$ETA[[1]]$u  # 'u' contains the random effects / GEBVs for the n_obs
                           # Create full-length vector aligned with original y
                           gebv_full <- rep(NA, length(y))
@@ -2409,694 +3275,494 @@ holostackGP <- function(
                         train_idx <- which(!is.na(Y.tmasked[,1]))
                         test_idx  <- which(is.na(Y.tmasked[,1]))
                         y_train <- Y.tmasked[train_idx, 1]
-                        K_train <- K[train_idx, train_idx]
+                        K_train <- metagKIx[train_idx, train_idx]
                         X_train <- Xcov_mat[train_idx, , drop = FALSE]
                         fit <- BGLR(y = y_train, ETA = list(list(K = K_train, model = "RKHS"), list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
                         u_train <- as.numeric(fit$ETA[[1]]$u)
-                        K_test_train <- K[test_idx, train_idx]
-                        pred_test <- K_test_train %*% u_train
-                        pred_list[[kernel_name]] <- as.numeric(pred_test)
-                      }
-                      pred_rkhs_all <- do.call(cbind, pred_list)
-                      rownames(pred_rkhs_all) <- rownames(Y.tmasked)[test_idx]
+                        K_test_train <- metagKIx[test_idx, train_idx]
+                        pred_rkhs_m <-as.numeric( K_test_train %*% u_train)
 
-                      #--- Stack RKHS models ---
-                      y_test <- Y.raw[rownames(Y.raw) %in% test_ids, ]
-                      rkhs_stack <- data.frame(y = y_test, rkhs  = pred_rkhs_all)
-                      colnames(rkhs_stack)[1:2] <- colnames(y_test)
-                      formula_rkhs <- as.formula(paste(trait, "~", paste(colnames(rkhs_stack)[-c(1:2)], collapse = " + ")))
-                      fit_stack  <- lm(formula_rkhs, data = rkhs_stack)
-                      pred_rkhs <- predict(fit_stack, newdata = rkhs_stack)
-
-
-                      # Bayesian-based genomic predictions
-                      bayes_models <- c("BRR", "BayesA", "BayesB", "BayesC", "BL")  # BL = Bayesian Lasso
-                      gc()
-                      if(any(grepl("Bayes",unlist(Additional_models)))){
-                        # Function to fit a single Bayesian model for one phenotype and one or more multiple covariates
-                        run_independent_bayes <- function(model_name, Y.masked, Y.covmasked, geno.A_scaled, geno.D_scaled, mgeno_scaled, nIter, burnIn) {
-                          covTraits <- colnames(Y.covmasked)
-                          # ---- Additive step ----
-                          gebv_list <- list()
-                          for (covt in covTraits) {
-                            y <- Y.covmasked[[covt]]
-                            ok <- !is.na(y)
-                            fm <- BGLR(y = y[ok], ETA = list(list(X = geno.A_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
-                            b <- fm$ETA[[1]]$b
-                            gebv_full <- rep(NA, length(y))
-                            gebv_full[ok] <- as.numeric(geno.A_scaled[ok, , drop = FALSE] %*% b)
-                            gebv_list[[covt]] <- gebv_full
-                          }
-                          Y.tmasked <- as.data.frame(Y.masked)
-                          for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
-                          train_idx <- which(!is.na(Y.tmasked[,1]))
-                          test_idx  <- which(is.na(Y.tmasked[,1]))
-                          y_train <- Y.tmasked[train_idx, 1]
-                          X_train <- as.matrix(Y.tmasked[train_idx, -1, drop = FALSE])
-                          X_test  <- as.matrix(Y.tmasked[test_idx, -1, drop = FALSE])
-                          fit_A <- BGLR(y = y_train, ETA = list(list(X = geno.A_scaled[train_idx, , drop = FALSE], model = model_name),list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
-                          yHat_all_A <- rep(NA, nrow(Y.tmasked))
-                          yHat_all_A[train_idx] <- fit_A$yHat
-                          b_markersA <- fit_A$ETA[[1]]$b
-                          b_fixedA   <- fit_A$ETA[[2]]$b
-                          X_test[is.na(X_test)] <- 0
-                          marker_part <- if (!is.null(b_markersA)) geno.A_scaled[test_idx, , drop = FALSE] %*% b_markersA else 0
-                          fixed_part  <- if (!is.null(b_fixedA))   X_test %*% b_fixedA else 0
-                          pred_A <- as.numeric(marker_part + fixed_part)
-                          # pred_A <- as.numeric(geno.A_scaled[test_idx, , drop = FALSE] %*% b_markersA + X_test %*% b_fixedA)
-                          # ---- Dominance step ----
-                          gebv_list <- list()
-                          for (covt in covTraits) {
-                            y <- Y.covmasked[[covt]]
-                            ok <- !is.na(y)
-                            fm <- BGLR(y = y[ok], ETA = list(list(X = geno.D_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
-                            b <- fm$ETA[[1]]$b
-                            gebv_full <- rep(NA, length(y))
-                            gebv_full[ok] <- as.numeric(geno.D_scaled[ok, , drop = FALSE] %*% b)
-                            gebv_list[[covt]] <- gebv_full
-                          }
-                          Y.tmasked <- as.data.frame(Y.masked)
-                          for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
-                          train_idx <- which(!is.na(Y.tmasked[,1]))
-                          test_idx  <- which(is.na(Y.tmasked[,1]))
-                          y_train <- Y.tmasked[train_idx, 1]
-                          X_train <- as.matrix(Y.tmasked[train_idx, -1, drop = FALSE])
-                          X_test  <- as.matrix(Y.tmasked[test_idx, -1, drop = FALSE])
-                          fit_D <- BGLR(y = y_train, ETA = list( list(X = geno.D_scaled[train_idx, , drop = FALSE], model = model_name), list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
-                          yHat_all_D <- rep(NA, nrow(Y.tmasked))
-                          yHat_all_D[train_idx] <- fit_D$yHat
-                          b_markersD <- fit_D$ETA[[1]]$b
-                          b_fixedD   <- fit_D$ETA[[2]]$b
-                          X_test[is.na(X_test)] <- 0
-                          marker_part <- if (!is.null(b_markersD)) geno.D_scaled[test_idx, , drop = FALSE] %*% b_markersD else 0
-                          fixed_part  <- if (!is.null(b_fixedD))   X_test %*% b_fixedD else 0
-                          pred_D <- as.numeric(marker_part + fixed_part)
-                          # pred_D <- as.numeric(geno.D_scaled[test_idx, , drop = FALSE] %*% b_markersD + X_test %*% b_fixedD)
-                          # ---- Metagenome step ----
-                          gebv_list <- list()
-                          for (covt in covTraits) {
-                            y <- Y.covmasked[[covt]]
-                            ok <- !is.na(y)
-                            fm <- BGLR(y = y[ok], ETA = list(list(X = mgeno_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
-                            b <- fm$ETA[[1]]$b
-                            gebv_full <- rep(NA, length(y))
-                            gebv_full[ok] <- as.numeric(mgeno_scaled[ok, , drop = FALSE] %*% b)
-                            gebv_list[[covt]] <- gebv_full
-                          }
-                          Y.tmasked <- as.data.frame(Y.masked)
-                          for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
-                          train_idx <- which(!is.na(Y.tmasked[,1]))
-                          test_idx  <- which(is.na(Y.tmasked[,1]))
-                          y_train <- Y.tmasked[train_idx, 1]
-                          X_train <- as.matrix(Y.tmasked[train_idx, -1, drop = FALSE])
-                          X_test  <- as.matrix(Y.tmasked[test_idx, -1, drop = FALSE])
-                          fit_M <- BGLR(y = y_train, ETA = list(list(X = mgeno_scaled[train_idx, , drop = FALSE], model = model_name),list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
-                          yHat_all_M <- rep(NA, nrow(Y.tmasked))
-                          yHat_all_M[train_idx] <- fit_M$yHat
-                          b_markersM <- fit_M$ETA[[1]]$b
-                          b_fixedM   <- fit_M$ETA[[2]]$b
-                          X_test[is.na(X_test)] <- 0
-                          marker_part <- if (!is.null(b_markersM)) mgeno_scaled[test_idx, , drop = FALSE] %*% b_markersM else 0
-                          fixed_part  <- if (!is.null(b_fixedM))   X_test %*% b_fixedM else 0
-                          pred_M <- as.numeric(marker_part + fixed_part)
-                          # ---- Return predictions for test set ----
-                          return(data.frame(pred_A = pred_A, pred_D = pred_D, pred_M = pred_M, row.names = rownames(Y.tmasked)[test_idx]))
+                        # genomic RHKs with BGLR package
+                        gebv_list <- list()
+                        for(covt in covTraits){
+                          y <- Y.covmasked[[covt]]
+                          ok <- !is.na(y)
+                          fm <- BGLR(y = y[ok],  ETA = list(list(K=myKIx[ok, ok], model = "RKHS")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                          b <- fm$ETA[[1]]$u  # 'u' contains the random effects / GEBVs for the n_obs
+                          # Create full-length vector aligned with original y
+                          gebv_full <- rep(NA, length(y))
+                          gebv_full[ok] <- as.numeric(b)
+                          gebv_list[[covt]] <- gebv_full
                         }
+                        Y.tmasked <- as.data.frame(Y.masked)
+                        for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
+                        Xcov_mat <- as.matrix(Y.tmasked[, -1, drop = FALSE])
+                        train_idx <- which(!is.na(Y.tmasked[,1]))
+                        test_idx  <- which(is.na(Y.tmasked[,1]))
+                        y_train <- Y.tmasked[train_idx, 1]
+                        K_train <- myKIx[train_idx, train_idx]
+                        X_train <- Xcov_mat[train_idx, , drop = FALSE]
+                        fit <- BGLR(y = y_train, ETA = list(list(K = K_train, model = "RKHS"), list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                        u_train <- as.numeric(fit$ETA[[1]]$u)
+                        K_test_train <- myKIx[test_idx, train_idx]
+                        pred_rkhs_g <-as.numeric( K_test_train %*% u_train)
+                        #--- Stack RKHS models ---
+                        y_test <- Y.raw[rownames(Y.raw) %in% test_ids, ]
+                        rkhs_stack <- data.frame(y = y_test, geno  = pred_rkhs_g, micro = pred_rkhs_m)
+                        colnames(rkhs_stack)[1:2] <- colnames(y_test)
+                        formula_rkhs <- paste0(trait," ~ geno + micro")
+                        fit_stack  <- lm(formula_rkhs, data = rkhs_stack)
+                        pred_rkhs <- predict(fit_stack, newdata = rkhs_stack)
 
-                        # Wrapper to run all models in parallel
-                        run_parallel_stack <- function(Y.masked, Y.covmasked, geno.A_scaled, geno.D_scaled, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
-                          cl <- makeCluster(n.cores)
-                          clusterEvalQ(cl, library(BGLR))
-                          clusterExport(cl, varlist = c("Y.masked", "Y.covmasked", "geno.A_scaled", "geno.D_scaled", "mgeno_scaled", "nIter", "burnIn", "run_independent_bayes"), envir = environment())
-                          preds_list <- parLapply(cl, bayes_models, function(model) {
-                            run_independent_bayes(model, Y.masked = Y.masked, Y.covmasked = Y.covmasked,geno.A_scaled = geno.A_scaled, geno.D_scaled = geno.D_scaled, mgeno_scaled = mgeno_scaled, nIter = nIter, burnIn = burnIn)
+                        # metagenomic rrBLUP marker effects model
+                        train_ids <- which(!is.na(Y.masked))
+                        y_train <- Y.masked[train_ids]
+                        geno_scaled <- as.matrix(mgeno_scaled)
+                        mode(mgeno_scaled) <- "numeric"
+                        prepare_rrblup_matrix <- function(Z, y) {
+                          Z <- as.matrix(Z)
+                          mode(Z) <- "numeric"
+                          keep_cols <- apply(Z, 2, function(col) {
+                            all(is.finite(col)) && var(col, na.rm = TRUE) > 1e-8
                           })
-                          stopCluster(cl)
-                          names(preds_list) <- bayes_models
-                          return(preds_list)
+                          Z_clean <- Z[, keep_cols, drop = FALSE]
+                          Z_clean <- scale(Z_clean, center = TRUE, scale = FALSE)
+                          stopifnot(nrow(Z_clean) == length(y))
+                          stopifnot(!anyNA(Z_clean), !any(is.infinite(Z_clean)))
+
+                          return(Z_clean)
                         }
-
-                        # Run all Bayesian models in parallel
-                        preds_stack <- run_parallel_stack(Y.masked = Y.masked, Y.covmasked = Y.covmasked, geno.A_scaled = geno.A_scaled, geno.D_scaled = geno.D_scaled, mgeno_scaled = mgeno_scaled, nIter = nIter, burnIn = burnIn, n.cores = ncores)
-
-                        # Stack predictions using lm for each model
-                        stacked_preds <- lapply(preds_stack, function(pred_df) {
-                          test_rows <- which(is.na(Y.masked))
-                          y_test <- as.numeric(Y.raw[test_rows, 2])
-
-                          stack_df <- data.frame(y = y_test, pred_A = pred_df$pred_A, pred_D = pred_df$pred_D, pred_M = pred_df$pred_M)
-                          stack_df <- stack_df[complete.cases(stack_df), ]
-
-                          if (nrow(stack_df) == 0) {
-                            warning("No valid rows to fit linear model.")
-                            return(rep(NA, length(test_rows)))
-                          }
-
-                          # Stacking model: combine pred_A and pred_D
-                          fit <- lm(y ~ pred_A + pred_D + pred_M, data = stack_df)
-                          predict(fit, newdata = stack_df)
-                        })
-
-                        # stacked_preds is a named list of prediction vectors for each bayes model
-                        names(stacked_preds) <- bayes_models
-                        pred_brr <- data.frame(ID = test_ids, Prediction = stacked_preds[["BRR"]])
-                        pred_bayesA <- data.frame(ID = test_ids, Prediction = stacked_preds[["BayesA"]])
-                        pred_bayesB <- data.frame(ID = test_ids, Prediction = stacked_preds[["BayesB"]])
-                        pred_bayesC <- data.frame(ID = test_ids, Prediction = stacked_preds[["BayesC"]])
-                        pred_bayesLasso <- data.frame(ID = test_ids, Prediction = stacked_preds[["BL"]])
-
-                        if(!("rrBLUP" %in% Additional_models)){
-                          stack_allmodels <- data.frame(y = Y.raw[rownames(Y.raw) %in% test_ids,2], BRR = pred_brr$Prediction, BayesA = pred_bayesA$Prediction,
-                                                        BayesB = pred_bayesB$Prediction, BayesC = pred_bayesC$Prediction, BayesLasso = pred_bayesLasso$Prediction)
-                        } else {
-                          stack_allmodels <- data.frame(y = Y.raw[rownames(Y.raw) %in% test_ids,2], GBLUP = pred_gblup, rrBLUP = pred_rrblup, RKHS = pred_rkhs, BRR = pred_brr$Prediction,
-                                                        BayesA = pred_bayesA$Prediction, BayesB = pred_bayesB$Prediction, BayesC = pred_bayesC$Prediction, BayesLasso = pred_bayesLasso$Prediction)
-                        }
-                        stack_allmodels_scaled <- as.data.frame(scale(stack_allmodels[, -1]))
-                        stack_allmodels_scaled$y <- stack_allmodels$y
-                        stack_allmodels <-  stack_allmodels_scaled
-                        if(!("rrBLUP" %in% Additional_models)){
-                          fit_stack <- lm(y ~ BRR + BayesA + BayesB + BayesC + BayesLasso, data = stack_allmodels)
-                        } else {
-                          fit_stack <- lm(y ~ GBLUP + rrBLUP + RKHS + BRR + BayesA + BayesB + BayesC + BayesLasso, data = stack_allmodels)
-                        }
-                        stacked_prediction <- predict(fit_stack, newdata = stack_allmodels)
-                        stack_allmodels$StackedPrediction <- stacked_prediction
-                        cor(stack_allmodels$y, stack_allmodels$StackedPrediction)
-                      } else {
-                        stack_allmodels <- data.frame(y = Y.raw[rownames(Y.raw) %in% test_ids,2], GBLUP = pred_gblup, rrBLUP = pred_rrblup)
-                        stack_allmodels_scaled <- as.data.frame(scale(stack_allmodels[, -1]))
-                        stack_allmodels_scaled$y <- stack_allmodels$y
-                        stack_allmodels <-  stack_allmodels_scaled
-                        fit_stack <- lm(y ~ GBLUP + rrBLUP, data = stack_allmodels)
-                        stacked_prediction <- predict(fit_stack, newdata = stack_allmodels)
-                        stack_allmodels$StackedPrediction <- stacked_prediction
-                        cor(stack_allmodels$y, stack_allmodels$StackedPrediction)
-                      }
-                    }
-                  } else {
-                    prepare_covariates <- function(Xcov) {
-                      if (is.list(Xcov) && !is.data.frame(Xcov)) {
-                        Xcov_df <- as.data.frame(do.call(cbind, Xcov))
-                      } else {
-                        Xcov_df <- as.data.frame(Xcov)
-                      }
-
-                      # remove intercept to avoid duplication
-                      Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
-
-                      # drop duplicates
-                      Xcov_mat <- Xcov_mat[, !duplicated(colnames(Xcov_mat)), drop = FALSE]
-
-                      # drop near-zero variance
-                      nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
-                      if (any(nzv)) {
-                        message("Dropping ", sum(nzv), " near-zero variance covariates: ",
-                                paste(colnames(Xcov_mat)[nzv], collapse = ", "))
-                        Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
-                      }
-
-                      # enforce full rank
-                      qrX <- qr(Xcov_mat)
-                      if (qrX$rank < ncol(Xcov_mat)) {
-                        drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                        message("Dropping collinear covariates: ",
-                                paste(colnames(Xcov_mat)[drop_idx], collapse = ", "))
-                        Xcov_mat <- Xcov_mat[, qrX$pivot[seq_len(qrX$rank)], drop = FALSE]
-                      }
-
-                      if (ncol(Xcov_mat) == 0) return(NULL)
-                      return(Xcov_mat)
-                    }
-
-                    # GBLUP with rrBLUP package
-                    covTraits <- colnames(Y.covmasked)
-                    gebv_list <- list()
-                    for (covt in covTraits){
-                      y <- Y.covmasked[[covt]]
-                      # remove NA individuals (mixed.solve handles but safer)
-                      ok <- !is.na(y)
-                      sol <- mixed.solve(y = y[ok], K = myKIx[ok, ok, drop = FALSE])
-                      # sol$u is GEBV vector for individuals with y; bring back into full n vector
-                      u_full <- rep(NA, nrow(Y.covmasked))
-                      u_full[which(ok)] <- sol$u[rownames(myKIx)[ok]]   # name-align
-                      gebv_list[[covt]] <- u_full
-                    }
-                    Y.tmasked <- as.data.frame(Y.masked)
-                    for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
-                    Xcov <- Y.tmasked[,-1]
-                    model_gblup_g <- rrBLUP::mixed.solve(y = Y.tmasked[,1], K = myKIx, X=Xcov)
-                    pred_gblup_g <- model_gblup_g$u[test_ids]  # genomic breeding values
-                    gebv_list <- list()
-                    for (covt in covTraits){
-                      y <- Y.covmasked[[covt]]
-                      # remove NA individuals (mixed.solve handles but safer)
-                      ok <- !is.na(y)
-                      sol <- mixed.solve(y = y[ok], K =metagKIx[ok, ok, drop = FALSE])
-                      # sol$u is GEBV vector for individuals with y; bring back into full n vector
-                      u_full <- rep(NA, nrow(Y.covmasked))
-                      u_full[which(ok)] <- sol$u[rownames(metagKIx)[ok]]   # name-align
-                      gebv_list[[covt]] <- u_full
-                    }
-                    Y.tmasked <- as.data.frame(Y.masked)
-                    for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
-                    Xcov <- Y.tmasked[, -1, drop = FALSE]
-                    Xcov_mat <- prepare_covariates(Xcov)
-                    if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
-                      message("⚠️ No valid covariates left, setting Xcov_mat = NULL")
-                      Xcov_mat <- NULL
-                    } else {
-                      # Optional: impute missing values
-                      if (anyNA(Xcov_mat)) {
-                        message("Replacing NA covariate values with column means")
-                        Xcov_mat <- apply(Xcov_mat, 2, function(col) {
-                          ifelse(is.na(col), mean(col, na.rm = TRUE), col)
-                        })
-                        Xcov_mat <- as.matrix(Xcov_mat)
-                      }
-                    }
-                    # ---- Handle cases where covariates are dropped ----
-                    if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
-                      Xcov_mat <- NULL   # rrBLUP accepts NULL
-                    } else {
-                      # make sure it's a matrix
-                      Xcov_mat <- as.matrix(Xcov_mat)
-
-                      # if rownames missing, assign from Y.tmasked
-                      if (is.null(rownames(Xcov_mat))) {
-                        rownames(Xcov_mat) <- rownames(Y.tmasked)
-                      }
-
-                      # if nrow mismatch, force alignment by merging
-                      if (nrow(Xcov_mat) != nrow(Y.tmasked)) {
-                        Xcov_mat <- Xcov_mat[match(rownames(Y.tmasked), rownames(Xcov_mat)), , drop = FALSE]
-                      }
-
-                      stopifnot(nrow(Xcov_mat) == nrow(Y.tmasked))
-                    }
-
-                    model_gblup_m <- rrBLUP::mixed.solve(y = Y.tmasked[,1], K = metagKIx, X=Xcov_mat)
-                    pred_gblup_m <- model_gblup_m$u[test_ids]  # genomic breeding values
-
-                    #--- Define stacking function for two GBLUP models ---
-                    y_test <- Y.raw[rownames(Y.raw) %in% test_ids, ]
-                    gblup_stack <- data.frame(y = y_test, geno  = pred_gblup_g, micro = pred_gblup_m)
-                    colnames(gblup_stack)[1:2] <- colnames(y_test)
-                    formula_gblup <- paste0(trait," ~ geno + micro")
-                    fit_stack  <- lm(formula_gblup, data = gblup_stack)
-                    pred_gblup <- predict(fit_stack, newdata = gblup_stack)
-
-                    if (!is.null(Additional_models)){
-                      # metagenomic RHKs with BGLR package
-                      covTraits <- colnames(Y.covmasked)
-                      gebv_list <- list()
-                      for(covt in covTraits){
-                        y <- Y.covmasked[[covt]]
-                        ok <- !is.na(y)
-                        fm <- BGLR(y = y[ok],  ETA = list(list(K=metagKIx[ok, ok], model = "RKHS")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
-                        b <- fm$ETA[[1]]$u  # 'u' contains the random effects / GEBVs for the n_obs
-                        # Create full-length vector aligned with original y
-                        gebv_full <- rep(NA, length(y))
-                        gebv_full[ok] <- as.numeric(b)
-                        gebv_list[[covt]] <- gebv_full
-                      }
-                      Y.tmasked <- as.data.frame(Y.masked)
-                      for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
-                      Xcov_mat <- as.matrix(Y.tmasked[, -1, drop = FALSE])
-                      train_idx <- which(!is.na(Y.tmasked[,1]))
-                      test_idx  <- which(is.na(Y.tmasked[,1]))
-                      y_train <- Y.tmasked[train_idx, 1]
-                      K_train <- metagKIx[train_idx, train_idx]
-                      X_train <- Xcov_mat[train_idx, , drop = FALSE]
-                      fit <- BGLR(y = y_train, ETA = list(list(K = K_train, model = "RKHS"), list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
-                      u_train <- as.numeric(fit$ETA[[1]]$u)
-                      K_test_train <- metagKIx[test_idx, train_idx]
-                      pred_rkhs_m <-as.numeric( K_test_train %*% u_train)
-
-                      # genomic RHKs with BGLR package
-                      gebv_list <- list()
-                      for(covt in covTraits){
-                        y <- Y.covmasked[[covt]]
-                        ok <- !is.na(y)
-                        fm <- BGLR(y = y[ok],  ETA = list(list(K=myKIx[ok, ok], model = "RKHS")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
-                        b <- fm$ETA[[1]]$u  # 'u' contains the random effects / GEBVs for the n_obs
-                        # Create full-length vector aligned with original y
-                        gebv_full <- rep(NA, length(y))
-                        gebv_full[ok] <- as.numeric(b)
-                        gebv_list[[covt]] <- gebv_full
-                      }
-                      Y.tmasked <- as.data.frame(Y.masked)
-                      for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
-                      Xcov_mat <- as.matrix(Y.tmasked[, -1, drop = FALSE])
-                      train_idx <- which(!is.na(Y.tmasked[,1]))
-                      test_idx  <- which(is.na(Y.tmasked[,1]))
-                      y_train <- Y.tmasked[train_idx, 1]
-                      K_train <- myKIx[train_idx, train_idx]
-                      X_train <- Xcov_mat[train_idx, , drop = FALSE]
-                      fit <- BGLR(y = y_train, ETA = list(list(K = K_train, model = "RKHS"), list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
-                      u_train <- as.numeric(fit$ETA[[1]]$u)
-                      K_test_train <- myKIx[test_idx, train_idx]
-                      pred_rkhs_g <-as.numeric( K_test_train %*% u_train)
-                      #--- Stack RKHS models ---
-                      y_test <- Y.raw[rownames(Y.raw) %in% test_ids, ]
-                      rkhs_stack <- data.frame(y = y_test, geno  = pred_rkhs_g, micro = pred_rkhs_m)
-                      colnames(rkhs_stack)[1:2] <- colnames(y_test)
-                      formula_rkhs <- paste0(trait," ~ geno + micro")
-                      fit_stack  <- lm(formula_rkhs, data = rkhs_stack)
-                      pred_rkhs <- predict(fit_stack, newdata = rkhs_stack)
-
-                      # metagenomic rrBLUP marker effects model
-                      train_ids <- which(!is.na(Y.masked))
-                      y_train <- Y.masked[train_ids]
-                      geno_scaled <- as.matrix(mgeno_scaled)
-                      mode(mgeno_scaled) <- "numeric"
-                      prepare_rrblup_matrix <- function(Z, y) {
-                        Z <- as.matrix(Z)
-                        mode(Z) <- "numeric"
-                        keep_cols <- apply(Z, 2, function(col) {
-                          all(is.finite(col)) && var(col, na.rm = TRUE) > 1e-8
-                        })
-                        Z_clean <- Z[, keep_cols, drop = FALSE]
-                        Z_clean <- scale(Z_clean, center = TRUE, scale = FALSE)
-                        stopifnot(nrow(Z_clean) == length(y))
-                        stopifnot(!anyNA(Z_clean), !any(is.infinite(Z_clean)))
-
-                        return(Z_clean)
-                      }
-                      Z_train <- prepare_rrblup_matrix(mgeno_scaled[train_ids, ], y_train)
-                      if (is.list(Xcov) && !is.data.frame(Xcov)) {
-                        Xcov_df <- as.data.frame(do.call(cbind, Xcov))
-                      } else {
-                        Xcov_df <- as.data.frame(Xcov)
-                      }
-                      Xcov_mat <- model.matrix(~ ., data = Xcov_df)
-                      model_rrblup <- rrBLUP::mixed.solve(y = y_train, Z = Z_train, X=Xcov_mat)
-                      kept_snps <- colnames(Z_train)
-                      Z_test <- mgeno_scaled[test_ids, kept_snps, drop = FALSE]
-                      Z_test <- scale(Z_test, center = colMeans(mgeno_scaled[train_ids, kept_snps]), scale = FALSE)
-                      pred_rrblup_m <- as.vector(Z_test %*% model_rrblup$u)
-
-                      # genomic rrBLUP marker effects model
-                      train_ids <- which(!is.na(Y.masked))
-                      y_train <- Y.masked[train_ids]
-                      geno_scaled <- as.matrix(geno_scaled)
-                      mode(geno_scaled) <- "numeric"
-                      # --- SNP preparation ---
-                      prepare_rrblup_matrix <- function(Z, y) {
-                        Z <- as.matrix(Z)
-                        mode(Z) <- "numeric"
-                        keep_cols <- apply(Z, 2, function(col) {
-                          all(is.finite(col)) && var(col, na.rm = TRUE) > 1e-8
-                        })
-                        Z_clean <- Z[, keep_cols, drop = FALSE]
-                        Z_clean <- scale(Z_clean, center = TRUE, scale = FALSE)
-                        stopifnot(nrow(Z_clean) == length(y))
-                        stopifnot(!anyNA(Z_clean), !any(is.infinite(Z_clean)))
-                        return(Z_clean)
-                      }
-                      Z_train <- prepare_rrblup_matrix(geno_scaled[train_ids, ], y_train)
-                      # --- Covariate preparation ---
-                      prepare_covariates <- function(Xcov) {
+                        Z_train <- prepare_rrblup_matrix(mgeno_scaled[train_ids, ], y_train)
                         if (is.list(Xcov) && !is.data.frame(Xcov)) {
                           Xcov_df <- as.data.frame(do.call(cbind, Xcov))
                         } else {
                           Xcov_df <- as.data.frame(Xcov)
                         }
-
                         Xcov_mat <- model.matrix(~ ., data = Xcov_df)
+                        model_rrblup <- rrBLUP::mixed.solve(y = y_train, Z = Z_train, X=Xcov_mat)
+                        kept_snps <- colnames(Z_train)
+                        Z_test <- mgeno_scaled[test_ids, kept_snps, drop = FALSE]
+                        Z_test <- scale(Z_test, center = colMeans(mgeno_scaled[train_ids, kept_snps]), scale = FALSE)
+                        pred_rrblup_m <- as.vector(Z_test %*% model_rrblup$u)
 
-                        # Drop duplicate columns
-                        Xcov_mat <- Xcov_mat[, !duplicated(colnames(Xcov_mat)), drop = FALSE]
-
-                        # Drop near-zero variance columns
-                        nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
-                        if (any(nzv)) {
-                          message("Dropping ", sum(nzv), " near-zero variance covariates: ",
-                                  paste(colnames(Xcov_mat)[nzv], collapse = ", "))
-                          Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
-                        }
-
-                        # Drop collinear columns (full rank check)
-                        qrX <- qr(Xcov_mat)
-                        if (qrX$rank < ncol(Xcov_mat)) {
-                          drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                          message("Dropping collinear covariates: ",
-                                  paste(colnames(Xcov_mat)[drop_idx], collapse = ", "))
-                          keep_idx <- qrX$pivot[seq_len(qrX$rank)]
-                          Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
-                        }
-
-                        return(Xcov_mat)
-                      }
-                      Xcov_mat <- prepare_covariates(Xcov)
-                      if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
-                        Xcov_mat <- NULL
-                      }
-                      # --- rrBLUP model ---
-                      model_rrblup <- rrBLUP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
-                      # --- Prediction ---
-                      kept_snps <- colnames(Z_train)
-                      Z_test <- geno_scaled[test_ids, kept_snps, drop = FALSE]
-                      Z_test <- scale(Z_test, center = colMeans(geno_scaled[train_ids, kept_snps]), scale = FALSE)
-                      pred_rrblup_g <- as.vector(Z_test %*% model_rrblup$u)
-
-                      # metagenomic rrBLUP marker effects model
-                      train_ids <- which(!is.na(Y.masked))
-                      y_train <- Y.masked[train_ids]
-                      mgeno_scaled <- as.matrix(mgeno_scaled)
-                      mode(mgeno_scaled) <- "numeric"
-                      # --- SNP preparation ---
-                      prepare_rrblup_matrix <- function(Z, y) {
-                        Z <- as.matrix(Z)
-                        mode(Z) <- "numeric"
-                        keep_cols <- apply(Z, 2, function(col) {
-                          all(is.finite(col)) && var(col, na.rm = TRUE) > 1e-8
-                        })
-                        Z_clean <- Z[, keep_cols, drop = FALSE]
-                        Z_clean <- scale(Z_clean, center = TRUE, scale = FALSE)
-                        stopifnot(nrow(Z_clean) == length(y))
-                        stopifnot(!anyNA(Z_clean), !any(is.infinite(Z_clean)))
-                        return(Z_clean)
-                      }
-                      Z_train <- prepare_rrblup_matrix(mgeno_scaled[train_ids, ], y_train)
-                      # --- Covariate preparation ---
-                      prepare_covariates <- function(Xcov) {
-                        if (is.list(Xcov) && !is.data.frame(Xcov)) {
-                          Xcov_df <- as.data.frame(do.call(cbind, Xcov))
-                        } else {
-                          Xcov_df <- as.data.frame(Xcov)
-                        }
-
-                        Xcov_mat <- model.matrix(~ ., data = Xcov_df)
-
-                        # Drop duplicate columns
-                        Xcov_mat <- Xcov_mat[, !duplicated(colnames(Xcov_mat)), drop = FALSE]
-
-                        # Drop near-zero variance columns
-                        nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
-                        if (any(nzv)) {
-                          message("Dropping ", sum(nzv), " near-zero variance covariates: ",
-                                  paste(colnames(Xcov_mat)[nzv], collapse = ", "))
-                          Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
-                        }
-
-                        # Drop collinear columns (full rank check)
-                        qrX <- qr(Xcov_mat)
-                        if (qrX$rank < ncol(Xcov_mat)) {
-                          drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                          message("Dropping collinear covariates: ",
-                                  paste(colnames(Xcov_mat)[drop_idx], collapse = ", "))
-                          keep_idx <- qrX$pivot[seq_len(qrX$rank)]
-                          Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
-                        }
-
-                        return(Xcov_mat)
-                      }
-                      Xcov_mat <- prepare_covariates(Xcov)
-                      if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
-                        Xcov_mat <- NULL
-                      }
-                      # --- rrBLUP model ---
-                      model_rrblup <- rrBLUP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
-                      # --- Prediction ---
-                      kept_snps <- colnames(Z_train)
-                      Z_test <- mgeno_scaled[test_ids, kept_snps, drop = FALSE]
-                      Z_test <- scale(Z_test, center = colMeans(mgeno_scaled[train_ids, kept_snps]), scale = FALSE)
-                      pred_rrblup_m <- as.vector(Z_test %*% model_rrblup$u)
-
-
-                      # Bayesian-based genomic predictions
-                      bayes_models <- c("BRR", "BayesA", "BayesB", "BayesC", "BL")  # BL = Bayesian Lasso
-                      gc()
-                      if(any(grepl("Bayes",unlist(Additional_models)))){
-                        # Function to fit a single Bayesian model for one phenotype and one or more multiple covariates
-                        run_independent_bayes <- function(model_name, Y.masked, Y.covmasked, geno_scaled, mgeno_scaled, nIter, burnIn) {
-                          covTraits <- colnames(Y.covmasked)
-                          # ---- Genomic step ----
-                          gebv_list <- list()
-                          for (covt in covTraits) {
-                            y <- Y.covmasked[[covt]]
-                            ok <- !is.na(y)
-                            fm <- BGLR(y = y[ok], ETA = list(list(X = geno_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
-                            b <- fm$ETA[[1]]$b
-                            gebv_full <- rep(NA, length(y))
-                            gebv_full[ok] <- as.numeric(geno_scaled[ok, , drop = FALSE] %*% b)
-                            gebv_list[[covt]] <- gebv_full
-                          }
-                          Y.tmasked <- as.data.frame(Y.masked)
-                          for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
-                          train_idx <- which(!is.na(Y.tmasked[,1]))
-                          test_idx  <- which(is.na(Y.tmasked[,1]))
-                          y_train <- Y.tmasked[train_idx, 1]
-                          X_train <- as.matrix(Y.tmasked[train_idx, -1, drop = FALSE])
-                          X_test  <- as.matrix(Y.tmasked[test_idx, -1, drop = FALSE])
-                          fit <- BGLR(y = y_train, ETA = list(list(X = geno_scaled[train_idx, , drop = FALSE], model = model_name),list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
-                          yHat_all <- rep(NA, nrow(Y.tmasked))
-                          yHat_all[train_idx] <- fit$yHat
-                          b_markers <- fit$ETA[[1]]$b
-                          b_fixed   <- fit$ETA[[2]]$b
-                          X_test[is.na(X_test)] <- 0
-                          marker_part <- if (!is.null(b_markers)) geno_scaled[test_idx, , drop = FALSE] %*% b_markers else 0
-                          fixed_part  <- if (!is.null(b_fixed))   X_test %*% b_fixed else 0
-                          pred_g <- as.numeric(marker_part + fixed_part)
-                          # ---- Metagenomic step ----
-                          gebv_list <- list()
-                          for (covt in covTraits) {
-                            y <- Y.covmasked[[covt]]
-                            ok <- !is.na(y)
-                            fm <- BGLR(y = y[ok], ETA = list(list(X = mgeno_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
-                            b <- fm$ETA[[1]]$b
-                            gebv_full <- rep(NA, length(y))
-                            gebv_full[ok] <- as.numeric(mgeno_scaled[ok, , drop = FALSE] %*% b)
-                            gebv_list[[covt]] <- gebv_full
-                          }
-                          Y.tmasked <- as.data.frame(Y.masked)
-                          for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
-                          train_idx <- which(!is.na(Y.tmasked[,1]))
-                          test_idx  <- which(is.na(Y.tmasked[,1]))
-                          y_train <- Y.tmasked[train_idx, 1]
-                          X_train <- as.matrix(Y.tmasked[train_idx, -1, drop = FALSE])
-                          X_test  <- as.matrix(Y.tmasked[test_idx, -1, drop = FALSE])
-                          fit <- BGLR(y = y_train, ETA = list(list(X = mgeno_scaled[train_idx, , drop = FALSE], model = model_name),list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
-                          yHat_all <- rep(NA, nrow(Y.tmasked))
-                          yHat_all[train_idx] <- fit$yHat
-                          b_markers <- fit$ETA[[1]]$b
-                          b_fixed   <- fit$ETA[[2]]$b
-                          X_test[is.na(X_test)] <- 0
-                          marker_part <- if (!is.null(b_markers)) mgeno_scaled[test_idx, , drop = FALSE] %*% b_markers else 0
-                          fixed_part  <- if (!is.null(b_fixed))   X_test %*% b_fixed else 0
-                          pred_m <- as.numeric(marker_part + fixed_part)
-                          return(data.frame(pred_g = pred_g, pred_m = pred_m, row.names = rownames(Y.tmasked)[test_idx]))
-                        }
-
-                        # Wrapper to run all models in parallel
-                        run_parallel_stack <- function(Y.masked, Y.covmasked, geno_scaled, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
-                          cl <- makeCluster(n.cores)
-                          clusterEvalQ(cl, library(BGLR))
-                          clusterExport(cl, varlist = c("Y.masked", "Y.covmasked", "geno_scaled","mgeno_scaled", "nIter", "burnIn", "run_independent_bayes"), envir = environment())
-                          preds_list <- parLapply(cl, bayes_models, function(model) {
-                            run_independent_bayes(model, Y.masked = Y.masked, Y.covmasked = Y.covmasked, geno_scaled = geno_scaled, mgeno_scaled = mgeno_scaled, nIter = nIter, burnIn = burnIn)
+                        # genomic rrBLUP marker effects model
+                        train_ids <- which(!is.na(Y.masked))
+                        y_train <- Y.masked[train_ids]
+                        geno_scaled <- as.matrix(geno_scaled)
+                        mode(geno_scaled) <- "numeric"
+                        # --- SNP preparation ---
+                        prepare_rrblup_matrix <- function(Z, y) {
+                          Z <- as.matrix(Z)
+                          mode(Z) <- "numeric"
+                          keep_cols <- apply(Z, 2, function(col) {
+                            all(is.finite(col)) && var(col, na.rm = TRUE) > 1e-8
                           })
-                          stopCluster(cl)
-                          names(preds_list) <- bayes_models
-                          return(preds_list)
+                          Z_clean <- Z[, keep_cols, drop = FALSE]
+                          Z_clean <- scale(Z_clean, center = TRUE, scale = FALSE)
+                          stopifnot(nrow(Z_clean) == length(y))
+                          stopifnot(!anyNA(Z_clean), !any(is.infinite(Z_clean)))
+                          return(Z_clean)
                         }
+                        Z_train <- prepare_rrblup_matrix(geno_scaled[train_ids, ], y_train)
+                        # --- Covariate preparation ---
+                        prepare_covariates <- function(Xcov) {
 
-                        # Run all Bayesian models in parallel
-                        preds_stack <- run_parallel_stack(Y.masked = Y.masked, Y.covmasked = Y.covmasked, geno_scaled = geno_scaled, mgeno_scaled = mgeno_scaled, nIter = nIter, burnIn = burnIn, n.cores = ncores)
-
-                        # Stack predictions using lm for each model
-                        stacked_preds <- lapply(preds_stack, function(pred_df) {
-                          test_rows <- which(is.na(Y.masked))
-                          y_test <- as.numeric(Y.raw[test_rows, 2])
-
-                          stack_df <- data.frame(y = y_test, pred_g = pred_df$pred_g, pred_m = pred_df$pred_m)
-                          stack_df <- stack_df[complete.cases(stack_df), ]
-
-                          if (nrow(stack_df) == 0) {
-                            warning("No valid rows to fit linear model.")
-                            return(rep(NA, length(test_rows)))
+                          # Return NULL immediately if no covariates
+                          if (is.null(Xcov)) {
+                            return(NULL)
                           }
 
-                          # Stacking model: combine pred_g and pred_m
-                          fit <- lm(y ~ pred_g + pred_m, data = stack_df)
-                          predict(fit, newdata = stack_df)
-                        })
+                          # Coerce to data.frame safely
+                          if (is.list(Xcov) && !is.data.frame(Xcov)) {
+                            Xcov_df <- as.data.frame(do.call(cbind, Xcov))
+                          } else {
+                            Xcov_df <- as.data.frame(Xcov)
+                          }
 
-                        names(stacked_preds) <- bayes_models
-                        pred_brr <- as.data.frame(stacked_preds$BRR); colnames(pred_brr)[1] <- "Prediction"
-                        pred_bayesA <- as.data.frame(stacked_preds$BayesA); colnames(pred_bayesA)[1] <- "Prediction"
-                        pred_bayesB <- as.data.frame(stacked_preds$BayesB); colnames(pred_bayesB)[1] <- "Prediction"
-                        pred_bayesC <- as.data.frame(stacked_preds$BayesC); colnames(pred_bayesC)[1] <- "Prediction"
-                        pred_bayesLasso <- as.data.frame(stacked_preds$BL); colnames(pred_bayesLasso)[1] <- "Prediction"
+                          # Empty data.frame guard
+                          if (ncol(Xcov_df) == 0) {
+                            return(NULL)
+                          }
 
-                        if(!("rrBLUP" %in% Additional_models)){
-                          stack_allmodels <- data.frame(y = Y.raw[rownames(Y.raw) %in% test_ids,2], BRR = pred_brr$Prediction, BayesA = pred_bayesA$Prediction,
-                                                        BayesB = pred_bayesB$Prediction, BayesC = pred_bayesC$Prediction, BayesLasso = pred_bayesLasso$Prediction)
-                        } else {
-                          stack_allmodels <- data.frame(y = Y.raw[rownames(Y.raw) %in% test_ids,2], GBLUP = pred_gblup, rrBLUP = pred_rrblup, RKHS = pred_rkhs, BRR = pred_brr$Prediction,
-                                                        BayesA = pred_bayesA$Prediction, BayesB = pred_bayesB$Prediction, BayesC = pred_bayesC$Prediction, BayesLasso = pred_bayesLasso$Prediction)
+                          # Drop all-NA or constant columns
+                          keep <- vapply(Xcov_df, function(x) {
+                            !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
+                          }, logical(1))
+                          Xcov_df <- Xcov_df[, keep, drop = FALSE]
+
+                          if (ncol(Xcov_df) == 0) {
+                            return(NULL)
+                          }
+
+                          # Build design matrix (no intercept)
+                          Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
+
+                          # Drop duplicate columns after factor expansion
+                          dup <- duplicated(colnames(Xcov_mat))
+                          if (any(dup)) {
+                            Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
+                          }
+
+                          # Drop near-zero variance columns
+                          nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
+                          if (any(nzv)) {
+                            message(
+                              "Dropping ", sum(nzv), " near-zero variance covariates: ",
+                              paste(colnames(Xcov_mat)[nzv], collapse = ", ")
+                            )
+                            Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
+                          }
+
+                          # Enforce full rank by dropping collinear columns
+                          if (ncol(Xcov_mat) > 1) {
+                            qrX <- qr(Xcov_mat)
+                            if (qrX$rank < ncol(Xcov_mat)) {
+                              drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
+                              message(
+                                "Dropping collinear covariates: ",
+                                paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
+                              )
+                              keep_idx <- qrX$pivot[seq_len(qrX$rank)]
+                              Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
+                            }
+                          }
+
+                          # Final check: return NULL if no valid covariates left
+                          if (ncol(Xcov_mat) == 0) {
+                            return(NULL)
+                          }
+
+                          return(Xcov_mat)
                         }
-                        stack_allmodels_scaled <- as.data.frame(scale(stack_allmodels[, -1]))
-                        stack_allmodels_scaled$y <- stack_allmodels$y
-                        stack_allmodels <-  stack_allmodels_scaled
-                        if(!("rrBLUP" %in% Additional_models)){
-                          fit_stack <- lm(y ~ BRR + BayesA + BayesB + BayesC + BayesLasso, data = stack_allmodels)
-                        } else {
-                          fit_stack <- lm(y ~ GBLUP + rrBLUP + RKHS + BRR + BayesA + BayesB + BayesC + BayesLasso, data = stack_allmodels)
+                        # Usage: safely assign or NULL
+                        Xcov_mat <- prepare_covariates(Xcov)
+                        if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
+                          Xcov_mat <- NULL
                         }
-                        stacked_prediction <- predict(fit_stack, newdata = stack_allmodels)
-                        stack_allmodels$StackedPrediction <- stacked_prediction
-                        cor(stack_allmodels$y, stack_allmodels$StackedPrediction)
-                      } else {
-                        stack_allmodels <- data.frame(y = Y.raw[rownames(Y.raw) %in% test_ids,2], GBLUP = pred_gblup, rrBLUP = pred_rrblup)
-                        stack_allmodels_scaled <- as.data.frame(scale(stack_allmodels[, -1]))
-                        stack_allmodels_scaled$y <- stack_allmodels$y
-                        stack_allmodels <-  stack_allmodels_scaled
-                        fit_stack <- lm(y ~ GBLUP + rrBLUP, data = stack_allmodels)
-                        stacked_prediction <- predict(fit_stack, newdata = stack_allmodels)
-                        stack_allmodels$StackedPrediction <- stacked_prediction
-                        cor(stack_allmodels$y, stack_allmodels$StackedPrediction)
+                        # --- rrBLUP model ---
+                        model_rrblup <- rrBLUP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
+                        # --- Prediction ---
+                        kept_snps <- colnames(Z_train)
+                        Z_test <- geno_scaled[test_ids, kept_snps, drop = FALSE]
+                        Z_test <- scale(Z_test, center = colMeans(geno_scaled[train_ids, kept_snps]), scale = FALSE)
+                        pred_rrblup_g <- as.vector(Z_test %*% model_rrblup$u)
+
+                        # metagenomic rrBLUP marker effects model
+                        train_ids <- which(!is.na(Y.masked))
+                        y_train <- Y.masked[train_ids]
+                        mgeno_scaled <- as.matrix(mgeno_scaled)
+                        mode(mgeno_scaled) <- "numeric"
+                        # --- SNP preparation ---
+                        prepare_rrblup_matrix <- function(Z, y) {
+                          Z <- as.matrix(Z)
+                          mode(Z) <- "numeric"
+                          keep_cols <- apply(Z, 2, function(col) {
+                            all(is.finite(col)) && var(col, na.rm = TRUE) > 1e-8
+                          })
+                          Z_clean <- Z[, keep_cols, drop = FALSE]
+                          Z_clean <- scale(Z_clean, center = TRUE, scale = FALSE)
+                          stopifnot(nrow(Z_clean) == length(y))
+                          stopifnot(!anyNA(Z_clean), !any(is.infinite(Z_clean)))
+                          return(Z_clean)
+                        }
+                        Z_train <- prepare_rrblup_matrix(mgeno_scaled[train_ids, ], y_train)
+                        # --- Covariate preparation ---
+                        prepare_covariates <- function(Xcov) {
+
+                          # Return NULL immediately if no covariates
+                          if (is.null(Xcov)) {
+                            return(NULL)
+                          }
+
+                          # Coerce to data.frame safely
+                          if (is.list(Xcov) && !is.data.frame(Xcov)) {
+                            Xcov_df <- as.data.frame(do.call(cbind, Xcov))
+                          } else {
+                            Xcov_df <- as.data.frame(Xcov)
+                          }
+
+                          # Empty data.frame guard
+                          if (ncol(Xcov_df) == 0) {
+                            return(NULL)
+                          }
+
+                          # Drop all-NA or constant columns
+                          keep <- vapply(Xcov_df, function(x) {
+                            !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
+                          }, logical(1))
+                          Xcov_df <- Xcov_df[, keep, drop = FALSE]
+
+                          if (ncol(Xcov_df) == 0) {
+                            return(NULL)
+                          }
+
+                          # Build design matrix (no intercept)
+                          Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
+
+                          # Drop duplicate columns after factor expansion
+                          dup <- duplicated(colnames(Xcov_mat))
+                          if (any(dup)) {
+                            Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
+                          }
+
+                          # Drop near-zero variance columns
+                          nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
+                          if (any(nzv)) {
+                            message(
+                              "Dropping ", sum(nzv), " near-zero variance covariates: ",
+                              paste(colnames(Xcov_mat)[nzv], collapse = ", ")
+                            )
+                            Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
+                          }
+
+                          # Enforce full rank by dropping collinear columns
+                          if (ncol(Xcov_mat) > 1) {
+                            qrX <- qr(Xcov_mat)
+                            if (qrX$rank < ncol(Xcov_mat)) {
+                              drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
+                              message(
+                                "Dropping collinear covariates: ",
+                                paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
+                              )
+                              keep_idx <- qrX$pivot[seq_len(qrX$rank)]
+                              Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
+                            }
+                          }
+
+                          # Final check: return NULL if no valid covariates left
+                          if (ncol(Xcov_mat) == 0) {
+                            return(NULL)
+                          }
+
+                          return(Xcov_mat)
+                        }
+                        # Usage: safely assign or NULL
+                        Xcov_mat <- prepare_covariates(Xcov)
+                        if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
+                          Xcov_mat <- NULL
+                        }
+                        # --- rrBLUP model ---
+                        model_rrblup <- rrBLUP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
+                        # --- Prediction ---
+                        kept_snps <- colnames(Z_train)
+                        Z_test <- mgeno_scaled[test_ids, kept_snps, drop = FALSE]
+                        Z_test <- scale(Z_test, center = colMeans(mgeno_scaled[train_ids, kept_snps]), scale = FALSE)
+                        pred_rrblup_m <- as.vector(Z_test %*% model_rrblup$u)
+
+
+                        # Bayesian-based genomic predictions
+                        bayes_models <- c("BRR", "BayesA", "BayesB", "BayesC", "BL")  # BL = Bayesian Lasso
+                        gc()
+                        if(any(grepl("Bayes",unlist(Additional_models)))){
+                          # Function to fit a single Bayesian model for one phenotype and one or more multiple covariates
+                          run_independent_bayes <- function(model_name, Y.masked, Y.covmasked, geno_scaled, mgeno_scaled, nIter, burnIn) {
+                            covTraits <- colnames(Y.covmasked)
+                            # ---- Genomic step ----
+                            gebv_list <- list()
+                            for (covt in covTraits) {
+                              y <- Y.covmasked[[covt]]
+                              ok <- !is.na(y)
+                              fm <- BGLR(y = y[ok], ETA = list(list(X = geno_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                              b <- fm$ETA[[1]]$b
+                              gebv_full <- rep(NA, length(y))
+                              gebv_full[ok] <- as.numeric(geno_scaled[ok, , drop = FALSE] %*% b)
+                              gebv_list[[covt]] <- gebv_full
+                            }
+                            Y.tmasked <- as.data.frame(Y.masked)
+                            for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
+                            train_idx <- which(!is.na(Y.tmasked[,1]))
+                            test_idx  <- which(is.na(Y.tmasked[,1]))
+                            y_train <- Y.tmasked[train_idx, 1]
+                            X_train <- as.matrix(Y.tmasked[train_idx, -1, drop = FALSE])
+                            X_test  <- as.matrix(Y.tmasked[test_idx, -1, drop = FALSE])
+                            fit <- BGLR(y = y_train, ETA = list(list(X = geno_scaled[train_idx, , drop = FALSE], model = model_name),list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                            yHat_all <- rep(NA, nrow(Y.tmasked))
+                            yHat_all[train_idx] <- fit$yHat
+                            b_markers <- fit$ETA[[1]]$b
+                            b_fixed   <- fit$ETA[[2]]$b
+                            X_test[is.na(X_test)] <- 0
+                            marker_part <- if (!is.null(b_markers)) geno_scaled[test_idx, , drop = FALSE] %*% b_markers else 0
+                            fixed_part  <- if (!is.null(b_fixed))   X_test %*% b_fixed else 0
+                            pred_g <- as.numeric(marker_part + fixed_part)
+                            # ---- Metagenomic step ----
+                            gebv_list <- list()
+                            for (covt in covTraits) {
+                              y <- Y.covmasked[[covt]]
+                              ok <- !is.na(y)
+                              fm <- BGLR(y = y[ok], ETA = list(list(X = mgeno_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                              b <- fm$ETA[[1]]$b
+                              gebv_full <- rep(NA, length(y))
+                              gebv_full[ok] <- as.numeric(mgeno_scaled[ok, , drop = FALSE] %*% b)
+                              gebv_list[[covt]] <- gebv_full
+                            }
+                            Y.tmasked <- as.data.frame(Y.masked)
+                            for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
+                            train_idx <- which(!is.na(Y.tmasked[,1]))
+                            test_idx  <- which(is.na(Y.tmasked[,1]))
+                            y_train <- Y.tmasked[train_idx, 1]
+                            X_train <- as.matrix(Y.tmasked[train_idx, -1, drop = FALSE])
+                            X_test  <- as.matrix(Y.tmasked[test_idx, -1, drop = FALSE])
+                            fit <- BGLR(y = y_train, ETA = list(list(X = mgeno_scaled[train_idx, , drop = FALSE], model = model_name),list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                            yHat_all <- rep(NA, nrow(Y.tmasked))
+                            yHat_all[train_idx] <- fit$yHat
+                            b_markers <- fit$ETA[[1]]$b
+                            b_fixed   <- fit$ETA[[2]]$b
+                            X_test[is.na(X_test)] <- 0
+                            marker_part <- if (!is.null(b_markers)) mgeno_scaled[test_idx, , drop = FALSE] %*% b_markers else 0
+                            fixed_part  <- if (!is.null(b_fixed))   X_test %*% b_fixed else 0
+                            pred_m <- as.numeric(marker_part + fixed_part)
+                            return(data.frame(pred_g = pred_g, pred_m = pred_m, row.names = rownames(Y.tmasked)[test_idx]))
+                          }
+
+                          # Wrapper to run all models in parallel
+                          run_parallel_stack <- function(Y.masked, Y.covmasked, geno_scaled, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
+                            cl <- makeCluster(n.cores)
+                            clusterEvalQ(cl, library(BGLR))
+                            clusterExport(cl, varlist = c("Y.masked", "Y.covmasked", "geno_scaled","mgeno_scaled", "nIter", "burnIn", "run_independent_bayes"), envir = environment())
+                            preds_list <- parLapply(cl, bayes_models, function(model) {
+                              run_independent_bayes(model, Y.masked = Y.masked, Y.covmasked = Y.covmasked, geno_scaled = geno_scaled, mgeno_scaled = mgeno_scaled, nIter = nIter, burnIn = burnIn)
+                            })
+                            stopCluster(cl)
+                            names(preds_list) <- bayes_models
+                            return(preds_list)
+                          }
+
+                          # Run all Bayesian models in parallel
+                          preds_stack <- run_parallel_stack(Y.masked = Y.masked, Y.covmasked = Y.covmasked, geno_scaled = geno_scaled, mgeno_scaled = mgeno_scaled, nIter = nIter, burnIn = burnIn, n.cores = ncores)
+
+                          # Stack predictions using lm for each model
+                          stacked_preds <- lapply(preds_stack, function(pred_df) {
+                            test_rows <- which(is.na(Y.masked))
+                            y_test <- as.numeric(Y.raw[test_rows, 2])
+
+                            stack_df <- data.frame(y = y_test, pred_g = pred_df$pred_g, pred_m = pred_df$pred_m)
+                            stack_df <- stack_df[complete.cases(stack_df), ]
+
+                            if (nrow(stack_df) == 0) {
+                              warning("No valid rows to fit linear model.")
+                              return(rep(NA, length(test_rows)))
+                            }
+
+                            # Stacking model: combine pred_g and pred_m
+                            fit <- lm(y ~ pred_g + pred_m, data = stack_df)
+                            predict(fit, newdata = stack_df)
+                          })
+
+                          names(stacked_preds) <- bayes_models
+                          pred_brr <- as.data.frame(stacked_preds$BRR); colnames(pred_brr)[1] <- "Prediction"
+                          pred_bayesA <- as.data.frame(stacked_preds$BayesA); colnames(pred_bayesA)[1] <- "Prediction"
+                          pred_bayesB <- as.data.frame(stacked_preds$BayesB); colnames(pred_bayesB)[1] <- "Prediction"
+                          pred_bayesC <- as.data.frame(stacked_preds$BayesC); colnames(pred_bayesC)[1] <- "Prediction"
+                          pred_bayesLasso <- as.data.frame(stacked_preds$BL); colnames(pred_bayesLasso)[1] <- "Prediction"
+
+                          if(!("rrBLUP" %in% Additional_models)){
+                            stack_allmodels <- data.frame(y = Y.raw[rownames(Y.raw) %in% test_ids,2], BRR = pred_brr$Prediction, BayesA = pred_bayesA$Prediction,
+                                                          BayesB = pred_bayesB$Prediction, BayesC = pred_bayesC$Prediction, BayesLasso = pred_bayesLasso$Prediction)
+                          } else {
+                            stack_allmodels <- data.frame(y = Y.raw[rownames(Y.raw) %in% test_ids,2], GBLUP = pred_gblup, rrBLUP = pred_rrblup, RKHS = pred_rkhs, BRR = pred_brr$Prediction,
+                                                          BayesA = pred_bayesA$Prediction, BayesB = pred_bayesB$Prediction, BayesC = pred_bayesC$Prediction, BayesLasso = pred_bayesLasso$Prediction)
+                          }
+                          stack_allmodels_scaled <- as.data.frame(scale(stack_allmodels[, -1]))
+                          stack_allmodels_scaled$y <- stack_allmodels$y
+                          stack_allmodels <-  stack_allmodels_scaled
+                          if(!("rrBLUP" %in% Additional_models)){
+                            fit_stack <- lm(y ~ BRR + BayesA + BayesB + BayesC + BayesLasso, data = stack_allmodels)
+                          } else {
+                            fit_stack <- lm(y ~ GBLUP + rrBLUP + RKHS + BRR + BayesA + BayesB + BayesC + BayesLasso, data = stack_allmodels)
+                          }
+                          stacked_prediction <- predict(fit_stack, newdata = stack_allmodels)
+                          stack_allmodels$StackedPrediction <- stacked_prediction
+                          cor(stack_allmodels$y, stack_allmodels$StackedPrediction)
+                        } else {
+                          stack_allmodels <- data.frame(y = Y.raw[rownames(Y.raw) %in% test_ids,2], GBLUP = pred_gblup, rrBLUP = pred_rrblup)
+                          stack_allmodels_scaled <- as.data.frame(scale(stack_allmodels[, -1]))
+                          stack_allmodels_scaled$y <- stack_allmodels$y
+                          stack_allmodels <-  stack_allmodels_scaled
+                          fit_stack <- lm(y ~ GBLUP + rrBLUP, data = stack_allmodels)
+                          stacked_prediction <- predict(fit_stack, newdata = stack_allmodels)
+                          stack_allmodels$StackedPrediction <- stacked_prediction
+                          cor(stack_allmodels$y, stack_allmodels$StackedPrediction)
+                        }
                       }
                     }
                   }
-                }
                 }
                 gc()
                 if(gp_model == "gGBLUP"){
                   if (gene_model == "Full" || gene_model == "All"){
                     prepare_covariates <- function(Xcov) {
+
+                      # Return NULL immediately if no covariates
+                      if (is.null(Xcov)) {
+                        return(NULL)
+                      }
+
+                      # Coerce to data.frame safely
                       if (is.list(Xcov) && !is.data.frame(Xcov)) {
                         Xcov_df <- as.data.frame(do.call(cbind, Xcov))
                       } else {
                         Xcov_df <- as.data.frame(Xcov)
                       }
 
-                      # remove intercept to avoid duplication
+                      # Empty data.frame guard
+                      if (ncol(Xcov_df) == 0) {
+                        return(NULL)
+                      }
+
+                      # Drop all-NA or constant columns
+                      keep <- vapply(Xcov_df, function(x) {
+                        !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
+                      }, logical(1))
+                      Xcov_df <- Xcov_df[, keep, drop = FALSE]
+
+                      if (ncol(Xcov_df) == 0) {
+                        return(NULL)
+                      }
+
+                      # Build design matrix (no intercept)
                       Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
 
-                      # drop duplicates
-                      Xcov_mat <- Xcov_mat[, !duplicated(colnames(Xcov_mat)), drop = FALSE]
+                      # Drop duplicate columns after factor expansion
+                      dup <- duplicated(colnames(Xcov_mat))
+                      if (any(dup)) {
+                        Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
+                      }
 
-                      # drop near-zero variance
+                      # Drop near-zero variance columns
                       nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
                       if (any(nzv)) {
-                        message("Dropping ", sum(nzv), " near-zero variance covariates: ",
-                                paste(colnames(Xcov_mat)[nzv], collapse = ", "))
+                        message(
+                          "Dropping ", sum(nzv), " near-zero variance covariates: ",
+                          paste(colnames(Xcov_mat)[nzv], collapse = ", ")
+                        )
                         Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
                       }
 
-                      # enforce full rank
-                      qrX <- qr(Xcov_mat)
-                      if (qrX$rank < ncol(Xcov_mat)) {
-                        drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                        message("Dropping collinear covariates: ",
-                                paste(colnames(Xcov_mat)[drop_idx], collapse = ", "))
-                        Xcov_mat <- Xcov_mat[, qrX$pivot[seq_len(qrX$rank)], drop = FALSE]
+                      # Enforce full rank by dropping collinear columns
+                      if (ncol(Xcov_mat) > 1) {
+                        qrX <- qr(Xcov_mat)
+                        if (qrX$rank < ncol(Xcov_mat)) {
+                          drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
+                          message(
+                            "Dropping collinear covariates: ",
+                            paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
+                          )
+                          keep_idx <- qrX$pivot[seq_len(qrX$rank)]
+                          Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
+                        }
                       }
 
-                      if (ncol(Xcov_mat) == 0) return(NULL)
+                      # Final check: return NULL if no valid covariates left
+                      if (ncol(Xcov_mat) == 0) {
+                        return(NULL)
+                      }
+
                       return(Xcov_mat)
+                    }
+                    # Usage: safely assign or NULL
+                    Xcov_mat <- prepare_covariates(Xcov)
+                    if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
+                      Xcov_mat <- NULL
                     }
 
                     # GBLUP  with rrBLUP package
@@ -3182,37 +3848,75 @@ holostackGP <- function(
                       Z_train <- prepare_rrblup_matrix(geno.A_scaled[train_ids, ], y_train)
                       # --- Covariate preparation ---
                       prepare_covariates <- function(Xcov) {
+
+                        # Return NULL immediately if no covariates
+                        if (is.null(Xcov)) {
+                          return(NULL)
+                        }
+
+                        # Coerce to data.frame safely
                         if (is.list(Xcov) && !is.data.frame(Xcov)) {
                           Xcov_df <- as.data.frame(do.call(cbind, Xcov))
                         } else {
                           Xcov_df <- as.data.frame(Xcov)
                         }
 
-                        Xcov_mat <- model.matrix(~ ., data = Xcov_df)
+                        # Empty data.frame guard
+                        if (ncol(Xcov_df) == 0) {
+                          return(NULL)
+                        }
 
-                        # Drop duplicate columns
-                        Xcov_mat <- Xcov_mat[, !duplicated(colnames(Xcov_mat)), drop = FALSE]
+                        # Drop all-NA or constant columns
+                        keep <- vapply(Xcov_df, function(x) {
+                          !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
+                        }, logical(1))
+                        Xcov_df <- Xcov_df[, keep, drop = FALSE]
+
+                        if (ncol(Xcov_df) == 0) {
+                          return(NULL)
+                        }
+
+                        # Build design matrix (no intercept)
+                        Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
+
+                        # Drop duplicate columns after factor expansion
+                        dup <- duplicated(colnames(Xcov_mat))
+                        if (any(dup)) {
+                          Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
+                        }
 
                         # Drop near-zero variance columns
                         nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
                         if (any(nzv)) {
-                          message("Dropping ", sum(nzv), " near-zero variance covariates: ",
-                                  paste(colnames(Xcov_mat)[nzv], collapse = ", "))
+                          message(
+                            "Dropping ", sum(nzv), " near-zero variance covariates: ",
+                            paste(colnames(Xcov_mat)[nzv], collapse = ", ")
+                          )
                           Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
                         }
 
-                        # Drop collinear columns (full rank check)
-                        qrX <- qr(Xcov_mat)
-                        if (qrX$rank < ncol(Xcov_mat)) {
-                          drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                          message("Dropping collinear covariates: ",
-                                  paste(colnames(Xcov_mat)[drop_idx], collapse = ", "))
-                          keep_idx <- qrX$pivot[seq_len(qrX$rank)]
-                          Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
+                        # Enforce full rank by dropping collinear columns
+                        if (ncol(Xcov_mat) > 1) {
+                          qrX <- qr(Xcov_mat)
+                          if (qrX$rank < ncol(Xcov_mat)) {
+                            drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
+                            message(
+                              "Dropping collinear covariates: ",
+                              paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
+                            )
+                            keep_idx <- qrX$pivot[seq_len(qrX$rank)]
+                            Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
+                          }
+                        }
+
+                        # Final check: return NULL if no valid covariates left
+                        if (ncol(Xcov_mat) == 0) {
+                          return(NULL)
                         }
 
                         return(Xcov_mat)
                       }
+                      # Usage: safely assign or NULL
                       Xcov_mat <- prepare_covariates(Xcov)
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
                         Xcov_mat <- NULL
@@ -3246,37 +3950,75 @@ holostackGP <- function(
                       Z_train <- prepare_rrblup_matrix(geno.D_scaled[train_ids, ], y_train)
                       # --- Covariate preparation ---
                       prepare_covariates <- function(Xcov) {
+
+                        # Return NULL immediately if no covariates
+                        if (is.null(Xcov)) {
+                          return(NULL)
+                        }
+
+                        # Coerce to data.frame safely
                         if (is.list(Xcov) && !is.data.frame(Xcov)) {
                           Xcov_df <- as.data.frame(do.call(cbind, Xcov))
                         } else {
                           Xcov_df <- as.data.frame(Xcov)
                         }
 
-                        Xcov_mat <- model.matrix(~ ., data = Xcov_df)
+                        # Empty data.frame guard
+                        if (ncol(Xcov_df) == 0) {
+                          return(NULL)
+                        }
 
-                        # Drop duplicate columns
-                        Xcov_mat <- Xcov_mat[, !duplicated(colnames(Xcov_mat)), drop = FALSE]
+                        # Drop all-NA or constant columns
+                        keep <- vapply(Xcov_df, function(x) {
+                          !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
+                        }, logical(1))
+                        Xcov_df <- Xcov_df[, keep, drop = FALSE]
+
+                        if (ncol(Xcov_df) == 0) {
+                          return(NULL)
+                        }
+
+                        # Build design matrix (no intercept)
+                        Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
+
+                        # Drop duplicate columns after factor expansion
+                        dup <- duplicated(colnames(Xcov_mat))
+                        if (any(dup)) {
+                          Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
+                        }
 
                         # Drop near-zero variance columns
                         nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
                         if (any(nzv)) {
-                          message("Dropping ", sum(nzv), " near-zero variance covariates: ",
-                                  paste(colnames(Xcov_mat)[nzv], collapse = ", "))
+                          message(
+                            "Dropping ", sum(nzv), " near-zero variance covariates: ",
+                            paste(colnames(Xcov_mat)[nzv], collapse = ", ")
+                          )
                           Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
                         }
 
-                        # Drop collinear columns (full rank check)
-                        qrX <- qr(Xcov_mat)
-                        if (qrX$rank < ncol(Xcov_mat)) {
-                          drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                          message("Dropping collinear covariates: ",
-                                  paste(colnames(Xcov_mat)[drop_idx], collapse = ", "))
-                          keep_idx <- qrX$pivot[seq_len(qrX$rank)]
-                          Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
+                        # Enforce full rank by dropping collinear columns
+                        if (ncol(Xcov_mat) > 1) {
+                          qrX <- qr(Xcov_mat)
+                          if (qrX$rank < ncol(Xcov_mat)) {
+                            drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
+                            message(
+                              "Dropping collinear covariates: ",
+                              paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
+                            )
+                            keep_idx <- qrX$pivot[seq_len(qrX$rank)]
+                            Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
+                          }
+                        }
+
+                        # Final check: return NULL if no valid covariates left
+                        if (ncol(Xcov_mat) == 0) {
+                          return(NULL)
                         }
 
                         return(Xcov_mat)
                       }
+                      # Usage: safely assign or NULL
                       Xcov_mat <- prepare_covariates(Xcov)
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
                         Xcov_mat <- NULL
@@ -3310,37 +4052,75 @@ holostackGP <- function(
                       Z_train <- prepare_rrblup_matrix(mgeno_scaled[train_ids, ], y_train)
                       # --- Covariate preparation ---
                       prepare_covariates <- function(Xcov) {
+
+                        # Return NULL immediately if no covariates
+                        if (is.null(Xcov)) {
+                          return(NULL)
+                        }
+
+                        # Coerce to data.frame safely
                         if (is.list(Xcov) && !is.data.frame(Xcov)) {
                           Xcov_df <- as.data.frame(do.call(cbind, Xcov))
                         } else {
                           Xcov_df <- as.data.frame(Xcov)
                         }
 
-                        Xcov_mat <- model.matrix(~ ., data = Xcov_df)
+                        # Empty data.frame guard
+                        if (ncol(Xcov_df) == 0) {
+                          return(NULL)
+                        }
 
-                        # Drop duplicate columns
-                        Xcov_mat <- Xcov_mat[, !duplicated(colnames(Xcov_mat)), drop = FALSE]
+                        # Drop all-NA or constant columns
+                        keep <- vapply(Xcov_df, function(x) {
+                          !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
+                        }, logical(1))
+                        Xcov_df <- Xcov_df[, keep, drop = FALSE]
+
+                        if (ncol(Xcov_df) == 0) {
+                          return(NULL)
+                        }
+
+                        # Build design matrix (no intercept)
+                        Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
+
+                        # Drop duplicate columns after factor expansion
+                        dup <- duplicated(colnames(Xcov_mat))
+                        if (any(dup)) {
+                          Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
+                        }
 
                         # Drop near-zero variance columns
                         nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
                         if (any(nzv)) {
-                          message("Dropping ", sum(nzv), " near-zero variance covariates: ",
-                                  paste(colnames(Xcov_mat)[nzv], collapse = ", "))
+                          message(
+                            "Dropping ", sum(nzv), " near-zero variance covariates: ",
+                            paste(colnames(Xcov_mat)[nzv], collapse = ", ")
+                          )
                           Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
                         }
 
-                        # Drop collinear columns (full rank check)
-                        qrX <- qr(Xcov_mat)
-                        if (qrX$rank < ncol(Xcov_mat)) {
-                          drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                          message("Dropping collinear covariates: ",
-                                  paste(colnames(Xcov_mat)[drop_idx], collapse = ", "))
-                          keep_idx <- qrX$pivot[seq_len(qrX$rank)]
-                          Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
+                        # Enforce full rank by dropping collinear columns
+                        if (ncol(Xcov_mat) > 1) {
+                          qrX <- qr(Xcov_mat)
+                          if (qrX$rank < ncol(Xcov_mat)) {
+                            drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
+                            message(
+                              "Dropping collinear covariates: ",
+                              paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
+                            )
+                            keep_idx <- qrX$pivot[seq_len(qrX$rank)]
+                            Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
+                          }
+                        }
+
+                        # Final check: return NULL if no valid covariates left
+                        if (ncol(Xcov_mat) == 0) {
+                          return(NULL)
                         }
 
                         return(Xcov_mat)
                       }
+                      # Usage: safely assign or NULL
                       Xcov_mat <- prepare_covariates(Xcov)
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
                         Xcov_mat <- NULL
@@ -3510,37 +4290,78 @@ holostackGP <- function(
                     }
                   } else {
                     prepare_covariates <- function(Xcov) {
+
+                      # Return NULL immediately if no covariates
+                      if (is.null(Xcov)) {
+                        return(NULL)
+                      }
+
+                      # Coerce to data.frame safely
                       if (is.list(Xcov) && !is.data.frame(Xcov)) {
                         Xcov_df <- as.data.frame(do.call(cbind, Xcov))
                       } else {
                         Xcov_df <- as.data.frame(Xcov)
                       }
 
-                      # remove intercept to avoid duplication
+                      # Empty data.frame guard
+                      if (ncol(Xcov_df) == 0) {
+                        return(NULL)
+                      }
+
+                      # Drop all-NA or constant columns
+                      keep <- vapply(Xcov_df, function(x) {
+                        !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
+                      }, logical(1))
+                      Xcov_df <- Xcov_df[, keep, drop = FALSE]
+
+                      if (ncol(Xcov_df) == 0) {
+                        return(NULL)
+                      }
+
+                      # Build design matrix (no intercept)
                       Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
 
-                      # drop duplicates
-                      Xcov_mat <- Xcov_mat[, !duplicated(colnames(Xcov_mat)), drop = FALSE]
+                      # Drop duplicate columns after factor expansion
+                      dup <- duplicated(colnames(Xcov_mat))
+                      if (any(dup)) {
+                        Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
+                      }
 
-                      # drop near-zero variance
+                      # Drop near-zero variance columns
                       nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
                       if (any(nzv)) {
-                        message("Dropping ", sum(nzv), " near-zero variance covariates: ",
-                                paste(colnames(Xcov_mat)[nzv], collapse = ", "))
+                        message(
+                          "Dropping ", sum(nzv), " near-zero variance covariates: ",
+                          paste(colnames(Xcov_mat)[nzv], collapse = ", ")
+                        )
                         Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
                       }
 
-                      # enforce full rank
-                      qrX <- qr(Xcov_mat)
-                      if (qrX$rank < ncol(Xcov_mat)) {
-                        drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                        message("Dropping collinear covariates: ",
-                                paste(colnames(Xcov_mat)[drop_idx], collapse = ", "))
-                        Xcov_mat <- Xcov_mat[, qrX$pivot[seq_len(qrX$rank)], drop = FALSE]
+                      # Enforce full rank by dropping collinear columns
+                      if (ncol(Xcov_mat) > 1) {
+                        qrX <- qr(Xcov_mat)
+                        if (qrX$rank < ncol(Xcov_mat)) {
+                          drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
+                          message(
+                            "Dropping collinear covariates: ",
+                            paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
+                          )
+                          keep_idx <- qrX$pivot[seq_len(qrX$rank)]
+                          Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
+                        }
                       }
 
-                      if (ncol(Xcov_mat) == 0) return(NULL)
+                      # Final check: return NULL if no valid covariates left
+                      if (ncol(Xcov_mat) == 0) {
+                        return(NULL)
+                      }
+
                       return(Xcov_mat)
+                    }
+                    # Usage: safely assign or NULL
+                    Xcov_mat <- prepare_covariates(Xcov)
+                    if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
+                      Xcov_mat <- NULL
                     }
 
                     # GBLUP with rrBLUP package
@@ -3724,37 +4545,75 @@ holostackGP <- function(
                       Z_train <- prepare_rrblup_matrix(geno_scaled[train_ids, ], y_train)
                       # --- Covariate preparation ---
                       prepare_covariates <- function(Xcov) {
+
+                        # Return NULL immediately if no covariates
+                        if (is.null(Xcov)) {
+                          return(NULL)
+                        }
+
+                        # Coerce to data.frame safely
                         if (is.list(Xcov) && !is.data.frame(Xcov)) {
                           Xcov_df <- as.data.frame(do.call(cbind, Xcov))
                         } else {
                           Xcov_df <- as.data.frame(Xcov)
                         }
 
-                        Xcov_mat <- model.matrix(~ ., data = Xcov_df)
+                        # Empty data.frame guard
+                        if (ncol(Xcov_df) == 0) {
+                          return(NULL)
+                        }
 
-                        # Drop duplicate columns
-                        Xcov_mat <- Xcov_mat[, !duplicated(colnames(Xcov_mat)), drop = FALSE]
+                        # Drop all-NA or constant columns
+                        keep <- vapply(Xcov_df, function(x) {
+                          !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
+                        }, logical(1))
+                        Xcov_df <- Xcov_df[, keep, drop = FALSE]
+
+                        if (ncol(Xcov_df) == 0) {
+                          return(NULL)
+                        }
+
+                        # Build design matrix (no intercept)
+                        Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
+
+                        # Drop duplicate columns after factor expansion
+                        dup <- duplicated(colnames(Xcov_mat))
+                        if (any(dup)) {
+                          Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
+                        }
 
                         # Drop near-zero variance columns
                         nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
                         if (any(nzv)) {
-                          message("Dropping ", sum(nzv), " near-zero variance covariates: ",
-                                  paste(colnames(Xcov_mat)[nzv], collapse = ", "))
+                          message(
+                            "Dropping ", sum(nzv), " near-zero variance covariates: ",
+                            paste(colnames(Xcov_mat)[nzv], collapse = ", ")
+                          )
                           Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
                         }
 
-                        # Drop collinear columns (full rank check)
-                        qrX <- qr(Xcov_mat)
-                        if (qrX$rank < ncol(Xcov_mat)) {
-                          drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                          message("Dropping collinear covariates: ",
-                                  paste(colnames(Xcov_mat)[drop_idx], collapse = ", "))
-                          keep_idx <- qrX$pivot[seq_len(qrX$rank)]
-                          Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
+                        # Enforce full rank by dropping collinear columns
+                        if (ncol(Xcov_mat) > 1) {
+                          qrX <- qr(Xcov_mat)
+                          if (qrX$rank < ncol(Xcov_mat)) {
+                            drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
+                            message(
+                              "Dropping collinear covariates: ",
+                              paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
+                            )
+                            keep_idx <- qrX$pivot[seq_len(qrX$rank)]
+                            Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
+                          }
+                        }
+
+                        # Final check: return NULL if no valid covariates left
+                        if (ncol(Xcov_mat) == 0) {
+                          return(NULL)
                         }
 
                         return(Xcov_mat)
                       }
+                      # Usage: safely assign or NULL
                       Xcov_mat <- prepare_covariates(Xcov)
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
                         Xcov_mat <- NULL
