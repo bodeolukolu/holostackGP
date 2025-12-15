@@ -1064,11 +1064,6 @@ holostackGP <- function(
 
                       return(Xcov_mat)
                     }
-                    # Usage: safely assign or NULL
-                    Xcov_mat <- prepare_covariates(Xcov)
-                    if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
-                      Xcov_mat <- NULL
-                    }
 
                     # GBLUP  with rrBLUP package
                     pred_list <- list()
@@ -1531,11 +1526,6 @@ holostackGP <- function(
 
                       return(Xcov_mat)
                     }
-                    # Usage: safely assign or NULL
-                    Xcov_mat <- prepare_covariates(Xcov)
-                    if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
-                      Xcov_mat <- NULL
-                    }
 
                     # GBLUP with rrBLUP package
                     {covTraits <- colnames(Y.covmasked)
@@ -1857,11 +1847,6 @@ holostackGP <- function(
                       }
 
                       return(Xcov_mat)
-                    }
-                    # Usage: safely assign or NULL
-                    Xcov_mat <- prepare_covariates(Xcov)
-                    if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
-                      Xcov_mat <- NULL
                     }
 
                     # GBLUP  with rrBLUP package
@@ -2194,11 +2179,6 @@ holostackGP <- function(
 
                       return(Xcov_mat)
                     }
-                    # Usage: safely assign or NULL
-                    Xcov_mat <- prepare_covariates(Xcov)
-                    if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
-                      Xcov_mat <- NULL
-                    }
 
                     # GBLUP with rrBLUP package
                     {
@@ -2519,11 +2499,6 @@ holostackGP <- function(
                         }
 
                         return(Xcov_mat)
-                      }
-                      # Usage: safely assign or NULL
-                      Xcov_mat <- prepare_covariates(Xcov)
-                      if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
-                        Xcov_mat <- NULL
                       }
 
                       # GBLUP  with rrBLUP package
@@ -3173,11 +3148,6 @@ holostackGP <- function(
 
                         return(Xcov_mat)
                       }
-                      # Usage: safely assign or NULL
-                      Xcov_mat <- prepare_covariates(Xcov)
-                      if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
-                        Xcov_mat <- NULL
-                      }
 
                       # GBLUP with rrBLUP package
                       covTraits <- colnames(Y.covmasked)
@@ -3759,11 +3729,6 @@ holostackGP <- function(
                       }
 
                       return(Xcov_mat)
-                    }
-                    # Usage: safely assign or NULL
-                    Xcov_mat <- prepare_covariates(Xcov)
-                    if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
-                      Xcov_mat <- NULL
                     }
 
                     # GBLUP  with rrBLUP package
@@ -4358,11 +4323,6 @@ holostackGP <- function(
                       }
 
                       return(Xcov_mat)
-                    }
-                    # Usage: safely assign or NULL
-                    Xcov_mat <- prepare_covariates(Xcov)
-                    if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
-                      Xcov_mat <- NULL
                     }
 
                     # GBLUP with rrBLUP package
