@@ -545,7 +545,7 @@ holostackGP <- function(
             pop_data$no_missing <- apply(pop_data, MARGIN = 1, FUN = function(x) length(x[is.na(x)]) )
             pop_data <- subset(pop_data, no_missing < ncol(pop_data)*perc_missing)
             pop_data <- subset(pop_data, select=-c(no_missing))
-            set.seed(100+rep)
+            set.seed(123)
             if (is.numeric(subsample_markers)) {pop_data <- sample_n(pop_data, subsample_markers)}
             pop_data <- as.matrix(t(pop_data))
             #Computing the full-autopolyploid matrix based on Slater 2016 (Eq. 8 and 9)
@@ -656,7 +656,7 @@ holostackGP <- function(
 
 
           for(rep in seq(from=1, to=t, by=1)){
-
+            rep <- as.integer(rep)
             # create dataframe for out-of-fold (OOF) predictions
             if (MTME == TRUE){
               print("working on it")
@@ -718,7 +718,7 @@ holostackGP <- function(
             }
 
             ## (1) Create folds per replicate
-            set.seed(123)
+            set.seed(1000+rep)
             fold_id <- sample(rep(1:nfold_CV, length.out = n))
             names(fold_id) <- Y.raw$Taxa
             gc()
