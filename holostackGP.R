@@ -1473,7 +1473,7 @@ holostackGP <- function(
                           ## --- Normalize covariates ONCE ---
                           if (is.null(covariate)) {Y.covmasked <- NULL}
                           cl <- parallel::makeCluster(n.cores, type = "PSOCK")
-                          on.exit(parallel::, add = TRUE)
+                          on.exit(parallel::stopCluster(cl), add = TRUE)
                           parallel::clusterSetRNGStream(cl, iseed = 12345)
                           parallel::clusterEvalQ(cl, {
                             suppressPackageStartupMessages(library(BGLR))
@@ -1818,7 +1818,7 @@ holostackGP <- function(
                           ## --- Normalize covariates ONCE ---
                           if (is.null(covariate)) {Y.covmasked <- NULL}
                           cl <- parallel::makeCluster(n.cores, type = "PSOCK")
-                          on.exit(parallel::, add = TRUE)
+                          on.exit(parallel::stopCluster(cl), add = TRUE)
                           parallel::clusterSetRNGStream(cl, iseed = 12345)
                           parallel::clusterEvalQ(cl, {
                             suppressPackageStartupMessages(library(BGLR))
@@ -2180,7 +2180,7 @@ holostackGP <- function(
                           ## --- Normalize covariates ONCE ---
                           if (is.null(covariate)) {Y.covmasked <- NULL}
                           cl <- parallel::makeCluster(n.cores, type = "PSOCK")
-                          on.exit(parallel::, add = TRUE)
+                          on.exit(parallel::stopCluster(cl), add = TRUE)
                           parallel::clusterSetRNGStream(cl, iseed = 12345)
                           parallel::clusterEvalQ(cl, {
                             suppressPackageStartupMessages(library(BGLR))
@@ -2190,7 +2190,7 @@ holostackGP <- function(
                           preds_list <- parLapply(cl, bayes_models, function(model) {
                             run_independent_bayes(model, Y.masked = Y.masked, Y.covmasked = Y.covmasked,mgeno_scaled = mgeno_scaled, nIter = nIter, burnIn = burnIn)
                           })
-                          
+
                           names(preds_list) <- bayes_models
                           return(preds_list)
                         }
@@ -2526,7 +2526,7 @@ holostackGP <- function(
                           ## --- Normalize covariates ONCE ---
                           if (is.null(covariate)) {Y.covmasked <- NULL}
                           cl <- parallel::makeCluster(n.cores, type = "PSOCK")
-                          on.exit(parallel::, add = TRUE)
+                          on.exit(parallel::stopCluster(cl), add = TRUE)
                           parallel::clusterSetRNGStream(cl, iseed = 12345)
                           parallel::clusterEvalQ(cl, {
                             suppressPackageStartupMessages(library(BGLR))
@@ -3172,7 +3172,7 @@ holostackGP <- function(
                             ## --- Normalize covariates ONCE ---
                             if (is.null(covariate)) {Y.covmasked <- NULL}
                             cl <- parallel::makeCluster(n.cores, type = "PSOCK")
-                            on.exit(parallel::, add = TRUE)
+                            on.exit(parallel::stopCluster(cl), add = TRUE)
                             parallel::clusterSetRNGStream(cl, iseed = 12345)
                             parallel::clusterEvalQ(cl, {
                               suppressPackageStartupMessages(library(BGLR))
@@ -3797,7 +3797,7 @@ holostackGP <- function(
                             ## --- Normalize covariates ONCE ---
                             if (is.null(covariate)) {Y.covmasked <- NULL}
                             cl <- parallel::makeCluster(n.cores, type = "PSOCK")
-                            on.exit(parallel::, add = TRUE)
+                            on.exit(parallel::stopCluster(cl), add = TRUE)
                             parallel::clusterSetRNGStream(cl, iseed = 12345)
                             parallel::clusterEvalQ(cl, {
                               suppressPackageStartupMessages(library(BGLR))
@@ -4492,7 +4492,7 @@ holostackGP <- function(
                           ## --- Normalize covariates ONCE ---
                           if (is.null(covariate)) {Y.covmasked <- NULL}
                           cl <- parallel::makeCluster(n.cores, type = "PSOCK")
-                          on.exit(parallel::, add = TRUE)
+                          on.exit(parallel::stopCluster(cl), add = TRUE)
                           parallel::clusterSetRNGStream(cl, iseed = 12345)
                           parallel::clusterEvalQ(cl, {
                             suppressPackageStartupMessages(library(BGLR))
@@ -4961,7 +4961,7 @@ holostackGP <- function(
                           ## --- Normalize covariates ONCE ---
                           if (is.null(covariate)) {Y.covmasked <- NULL}
                           cl <- parallel::makeCluster(n.cores, type = "PSOCK")
-                          on.exit(parallel::, add = TRUE)
+                          on.exit(parallel::stopCluster(cl), add = TRUE)
                           parallel::clusterSetRNGStream(cl, iseed = 12345)
                           parallel::clusterEvalQ(cl, {
                             suppressPackageStartupMessages(library(BGLR))
