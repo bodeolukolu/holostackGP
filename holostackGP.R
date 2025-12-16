@@ -1474,7 +1474,7 @@ holostackGP <- function(
                           if (is.null(covariate)) {Y.covmasked <- NULL}
                           cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                           on.exit(parallel::stopCluster(cl), add = TRUE)
-                          parallel::clusterSetRNGStream(cl, iseed = 12345
+                          parallel::clusterSetRNGStream(cl, iseed = 12345)
                           parallel::clusterEvalQ(cl, {
                             suppressPackageStartupMessages(library(BGLR))
                             NULL
@@ -1819,7 +1819,7 @@ holostackGP <- function(
                           if (is.null(covariate)) {Y.covmasked <- NULL}
                           cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                           on.exit(parallel::stopCluster(cl), add = TRUE)
-                          parallel::clusterSetRNGStream(cl, iseed = 12345)
+                          parallel::clusterSetRNGStream(cl, iseed = 12345))
                           parallel::clusterEvalQ(cl, {
                             suppressPackageStartupMessages(library(BGLR))
                             NULL
@@ -2181,7 +2181,7 @@ holostackGP <- function(
                           if (is.null(covariate)) {Y.covmasked <- NULL}
                           cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                           on.exit(parallel::stopCluster(cl), add = TRUE)
-                          parallel::clusterSetRNGStream(cl, iseed = 12345)
+                          parallel::clusterSetRNGStream(cl, iseed = 12345))
                           parallel::clusterEvalQ(cl, {
                             suppressPackageStartupMessages(library(BGLR))
                             NULL
@@ -2527,7 +2527,7 @@ holostackGP <- function(
                           if (is.null(covariate)) {Y.covmasked <- NULL}
                           cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                           on.exit(parallel::stopCluster(cl), add = TRUE)
-                          parallel::clusterSetRNGStream(cl, iseed = 12345)
+                          parallel::clusterSetRNGStream(cl, iseed = 12345))
                           parallel::clusterEvalQ(cl, {
                             suppressPackageStartupMessages(library(BGLR))
                             NULL
@@ -3173,7 +3173,7 @@ holostackGP <- function(
                             if (is.null(covariate)) {Y.covmasked <- NULL}
                             cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                             on.exit(parallel::stopCluster(cl), add = TRUE)
-                            parallel::clusterSetRNGStream(cl, iseed = 12345)
+                            parallel::clusterSetRNGStream(cl, iseed = 12345))
                             parallel::clusterEvalQ(cl, {
                               suppressPackageStartupMessages(library(BGLR))
                               NULL
@@ -3798,7 +3798,7 @@ holostackGP <- function(
                             if (is.null(covariate)) {Y.covmasked <- NULL}
                             cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                             on.exit(parallel::stopCluster(cl), add = TRUE)
-                            parallel::clusterSetRNGStream(cl, iseed = 12345)
+                            parallel::clusterSetRNGStream(cl, iseed = 12345))
                             parallel::clusterEvalQ(cl, {
                               suppressPackageStartupMessages(library(BGLR))
                               NULL
@@ -4493,7 +4493,7 @@ holostackGP <- function(
                           if (is.null(covariate)) {Y.covmasked <- NULL}
                           cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                           on.exit(parallel::stopCluster(cl), add = TRUE)
-                          parallel::clusterSetRNGStream(cl, iseed = 12345)
+                          parallel::clusterSetRNGStream(cl, iseed = 12345))
                           parallel::clusterEvalQ(cl, {
                             suppressPackageStartupMessages(library(BGLR))
                             NULL
@@ -4962,7 +4962,7 @@ holostackGP <- function(
                           if (is.null(covariate)) {Y.covmasked <- NULL}
                           cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                           on.exit(parallel::stopCluster(cl), add = TRUE)
-                          parallel::clusterSetRNGStream(cl, iseed = 12345)
+                          parallel::clusterSetRNGStream(cl, iseed = 12345))
                           parallel::clusterEvalQ(cl, {
                             suppressPackageStartupMessages(library(BGLR))
                             NULL
