@@ -1360,7 +1360,15 @@ holostackGP <- function(
                         K_train <- K[train_idx, train_idx]
                         X_train <- Xcov_mat[train_idx, , drop = FALSE]
                         library(BGLR)
-                        fit <- BGLR(y = y_train, ETA = list(list(K = K_train, model = "RKHS"), list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                        if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
+                        ## Step 4: build ETA conditionally
+                        ETA <- list(list(K = K_train, model = "RKHS"))
+                        if (!is.null(Xcov_mat)) {
+                          X_train <- Xcov_mat[train_idx, , drop = FALSE]
+                          ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
+                        }
+                        ## Step 5: fit final model
+                        fit <- BGLR(y = y_train, ETA = ETA, nIter = nIter, burnIn = burnIn, verbose = FALSE)
                         u_train <- as.numeric(fit$ETA[[1]]$u)
                         K_test_train <- K[test_idx, train_idx]
                         pred_test <- K_test_train %*% u_train
@@ -1398,7 +1406,15 @@ holostackGP <- function(
                           X_train <- as.matrix(Y.tmasked[train_idx, -1, drop = FALSE])
                           X_test  <- as.matrix(Y.tmasked[test_idx, -1, drop = FALSE])
                           library(BGLR)
-                          fit_A <- BGLR(y = y_train, ETA = list(list(X = geno.A_scaled[train_idx, , drop = FALSE], model = model_name),list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                          if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
+                          ## Step 4: build ETA conditionally
+                          ETA <- list(list(X = geno.A_scaled[train_idx, , drop = FALSE], model = model_name))
+                          if (!is.null(Xcov_mat)) {
+                            X_train <- Xcov_mat[train_idx, , drop = FALSE]
+                            ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
+                          }
+                          ## Step 5: fit final model
+                          fit_A <- BGLR(y = y_train, ETA = ETA, nIter = nIter, burnIn = burnIn, verbose = FALSE)
                           yHat_all_A <- rep(NA, nrow(Y.tmasked))
                           yHat_all_A[train_idx] <- fit_A$yHat
                           b_markersA <- fit_A$ETA[[1]]$b
@@ -1428,7 +1444,15 @@ holostackGP <- function(
                           X_train <- as.matrix(Y.tmasked[train_idx, -1, drop = FALSE])
                           X_test  <- as.matrix(Y.tmasked[test_idx, -1, drop = FALSE])
                           library(BGLR)
-                          fit_D <- BGLR(y = y_train, ETA = list( list(X = geno.D_scaled[train_idx, , drop = FALSE], model = model_name), list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                          if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
+                          ## Step 4: build ETA conditionally
+                          ETA <- list(list(X = geno.D_scaled[train_idx, , drop = FALSE], model = model_name))
+                          if (!is.null(Xcov_mat)) {
+                            X_train <- Xcov_mat[train_idx, , drop = FALSE]
+                            ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
+                          }
+                          ## Step 5: fit final model
+                          fit_D <- BGLR(y = y_train, ETA = ETA, nIter = nIter, burnIn = burnIn, verbose = FALSE)
                           yHat_all_D <- rep(NA, nrow(Y.tmasked))
                           yHat_all_D[train_idx] <- fit_D$yHat
                           b_markersD <- fit_D$ETA[[1]]$b
@@ -1443,11 +1467,18 @@ holostackGP <- function(
                         }
 
                         # Wrapper to run all models in parallel
-                        run_parallel_stack <- function(Y.masked, Y.covmasked, geno.A_scaled, geno.D_scaled, nIter, burnIn, n.cores = ncores) {
+                        run_parallel_stack <- function(Y.masked, Y.covmasked, covariate = NULL, geno.A_scaled, geno.D_scaled, nIter, burnIn, n.cores = ncores) {
+                          ## --- Normalize covariates ONCE ---
+                          if (is.null(covariate)) {Y.covmasked <- NULL}
+                          ## --- Normalize covariates ONCE ---
+                          if (is.null(covariate)) {Y.covmasked <- NULL}
                           cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                           on.exit(parallel::stopCluster(cl), add = TRUE)
-                          parallel::clusterSetRNGStream(cl, iseed = 12345)
-                          clusterEvalQ(cl, library(BGLR))
+                          parallel::clusterSetRNGStream(cl, iseed = 12345
+                          parallel::clusterEvalQ(cl, {
+                            suppressPackageStartupMessages(library(BGLR))
+                            NULL
+                          })
                           clusterExport(cl, varlist = c("Y.masked", "Y.covmasked", "geno.A_scaled", "geno.D_scaled", "nIter", "burnIn", "run_independent_bayes"), envir = environment())
                           preds_list <- parLapply(cl, bayes_models, function(model) {
                             run_independent_bayes(model, Y.masked = Y.masked, Y.covmasked = Y.covmasked,geno.A_scaled = geno.A_scaled, geno.D_scaled = geno.D_scaled, nIter = nIter, burnIn = burnIn)
@@ -1720,7 +1751,15 @@ holostackGP <- function(
                       K_train <- myKIx[train_idx, train_idx]
                       X_train <- Xcov_mat[train_idx, , drop = FALSE]
                       library(BGLR)
-                      fit <- BGLR(y = y_train, ETA = list(list(K = K_train, model = "RKHS"), list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                      if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
+                      ## Step 4: build ETA conditionally
+                      ETA <- list(list(K = K_train, model = "RKHS"))
+                      if (!is.null(Xcov_mat)) {
+                        X_train <- Xcov_mat[train_idx, , drop = FALSE]
+                        ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
+                      }
+                      ## Step 5: fit final model
+                      fit <- BGLR(y = y_train, ETA = ETA, nIter = nIter, burnIn = burnIn, verbose = FALSE)
                       u_train <- as.numeric(fit$ETA[[1]]$u)
                       K_test_train <- myKIx[test_idx, train_idx]
                       pred_rkhs <- as.data.frame(as.numeric( K_test_train %*% u_train))
@@ -1754,7 +1793,15 @@ holostackGP <- function(
                           X_train <- as.matrix(Y.tmasked[train_idx, -1, drop = FALSE])
                           X_test  <- as.matrix(Y.tmasked[test_idx, -1, drop = FALSE])
                           library(BGLR)
-                          fit <- BGLR(y = y_train, ETA = list(list(X = geno_scaled[train_idx, , drop = FALSE], model = model_name),list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                          if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
+                          ## Step 4: build ETA conditionally
+                          ETA <- list(list(X = geno_scaled[train_idx, , drop = FALSE], model = model_name))
+                          if (!is.null(Xcov_mat)) {
+                            X_train <- Xcov_mat[train_idx, , drop = FALSE]
+                            ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
+                          }
+                          ## Step 5: fit final model
+                          fit <- BGLR(y = y_train, ETA = ETA, nIter = nIter, burnIn = burnIn, verbose = FALSE)
                           yHat_all <- rep(NA, nrow(Y.tmasked))
                           yHat_all[train_idx] <- fit$yHat
                           b_markers <- fit$ETA[[1]]$b
@@ -1767,11 +1814,16 @@ holostackGP <- function(
                         }
 
                         # Wrapper to run all models in parallel
-                        run_parallel_stack <- function(Y.masked, Y.covmasked, geno_scaled, nIter, burnIn, n.cores = ncores) {
+                        run_parallel_stack <- function(Y.masked, Y.covmasked, covariate = NULL, geno_scaled, nIter, burnIn, n.cores = ncores) {
+                          ## --- Normalize covariates ONCE ---
+                          if (is.null(covariate)) {Y.covmasked <- NULL}
                           cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                           on.exit(parallel::stopCluster(cl), add = TRUE)
                           parallel::clusterSetRNGStream(cl, iseed = 12345)
-                          clusterEvalQ(cl, library(BGLR))
+                          parallel::clusterEvalQ(cl, {
+                            suppressPackageStartupMessages(library(BGLR))
+                            NULL
+                          })
                           clusterExport(cl, varlist = c("Y.masked", "Y.covmasked", "geno_scaled", "nIter", "burnIn", "run_independent_bayes"), envir = environment())
                           preds_list <- parLapply(cl, bayes_models, function(model) {
                             run_independent_bayes(model, Y.masked = Y.masked, Y.covmasked = Y.covmasked, geno_scaled = geno_scaled, nIter = nIter, burnIn = burnIn)
@@ -2055,7 +2107,15 @@ holostackGP <- function(
                         K_train <- K[train_idx, train_idx]
                         X_train <- Xcov_mat[train_idx, , drop = FALSE]
                         library(BGLR)
-                        fit <- BGLR(y = y_train, ETA = list(list(K = K_train, model = "RKHS"), list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                        if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
+                        ## Step 4: build ETA conditionally
+                        ETA <- list(list(K = K_train, model = "RKHS"))
+                        if (!is.null(Xcov_mat)) {
+                          X_train <- Xcov_mat[train_idx, , drop = FALSE]
+                          ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
+                        }
+                        ## Step 5: fit final model
+                        fit <- BGLR(y = y_train, ETA = ETA, nIter = nIter, burnIn = burnIn, verbose = FALSE)
                         u_train <- as.numeric(fit$ETA[[1]]$u)
                         K_test_train <- K[test_idx, train_idx]
                         pred_test <- K_test_train %*% u_train
@@ -2093,7 +2153,15 @@ holostackGP <- function(
                           X_train <- as.matrix(Y.tmasked[train_idx, -1, drop = FALSE])
                           X_test  <- as.matrix(Y.tmasked[test_idx, -1, drop = FALSE])
                           library(BGLR)
-                          fit_M <- BGLR(y = y_train, ETA = list(list(X = mgeno_scaled[train_idx, , drop = FALSE], model = model_name),list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                          if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
+                          ## Step 4: build ETA conditionally
+                          ETA <- list(list(X = mgeno_scaled[train_idx, , drop = FALSE], model = model_name))
+                          if (!is.null(Xcov_mat)) {
+                            X_train <- Xcov_mat[train_idx, , drop = FALSE]
+                            ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
+                          }
+                          ## Step 5: fit final model
+                          fit_M <- BGLR(y = y_train, ETA = ETA, nIter = nIter, burnIn = burnIn, verbose = FALSE)
                           yHat_all_M <- rep(NA, nrow(Y.tmasked))
                           yHat_all_M[train_idx] <- fit_M$yHat
                           b_markersM <- fit_M$ETA[[1]]$b
@@ -2108,11 +2176,16 @@ holostackGP <- function(
                         }
 
                         # Wrapper to run all models in parallel
-                        run_parallel_stack <- function(Y.masked, Y.covmasked, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
+                        run_parallel_stack <- function(Y.masked, Y.covmasked, covariate = NULL, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
+                          ## --- Normalize covariates ONCE ---
+                          if (is.null(covariate)) {Y.covmasked <- NULL}
                           cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                           on.exit(parallel::stopCluster(cl), add = TRUE)
                           parallel::clusterSetRNGStream(cl, iseed = 12345)
-                          clusterEvalQ(cl, library(BGLR))
+                          parallel::clusterEvalQ(cl, {
+                            suppressPackageStartupMessages(library(BGLR))
+                            NULL
+                          })
                           clusterExport(cl, varlist = c("Y.masked", "Y.covmasked", "mgeno_scaled", "nIter", "burnIn", "run_independent_bayes"), envir = environment())
                           preds_list <- parLapply(cl, bayes_models, function(model) {
                             run_independent_bayes(model, Y.masked = Y.masked, Y.covmasked = Y.covmasked,mgeno_scaled = mgeno_scaled, nIter = nIter, burnIn = burnIn)
@@ -2386,7 +2459,15 @@ holostackGP <- function(
                       K_train <- metagKIx[train_idx, train_idx]
                       X_train <- Xcov_mat[train_idx, , drop = FALSE]
                       library(BGLR)
-                      fit <- BGLR(y = y_train, ETA = list(list(K = K_train, model = "RKHS"), list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                      if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
+                      ## Step 4: build ETA conditionally
+                      ETA <- list(list(K = K_train, model = "RKHS"))
+                      if (!is.null(Xcov_mat)) {
+                        X_train <- Xcov_mat[train_idx, , drop = FALSE]
+                        ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
+                      }
+                      ## Step 5: fit final model
+                      fit <- BGLR(y = y_train, ETA = ETA, nIter = nIter, burnIn = burnIn, verbose = FALSE)
                       u_train <- as.numeric(fit$ETA[[1]]$u)
                       K_test_train <- metagKIx[test_idx, train_idx]
                       pred_rkhs <- as.data.frame(as.numeric( K_test_train %*% u_train))
@@ -2420,7 +2501,15 @@ holostackGP <- function(
                           X_train <- as.matrix(Y.tmasked[train_idx, -1, drop = FALSE])
                           X_test  <- as.matrix(Y.tmasked[test_idx, -1, drop = FALSE])
                           library(BGLR)
-                          fit <- BGLR(y = y_train, ETA = list(list(X = mgeno_scaled[train_idx, , drop = FALSE], model = model_name),list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                          if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
+                          ## Step 4: build ETA conditionally
+                          ETA <- list(list(X = mgeno_scaled[train_idx, , drop = FALSE], model = model_name))
+                          if (!is.null(Xcov_mat)) {
+                            X_train <- Xcov_mat[train_idx, , drop = FALSE]
+                            ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
+                          }
+                          ## Step 5: fit final model
+                          fit <- BGLR(y = y_train, ETA = ETA, nIter = nIter, burnIn = burnIn, verbose = FALSE)
                           yHat_all <- rep(NA, nrow(Y.tmasked))
                           yHat_all[train_idx] <- fit$yHat
                           b_markers <- fit$ETA[[1]]$b
@@ -2433,11 +2522,16 @@ holostackGP <- function(
                         }
 
                         # Wrapper to run all models in parallel
-                        run_parallel_stack <- function(Y.masked, Y.covmasked, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
+                        run_parallel_stack <- function(Y.masked, Y.covmasked, covariate = NULL, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
+                          ## --- Normalize covariates ONCE ---
+                          if (is.null(covariate)) {Y.covmasked <- NULL}
                           cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                           on.exit(parallel::stopCluster(cl), add = TRUE)
                           parallel::clusterSetRNGStream(cl, iseed = 12345)
-                          clusterEvalQ(cl, library(BGLR))
+                          parallel::clusterEvalQ(cl, {
+                            suppressPackageStartupMessages(library(BGLR))
+                            NULL
+                          })
                           clusterExport(cl, varlist = c("Y.masked", "Y.covmasked", "mgeno_scaled", "nIter", "burnIn", "run_independent_bayes"), envir = environment())
                           preds_list <- parLapply(cl, bayes_models, function(model) {
                             run_independent_bayes(model, Y.masked = Y.masked, Y.covmasked = Y.covmasked, mgeno_scaled = mgeno_scaled, nIter = nIter, burnIn = burnIn)
@@ -2923,7 +3017,15 @@ holostackGP <- function(
                           K_train <- K[train_idx, train_idx]
                           X_train <- Xcov_mat[train_idx, , drop = FALSE]
                           library(BGLR)
-                          fit <- BGLR(y = y_train, ETA = list(list(K = K_train, model = "RKHS"), list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                          if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
+                          ## Step 4: build ETA conditionally
+                          ETA <- list(list(K = K_train, model = "RKHS"))
+                          if (!is.null(Xcov_mat)) {
+                            X_train <- Xcov_mat[train_idx, , drop = FALSE]
+                            ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
+                          }
+                          ## Step 5: fit final model
+                          fit <- BGLR(y = y_train, ETA = ETA, nIter = nIter, burnIn = burnIn, verbose = FALSE)
                           u_train <- as.numeric(fit$ETA[[1]]$u)
                           K_test_train <- K[test_idx, train_idx]
                           pred_test <- K_test_train %*% u_train
@@ -2968,7 +3070,15 @@ holostackGP <- function(
                             X_train <- as.matrix(Y.tmasked[train_idx, -1, drop = FALSE])
                             X_test  <- as.matrix(Y.tmasked[test_idx, -1, drop = FALSE])
                             library(BGLR)
-                            fit_A <- BGLR(y = y_train, ETA = list(list(X = geno.A_scaled[train_idx, , drop = FALSE], model = model_name),list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                            if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
+                            ## Step 4: build ETA conditionally
+                            ETA <- list(list(X = geno.A_scaled[train_idx, , drop = FALSE], model = model_name))
+                            if (!is.null(Xcov_mat)) {
+                              X_train <- Xcov_mat[train_idx, , drop = FALSE]
+                              ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
+                            }
+                            ## Step 5: fit final model
+                            fit_A <- BGLR(y = y_train, ETA = ETA, nIter = nIter, burnIn = burnIn, verbose = FALSE)
                             yHat_all_A <- rep(NA, nrow(Y.tmasked))
                             yHat_all_A[train_idx] <- fit_A$yHat
                             b_markersA <- fit_A$ETA[[1]]$b
@@ -2998,7 +3108,15 @@ holostackGP <- function(
                             X_train <- as.matrix(Y.tmasked[train_idx, -1, drop = FALSE])
                             X_test  <- as.matrix(Y.tmasked[test_idx, -1, drop = FALSE])
                             library(BGLR)
-                            fit_D <- BGLR(y = y_train, ETA = list( list(X = geno.D_scaled[train_idx, , drop = FALSE], model = model_name), list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                            if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
+                            ## Step 4: build ETA conditionally
+                            ETA <- list(list(X = geno.D_scaled[train_idx, , drop = FALSE], model = model_name))
+                            if (!is.null(Xcov_mat)) {
+                              X_train <- Xcov_mat[train_idx, , drop = FALSE]
+                              ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
+                            }
+                            ## Step 5: fit final model
+                            fit_D <- BGLR(y = y_train, ETA = ETA, nIter = nIter, burnIn = burnIn, verbose = FALSE)
                             yHat_all_D <- rep(NA, nrow(Y.tmasked))
                             yHat_all_D[train_idx] <- fit_D$yHat
                             b_markersD <- fit_D$ETA[[1]]$b
@@ -3028,7 +3146,15 @@ holostackGP <- function(
                             X_train <- as.matrix(Y.tmasked[train_idx, -1, drop = FALSE])
                             X_test  <- as.matrix(Y.tmasked[test_idx, -1, drop = FALSE])
                             library(BGLR)
-                            fit_M <- BGLR(y = y_train, ETA = list(list(X = mgeno_scaled[train_idx, , drop = FALSE], model = model_name),list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                            if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
+                            ## Step 4: build ETA conditionally
+                            ETA <- list(list(X = mgeno_scaled[train_idx, , drop = FALSE], model = model_name))
+                            if (!is.null(Xcov_mat)) {
+                              X_train <- Xcov_mat[train_idx, , drop = FALSE]
+                              ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
+                            }
+                            ## Step 5: fit final model
+                            fit_M <- BGLR(y = y_train, ETA = ETA, nIter = nIter, burnIn = burnIn, verbose = FALSE)
                             yHat_all_M <- rep(NA, nrow(Y.tmasked))
                             yHat_all_M[train_idx] <- fit_M$yHat
                             b_markersM <- fit_M$ETA[[1]]$b
@@ -3042,11 +3168,16 @@ holostackGP <- function(
                           }
 
                           # Wrapper to run all models in parallel
-                          run_parallel_stack <- function(Y.masked, Y.covmasked, geno.A_scaled, geno.D_scaled, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
+                          run_parallel_stack <- function(Y.masked, Y.covmasked, covariate = NULL, geno.A_scaled, geno.D_scaled, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
+                            ## --- Normalize covariates ONCE ---
+                            if (is.null(covariate)) {Y.covmasked <- NULL}
                             cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                             on.exit(parallel::stopCluster(cl), add = TRUE)
                             parallel::clusterSetRNGStream(cl, iseed = 12345)
-                            clusterEvalQ(cl, library(BGLR))
+                            parallel::clusterEvalQ(cl, {
+                              suppressPackageStartupMessages(library(BGLR))
+                              NULL
+                            })
                             clusterExport(cl, varlist = c("Y.masked", "Y.covmasked", "geno.A_scaled", "geno.D_scaled", "mgeno_scaled", "nIter", "burnIn", "run_independent_bayes"), envir = environment())
                             preds_list <- parLapply(cl, bayes_models, function(model) {
                               run_independent_bayes(model, Y.masked = Y.masked, Y.covmasked = Y.covmasked,geno.A_scaled = geno.A_scaled, geno.D_scaled = geno.D_scaled, mgeno_scaled = mgeno_scaled, nIter = nIter, burnIn = burnIn)
@@ -3286,7 +3417,15 @@ holostackGP <- function(
                         K_train <- metagKIx[train_idx, train_idx]
                         X_train <- Xcov_mat[train_idx, , drop = FALSE]
                         library(BGLR)
-                        fit <- BGLR(y = y_train, ETA = list(list(K = K_train, model = "RKHS"), list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                        if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
+                        ## Step 4: build ETA conditionally
+                        ETA <- list(list(K = K_train, model = "RKHS"))
+                        if (!is.null(Xcov_mat)) {
+                          X_train <- Xcov_mat[train_idx, , drop = FALSE]
+                          ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
+                        }
+                        ## Step 5: fit final model
+                        fit <- BGLR(y = y_train, ETA = ETA, nIter = nIter, burnIn = burnIn, verbose = FALSE)
                         u_train <- as.numeric(fit$ETA[[1]]$u)
                         K_test_train <- metagKIx[test_idx, train_idx]
                         pred_rkhs_m <-as.numeric( K_test_train %*% u_train)
@@ -3313,7 +3452,15 @@ holostackGP <- function(
                         K_train <- myKIx[train_idx, train_idx]
                         X_train <- Xcov_mat[train_idx, , drop = FALSE]
                         library(BGLR)
-                        fit <- BGLR(y = y_train, ETA = list(list(K = K_train, model = "RKHS"), list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                        if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
+                        ## Step 4: build ETA conditionally
+                        ETA <- list(list(K = K_train, model = "RKHS"))
+                        if (!is.null(Xcov_mat)) {
+                          X_train <- Xcov_mat[train_idx, , drop = FALSE]
+                          ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
+                        }
+                        ## Step 5: fit final model
+                        fit <- BGLR(y = y_train, ETA = ETA, nIter = nIter, burnIn = burnIn, verbose = FALSE)
                         u_train <- as.numeric(fit$ETA[[1]]$u)
                         K_test_train <- myKIx[test_idx, train_idx]
                         pred_rkhs_g <-as.numeric( K_test_train %*% u_train)
@@ -3588,7 +3735,15 @@ holostackGP <- function(
                             X_train <- as.matrix(Y.tmasked[train_idx, -1, drop = FALSE])
                             X_test  <- as.matrix(Y.tmasked[test_idx, -1, drop = FALSE])
                             library(BGLR)
-                            fit <- BGLR(y = y_train, ETA = list(list(X = geno_scaled[train_idx, , drop = FALSE], model = model_name),list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                            if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
+                            ## Step 4: build ETA conditionally
+                            ETA <- list(list(X = geno_scaled[train_idx, , drop = FALSE], model = model_name))
+                            if (!is.null(Xcov_mat)) {
+                              X_train <- Xcov_mat[train_idx, , drop = FALSE]
+                              ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
+                            }
+                            ## Step 5: fit final model
+                            fit <- BGLR(y = y_train, ETA = ETA, nIter = nIter, burnIn = burnIn, verbose = FALSE)
                             yHat_all <- rep(NA, nrow(Y.tmasked))
                             yHat_all[train_idx] <- fit$yHat
                             b_markers <- fit$ETA[[1]]$b
@@ -3617,7 +3772,15 @@ holostackGP <- function(
                             X_train <- as.matrix(Y.tmasked[train_idx, -1, drop = FALSE])
                             X_test  <- as.matrix(Y.tmasked[test_idx, -1, drop = FALSE])
                             library(BGLR)
-                            fit <- BGLR(y = y_train, ETA = list(list(X = mgeno_scaled[train_idx, , drop = FALSE], model = model_name),list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                            if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
+                            ## Step 4: build ETA conditionally
+                            ETA <- list(list(X = mgeno_scaled[train_idx, , drop = FALSE], model = model_name))
+                            if (!is.null(Xcov_mat)) {
+                              X_train <- Xcov_mat[train_idx, , drop = FALSE]
+                              ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
+                            }
+                            ## Step 5: fit final model
+                            fit <- BGLR(y = y_train, ETA = ETA, nIter = nIter, burnIn = burnIn, verbose = FALSE)
                             yHat_all <- rep(NA, nrow(Y.tmasked))
                             yHat_all[train_idx] <- fit$yHat
                             b_markers <- fit$ETA[[1]]$b
@@ -3630,11 +3793,16 @@ holostackGP <- function(
                           }
 
                           # Wrapper to run all models in parallel
-                          run_parallel_stack <- function(Y.masked, Y.covmasked, geno_scaled, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
+                          run_parallel_stack <- function(Y.masked, Y.covmasked, covariate = NULL, geno_scaled, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
+                            ## --- Normalize covariates ONCE ---
+                            if (is.null(covariate)) {Y.covmasked <- NULL}
                             cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                             on.exit(parallel::stopCluster(cl), add = TRUE)
                             parallel::clusterSetRNGStream(cl, iseed = 12345)
-                            clusterEvalQ(cl, library(BGLR))
+                            parallel::clusterEvalQ(cl, {
+                              suppressPackageStartupMessages(library(BGLR))
+                              NULL
+                            })
                             clusterExport(cl, varlist = c("Y.masked", "Y.covmasked", "geno_scaled","mgeno_scaled", "nIter", "burnIn", "run_independent_bayes"), envir = environment())
                             preds_list <- parLapply(cl, bayes_models, function(model) {
                               run_independent_bayes(model, Y.masked = Y.masked, Y.covmasked = Y.covmasked, geno_scaled = geno_scaled, mgeno_scaled = mgeno_scaled, nIter = nIter, burnIn = burnIn)
@@ -4176,7 +4344,15 @@ holostackGP <- function(
                         K_train <- K[train_idx, train_idx]
                         X_train <- Xcov_mat[train_idx, , drop = FALSE]
                         library(BGLR)
-                        fit <- BGLR(y = y_train, ETA = list(list(K = K_train, model = "RKHS"), list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                        if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
+                        ## Step 4: build ETA conditionally
+                        ETA <- list(list(K = K_train, model = "RKHS"))
+                        if (!is.null(Xcov_mat)) {
+                          X_train <- Xcov_mat[train_idx, , drop = FALSE]
+                          ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
+                        }
+                        ## Step 5: fit final model
+                        fit <- BGLR(y = y_train, ETA = ETA, nIter = nIter, burnIn = burnIn, verbose = FALSE)
                         u_train <- as.numeric(fit$ETA[[1]]$u)
                         K_test_train <- K[test_idx, train_idx]
                         pred_test <- K_test_train %*% u_train
@@ -4214,7 +4390,15 @@ holostackGP <- function(
                           X_train <- as.matrix(Y.tmasked[train_idx, -1, drop = FALSE])
                           X_test  <- as.matrix(Y.tmasked[test_idx, -1, drop = FALSE])
                           library(BGLR)
-                          fit_A <- BGLR(y = y_train, ETA = list(list(X = geno.A_scaled[train_idx, , drop = FALSE], model = model_name),list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                          if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
+                          ## Step 4: build ETA conditionally
+                          ETA <- list(list(X = geno.A_scaled[train_idx, , drop = FALSE], model = model_name))
+                          if (!is.null(Xcov_mat)) {
+                            X_train <- Xcov_mat[train_idx, , drop = FALSE]
+                            ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
+                          }
+                          ## Step 5: fit final model
+                          fit_A <- BGLR(y = y_train, ETA = ETA, nIter = nIter, burnIn = burnIn, verbose = FALSE)
                           yHat_all_A <- rep(NA, nrow(Y.tmasked))
                           yHat_all_A[train_idx] <- fit_A$yHat
                           b_markersA <- fit_A$ETA[[1]]$b
@@ -4244,7 +4428,15 @@ holostackGP <- function(
                           X_train <- as.matrix(Y.tmasked[train_idx, -1, drop = FALSE])
                           X_test  <- as.matrix(Y.tmasked[test_idx, -1, drop = FALSE])
                           library(BGLR)
-                          fit_D <- BGLR(y = y_train, ETA = list( list(X = geno.D_scaled[train_idx, , drop = FALSE], model = model_name), list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                          if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
+                          ## Step 4: build ETA conditionally
+                          ETA <- list(list(X = geno.D_scaled[train_idx, , drop = FALSE], model = model_name))
+                          if (!is.null(Xcov_mat)) {
+                            X_train <- Xcov_mat[train_idx, , drop = FALSE]
+                            ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
+                          }
+                          ## Step 5: fit final model
+                          fit_D <- BGLR(y = y_train, ETA = ETA, nIter = nIter, burnIn = burnIn, verbose = FALSE)
                           yHat_all_D <- rep(NA, nrow(Y.tmasked))
                           yHat_all_D[train_idx] <- fit_D$yHat
                           b_markersD <- fit_D$ETA[[1]]$b
@@ -4274,7 +4466,15 @@ holostackGP <- function(
                           X_train <- as.matrix(Y.tmasked[train_idx, -1, drop = FALSE])
                           X_test  <- as.matrix(Y.tmasked[test_idx, -1, drop = FALSE])
                           library(BGLR)
-                          fit_M <- BGLR(y = y_train, ETA = list(list(X = mgeno_scaled[train_idx, , drop = FALSE], model = model_name),list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                          if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
+                          ## Step 4: build ETA conditionally
+                          ETA <- list(list(X = mgeno_scaled[train_idx, , drop = FALSE], model = model_name))
+                          if (!is.null(Xcov_mat)) {
+                            X_train <- Xcov_mat[train_idx, , drop = FALSE]
+                            ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
+                          }
+                          ## Step 5: fit final model
+                          fit_M <- BGLR(y = y_train, ETA = ETA, nIter = nIter, burnIn = burnIn, verbose = FALSE)
                           yHat_all_M <- rep(NA, nrow(Y.tmasked))
                           yHat_all_M[train_idx] <- fit_M$yHat
                           b_markersM <- fit_M$ETA[[1]]$b
@@ -4288,11 +4488,16 @@ holostackGP <- function(
                         }
 
                         # Wrapper to run all models in parallel
-                        run_parallel_stack <- function(Y.masked, Y.covmasked, geno.A_scaled, geno.D_scaled, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
+                        run_parallel_stack <- function(Y.masked, Y.covmasked, covariate = NULL, geno.A_scaled, geno.D_scaled, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
+                          ## --- Normalize covariates ONCE ---
+                          if (is.null(covariate)) {Y.covmasked <- NULL}
                           cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                           on.exit(parallel::stopCluster(cl), add = TRUE)
                           parallel::clusterSetRNGStream(cl, iseed = 12345)
-                          clusterEvalQ(cl, library(BGLR))
+                          parallel::clusterEvalQ(cl, {
+                            suppressPackageStartupMessages(library(BGLR))
+                            NULL
+                          })
                           clusterExport(cl, varlist = c("Y.masked", "Y.covmasked", "geno.A_scaled", "geno.D_scaled", "mgeno_scaled", "nIter", "burnIn", "run_independent_bayes"), envir = environment())
                           preds_list <- parLapply(cl, bayes_models, function(model) {
                             run_independent_bayes(model, Y.masked = Y.masked, Y.covmasked = Y.covmasked,geno.A_scaled = geno.A_scaled, geno.D_scaled = geno.D_scaled, mgeno_scaled = mgeno_scaled, nIter = nIter, burnIn = burnIn)
@@ -4479,7 +4684,15 @@ holostackGP <- function(
                       K_train <- metagKIx[train_idx, train_idx]
                       X_train <- Xcov_mat[train_idx, , drop = FALSE]
                       library(BGLR)
-                      fit <- BGLR(y = y_train, ETA = list(list(K = K_train, model = "RKHS"), list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                      if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
+                      ## Step 4: build ETA conditionally
+                      ETA <- list(list(K = K_train, model = "RKHS"))
+                      if (!is.null(Xcov_mat)) {
+                        X_train <- Xcov_mat[train_idx, , drop = FALSE]
+                        ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
+                      }
+                      ## Step 5: fit final model
+                      fit <- BGLR(y = y_train, ETA = ETA, nIter = nIter, burnIn = burnIn, verbose = FALSE)
                       u_train <- as.numeric(fit$ETA[[1]]$u)
                       K_test_train <- metagKIx[test_idx, train_idx]
                       pred_rkhs_m <-as.numeric( K_test_train %*% u_train)
@@ -4506,7 +4719,15 @@ holostackGP <- function(
                       K_train <- myKIx[train_idx, train_idx]
                       X_train <- Xcov_mat[train_idx, , drop = FALSE]
                       library(BGLR)
-                      fit <- BGLR(y = y_train, ETA = list(list(K = K_train, model = "RKHS"), list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                      if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
+                      ## Step 4: build ETA conditionally
+                      ETA <- list(list(K = K_train, model = "RKHS"))
+                      if (!is.null(Xcov_mat)) {
+                        X_train <- Xcov_mat[train_idx, , drop = FALSE]
+                        ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
+                      }
+                      ## Step 5: fit final model
+                      fit <- BGLR(y = y_train, ETA = ETA, nIter = nIter, burnIn = burnIn, verbose = FALSE)
                       u_train <- as.numeric(fit$ETA[[1]]$u)
                       K_test_train <- myKIx[test_idx, train_idx]
                       pred_rkhs_g <-as.numeric( K_test_train %*% u_train)
@@ -4678,7 +4899,15 @@ holostackGP <- function(
                           X_train <- as.matrix(Y.tmasked[train_idx, -1, drop = FALSE])
                           X_test  <- as.matrix(Y.tmasked[test_idx, -1, drop = FALSE])
                           library(BGLR)
-                          fit <- BGLR(y = y_train, ETA = list(list(X = geno_scaled[train_idx, , drop = FALSE], model = model_name),list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                          if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
+                          ## Step 4: build ETA conditionally
+                          ETA <- list(list(X = geno_scaled[train_idx, , drop = FALSE], model = model_name))
+                          if (!is.null(Xcov_mat)) {
+                            X_train <- Xcov_mat[train_idx, , drop = FALSE]
+                            ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
+                          }
+                          ## Step 5: fit final model
+                          fit <- BGLR(y = y_train, ETA = ETA, nIter = nIter, burnIn = burnIn, verbose = FALSE)
                           yHat_all <- rep(NA, nrow(Y.tmasked))
                           yHat_all[train_idx] <- fit$yHat
                           b_markers <- fit$ETA[[1]]$b
@@ -4707,7 +4936,15 @@ holostackGP <- function(
                           X_train <- as.matrix(Y.tmasked[train_idx, -1, drop = FALSE])
                           X_test  <- as.matrix(Y.tmasked[test_idx, -1, drop = FALSE])
                           library(BGLR)
-                          fit <- BGLR(y = y_train, ETA = list(list(X = mgeno_scaled[train_idx, , drop = FALSE], model = model_name),list(X = X_train, model = "FIXED")), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                          if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
+                          ## Step 4: build ETA conditionally
+                          ETA <- list(list(X = mgeno_scaled[train_idx, , drop = FALSE], model = model_name))
+                          if (!is.null(Xcov_mat)) {
+                            X_train <- Xcov_mat[train_idx, , drop = FALSE]
+                            ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
+                          }
+                          ## Step 5: fit final model
+                          fit <- BGLR(y = y_train, ETA = ETA, burnIn = burnIn, verbose = FALSE)
                           yHat_all <- rep(NA, nrow(Y.tmasked))
                           yHat_all[train_idx] <- fit$yHat
                           b_markers <- fit$ETA[[1]]$b
@@ -4720,11 +4957,16 @@ holostackGP <- function(
                         }
 
                         # Wrapper to run all models in parallel
-                        run_parallel_stack <- function(Y.masked, Y.covmasked, geno_scaled, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
+                        run_parallel_stack <- function(Y.masked, Y.covmasked, covariate = NULL, geno_scaled, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
+                          ## --- Normalize covariates ONCE ---
+                          if (is.null(covariate)) {Y.covmasked <- NULL}
                           cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                           on.exit(parallel::stopCluster(cl), add = TRUE)
                           parallel::clusterSetRNGStream(cl, iseed = 12345)
-                          clusterEvalQ(cl, library(BGLR))
+                          parallel::clusterEvalQ(cl, {
+                            suppressPackageStartupMessages(library(BGLR))
+                            NULL
+                          })
                           clusterExport(cl, varlist = c("Y.masked", "Y.covmasked", "geno_scaled","mgeno_scaled", "nIter", "burnIn", "run_independent_bayes"), envir = environment())
                           preds_list <- parLapply(cl, bayes_models, function(model) {
                             run_independent_bayes(model, Y.masked = Y.masked, Y.covmasked = Y.covmasked, geno_scaled = geno_scaled, mgeno_scaled = mgeno_scaled, nIter = nIter, burnIn = burnIn)
