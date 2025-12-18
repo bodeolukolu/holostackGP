@@ -1474,11 +1474,11 @@ holostackGP <- function(
                           if (is.null(covariate)) {Y.covmasked <- NULL}
                           cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                           on.exit(parallel::stopCluster(cl), add = TRUE)
-                          parallel::clusterSetRNGStream(cl, iseed = 12345
+                          parallel::clusterSetRNGStream(cl, iseed = 12345)
                           parallel::clusterEvalQ(cl, {
                             suppressPackageStartupMessages(library(BGLR))
                             NULL
-                          })
+                           })
                           clusterExport(cl, varlist = c("Y.masked", "Y.covmasked", "geno.A_scaled", "geno.D_scaled", "nIter", "burnIn", "run_independent_bayes"), envir = environment())
                           preds_list <- parLapply(cl, bayes_models, function(model) {
                             run_independent_bayes(model, Y.masked = Y.masked, Y.covmasked = Y.covmasked,geno.A_scaled = geno.A_scaled, geno.D_scaled = geno.D_scaled, nIter = nIter, burnIn = burnIn)
