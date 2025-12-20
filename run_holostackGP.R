@@ -2,8 +2,6 @@
 
 source("https://raw.githubusercontent.com/bodeolukolu/holostackGP/refs/heads/master/holostackGP.R")
 
-setwd("./")
-
 holostackGP(
     projname="FER",
     phenofile="Traits_FER_lsmeans.txt",

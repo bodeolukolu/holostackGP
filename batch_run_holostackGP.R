@@ -1,4 +1,5 @@
 #!/usr/bin/env Rscript
+
 args <- commandArgs(trailingOnly = TRUE)
 stopifnot(length(args) >= 9)
 

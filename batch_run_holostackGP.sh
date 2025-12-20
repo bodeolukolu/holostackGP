@@ -2,7 +2,6 @@
 
 set -euo pipefail
 
-
 export OMP_NUM_THREADS=5
 export MKL_NUM_THREADS=5
 export OPENBLAS_NUM_THREADS=5
