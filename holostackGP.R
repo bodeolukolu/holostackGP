@@ -161,7 +161,7 @@ holostackGP <- function(
         if (gene_model == "dominance" || gene_model == "DOMINANCE" ){ gene_model <- "Dominance"}
         if(gp_model == "GBLUP"){metagenome_covariate <- FALSE; metagenome_data <- NULL}
         if(gp_model == "gGBLUP"){metagenome_covariate <- TRUE; metag_method <- "Aitchison"}
-        if(gp_model == "gBLUP"){gene_models <- "metagenome"; metag_method <- "Aitchison"; metagenome_covariate <- FALSE}
+        if(gp_model == "gBLUP"){gene_model <- "metagenome"; metag_method <- "Aitchison"; metagenome_covariate <- FALSE}
         metag_pca <- TRUE
         dir.create(GP_run_title, showWarnings=FALSE, recursive=TRUE)
         colnames(myY)[1] <- "Taxa"
