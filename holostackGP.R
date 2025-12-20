@@ -3990,7 +3990,7 @@ holostackGP <- function(
               }
             }
             gc()
-            outfile_predall <- paste("../",GP_run_title,"/",outdir,"_ALL_PREDICTIONS.txt",sep="")
+            outfile_predall <- paste("../",GP_run_title,"/",outdir,"ALL_PREDICTIONS.txt",sep="")
             write.table(pred_all, outfile_predall, col.names = !file.exists(outfile_predall), row.names=FALSE, quote = FALSE, sep = "\t", append=file.exists(outfile_predall))
           }#End of for (rep in 1:t)
 
