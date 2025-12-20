@@ -1384,14 +1384,15 @@ holostackGP <- function(
                       gc()
                       if(any(grepl("Bayes",unlist(Additional_models)))){
                         # Function to fit a single Bayesian model for one phenotype and one or more multiple covariates
-                        run_independent_bayes <- function(model_name, Y.masked, Y.covmasked, geno.A_scaled, geno.D_scaled, nIter, burnIn) {
+                        run_independent_bayes <- function(model_name, Y.masked, Y.covmasked = NULL, geno.A_scaled, geno.D_scaled, nIter, burnIn) {
+                          suppressPackageStartupMessages(library(BGLR))
+
                           covTraits <- colnames(Y.covmasked)
                           # ---- Additive step ----
                           gebv_list <- list()
                           for (covt in covTraits) {
                             y <- Y.covmasked[[covt]]
                             ok <- !is.na(y)
-                            library(BGLR)
                             fm <- BGLR(y = y[ok], ETA = list(list(X = geno.A_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
                             b <- fm$ETA[[1]]$b
                             gebv_full <- rep(NA, length(y))
@@ -1467,9 +1468,7 @@ holostackGP <- function(
                         }
 
                         # Wrapper to run all models in parallel
-                        run_parallel_stack <- function(Y.masked, Y.covmasked = NULL, geno.A_scaled, geno.D_scaled, nIter, burnIn, n.cores = ncores) {
-                          ## --- Normalize covariates ONCE ---
-                          if (is.null(covariate)) {Y.covmasked <- NULL}
+                        run_parallel_stack <- function(Y.masked, Y.covmasked, covariate = NULL, geno.A_scaled, geno.D_scaled, nIter, burnIn, n.cores = ncores) {
                           ## --- Normalize covariates ONCE ---
                           if (is.null(covariate)) {Y.covmasked <- NULL}
                           cl <- parallel::makeCluster(n.cores, type = "PSOCK")
@@ -1478,10 +1477,10 @@ holostackGP <- function(
                           parallel::clusterEvalQ(cl, {
                             suppressPackageStartupMessages(library(BGLR))
                             NULL
-                           })
+                          })
                           parallel::clusterExport(cl, varlist = c("Y.masked", "Y.covmasked", "geno.A_scaled", "geno.D_scaled", "nIter", "burnIn", "run_independent_bayes"), envir = environment())
                           preds_list <- parallel::parLapply(cl, bayes_models, function(model) {
-                            run_independent_bayes(model, Y.masked = Y.masked, Y.covmasked = Y.covmasked,geno.A_scaled = geno.A_scaled, geno.D_scaled = geno.D_scaled, nIter = nIter, burnIn = burnIn)
+                            run_independent_bayes(model, Y.masked = Y.masked, Y.covmasked = Y.covmasked, geno.A_scaled = geno.A_scaled, geno.D_scaled = geno.D_scaled, nIter = nIter, burnIn = burnIn)
                           })
                           stopCluster(cl)
                           names(preds_list) <- bayes_models
@@ -1771,14 +1770,15 @@ holostackGP <- function(
                       gc()
                       if(any(grepl("Bayes",unlist(Additional_models)))){
                         # Function to fit a single Bayesian model for one phenotype and one or more multiple covariates
-                        run_independent_bayes <- function(model_name, Y.masked, Y.covmasked, geno_scaled, nIter, burnIn) {
+                        run_independent_bayes <- function(model_name, Y.masked, Y.covmasked = NULL, geno_scaled, nIter, burnIn) {
+                          suppressPackageStartupMessages(library(BGLR))
+
                           covTraits <- colnames(Y.covmasked)
                           # ---- Additive step ----
                           gebv_list <- list()
                           for (covt in covTraits) {
                             y <- Y.covmasked[[covt]]
                             ok <- !is.na(y)
-                            library(BGLR)
                             fm <- BGLR(y = y[ok], ETA = list(list(X = geno_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
                             b <- fm$ETA[[1]]$b
                             gebv_full <- rep(NA, length(y))
@@ -1814,9 +1814,9 @@ holostackGP <- function(
                         }
 
                         # Wrapper to run all models in parallel
-                        run_parallel_stack <- function(Y.masked, Y.covmasked = NULL, geno_scaled, nIter, burnIn, n.cores = ncores) {
-                          ## --- Normalize covariates ONCE ---
-                          if (is.null(covariate)) {Y.covmasked <- NULL}
+                        run_parallel_stack <- function(Y.masked, Y.covmasked, covariate = NULL, geno_scaled, nIter, burnIn, n.cores = ncores) {
+                          # Enforce non-NULL Y.covmasked for downstream code
+                          if (is.null(covariate)) {Y.covmasked <- matrix(0, nrow = nrow(Y.masked),  ncol = 1, dimnames = list(rownames(Y.masked), "dummy_cov"))}
                           cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                           on.exit(parallel::stopCluster(cl), add = TRUE)
                           parallel::clusterSetRNGStream(cl, iseed = 12345)
@@ -2131,14 +2131,15 @@ holostackGP <- function(
                       gc()
                       if(any(grepl("Bayes",unlist(Additional_models)))){
                         # Function to fit a single Bayesian model for one phenotype and one or more multiple covariates
-                        run_independent_bayes <- function(model_name, Y.masked, Y.covmasked, mgeno_scaled, nIter, burnIn) {
+                        run_independent_bayes <- function(model_name, Y.masked, Y.covmasked = NULL, mgeno_scaled, nIter, burnIn) {
+                          suppressPackageStartupMessages(library(BGLR))
+
                           covTraits <- colnames(Y.covmasked)
                           # ---- Metagenome step ----
                           gebv_list <- list()
                           for (covt in covTraits) {
                             y <- Y.covmasked[[covt]]
                             ok <- !is.na(y)
-                            library(BGLR)
                             fm <- BGLR(y = y[ok], ETA = list(list(X = mgeno_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
                             b <- fm$ETA[[1]]$b
                             gebv_full <- rep(NA, length(y))
@@ -2176,9 +2177,9 @@ holostackGP <- function(
                         }
 
                         # Wrapper to run all models in parallel
-                        run_parallel_stack <- function(Y.masked, Y.covmasked = NULL, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
-                          ## --- Normalize covariates ONCE ---
-                          if (is.null(covariate)) {Y.covmasked <- NULL}
+                        run_parallel_stack <- function(Y.masked, Y.covmasked, covariate = NULL, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
+                          # Enforce non-NULL Y.covmasked for downstream code
+                          if (is.null(covariate)) {Y.covmasked <- matrix(0, nrow = nrow(Y.masked),  ncol = 1, dimnames = list(rownames(Y.masked), "dummy_cov"))}
                           cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                           on.exit(parallel::stopCluster(cl), add = TRUE)
                           parallel::clusterSetRNGStream(cl, iseed = 12345)
@@ -2479,14 +2480,15 @@ holostackGP <- function(
                       gc()
                       if(any(grepl("Bayes",unlist(Additional_models)))){
                         # Function to fit a single Bayesian model for one phenotype and one or more multiple covariates
-                        run_independent_bayes <- function(model_name, Y.masked, Y.covmasked, mgeno_scaled, nIter, burnIn) {
+                        run_independent_bayes <- function(model_name, Y.masked, Y.covmasked = NULL, mgeno_scaled, nIter, burnIn) {
+                          suppressPackageStartupMessages(library(BGLR))
+
                           covTraits <- colnames(Y.covmasked)
                           # ---- Metagenome step ----
                           gebv_list <- list()
                           for (covt in covTraits) {
                             y <- Y.covmasked[[covt]]
                             ok <- !is.na(y)
-                            library(BGLR)
                             fm <- BGLR(y = y[ok], ETA = list(list(X = mgeno_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
                             b <- fm$ETA[[1]]$b
                             gebv_full <- rep(NA, length(y))
@@ -2522,9 +2524,9 @@ holostackGP <- function(
                         }
 
                         # Wrapper to run all models in parallel
-                        run_parallel_stack <- function(Y.masked, Y.covmasked = NULL, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
-                          ## --- Normalize covariates ONCE ---
-                          if (is.null(covariate)) {Y.covmasked <- NULL}
+                        run_parallel_stack <- function(Y.masked, Y.covmasked, covariate = NULL, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
+                          # Enforce non-NULL Y.covmasked for downstream code
+                          if (is.null(covariate)) {Y.covmasked <- matrix(0, nrow = nrow(Y.masked),  ncol = 1, dimnames = list(rownames(Y.masked), "dummy_cov"))}
                           cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                           on.exit(parallel::stopCluster(cl), add = TRUE)
                           parallel::clusterSetRNGStream(cl, iseed = 12345)
@@ -3048,14 +3050,15 @@ holostackGP <- function(
                         gc()
                         if(any(grepl("Bayes",unlist(Additional_models)))){
                           # Function to fit a single Bayesian model for one phenotype and one or more multiple covariates
-                          run_independent_bayes <- function(model_name, Y.masked, Y.covmasked, geno.A_scaled, geno.D_scaled, mgeno_scaled, nIter, burnIn) {
+                          run_independent_bayes <- function(model_name, Y.masked, Y.covmasked = NULL, geno.A_scaled, geno.D_scaled, mgeno_scaled, nIter, burnIn) {
+                            suppressPackageStartupMessages(library(BGLR))
+
                             covTraits <- colnames(Y.covmasked)
                             # ---- Additive step ----
                             gebv_list <- list()
                             for (covt in covTraits) {
                               y <- Y.covmasked[[covt]]
                               ok <- !is.na(y)
-                              library(BGLR)
                               fm <- BGLR(y = y[ok], ETA = list(list(X = geno.A_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
                               b <- fm$ETA[[1]]$b
                               gebv_full <- rep(NA, length(y))
@@ -3168,9 +3171,9 @@ holostackGP <- function(
                           }
 
                           # Wrapper to run all models in parallel
-                          run_parallel_stack <- function(Y.masked, Y.covmasked = NULL, geno.A_scaled, geno.D_scaled, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
-                            ## --- Normalize covariates ONCE ---
-                            if (is.null(covariate)) {Y.covmasked <- NULL}
+                          run_parallel_stack <- function(Y.masked, Y.covmasked, covariate = NULL, geno.A_scaled, geno.D_scaled, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
+                            # Enforce non-NULL Y.covmasked for downstream code
+                            if (is.null(covariate)) {Y.covmasked <- matrix(0, nrow = nrow(Y.masked),  ncol = 1, dimnames = list(rownames(Y.masked), "dummy_cov"))}
                             cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                             on.exit(parallel::stopCluster(cl), add = TRUE)
                             parallel::clusterSetRNGStream(cl, iseed = 12345)
@@ -3713,14 +3716,15 @@ holostackGP <- function(
                         gc()
                         if(any(grepl("Bayes",unlist(Additional_models)))){
                           # Function to fit a single Bayesian model for one phenotype and one or more multiple covariates
-                          run_independent_bayes <- function(model_name, Y.masked, Y.covmasked, geno_scaled, mgeno_scaled, nIter, burnIn) {
+                          run_independent_bayes <- function(model_name, Y.masked, Y.covmasked = NULL, geno_scaled, mgeno_scaled, nIter, burnIn) {
+                            suppressPackageStartupMessages(library(BGLR))
+
                             covTraits <- colnames(Y.covmasked)
                             # ---- Genomic step ----
                             gebv_list <- list()
                             for (covt in covTraits) {
                               y <- Y.covmasked[[covt]]
                               ok <- !is.na(y)
-                              library(BGLR)
                               fm <- BGLR(y = y[ok], ETA = list(list(X = geno_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
                               b <- fm$ETA[[1]]$b
                               gebv_full <- rep(NA, length(y))
@@ -3793,9 +3797,9 @@ holostackGP <- function(
                           }
 
                           # Wrapper to run all models in parallel
-                          run_parallel_stack <- function(Y.masked, Y.covmasked = NULL, geno_scaled, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
-                            ## --- Normalize covariates ONCE ---
-                            if (is.null(covariate)) {Y.covmasked <- NULL}
+                          run_parallel_stack <- function(Y.masked, Y.covmasked, covariate = NULL, geno_scaled, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
+                            # Enforce non-NULL Y.covmasked for downstream code
+                            if (is.null(covariate)) {Y.covmasked <- matrix(0, nrow = nrow(Y.masked),  ncol = 1, dimnames = list(rownames(Y.masked), "dummy_cov"))}
                             cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                             on.exit(parallel::stopCluster(cl), add = TRUE)
                             parallel::clusterSetRNGStream(cl, iseed = 12345)
@@ -4368,14 +4372,15 @@ holostackGP <- function(
                       gc()
                       if(any(grepl("Bayes",unlist(Additional_models)))){
                         # Function to fit a single Bayesian model for one phenotype and one or more multiple covariates
-                        run_independent_bayes <- function(model_name, Y.masked, Y.covmasked, geno.A_scaled, geno.D_scaled, mgeno_scaled, nIter, burnIn) {
+                        run_independent_bayes <- function(model_name, Y.masked, Y.covmasked = NULL, geno.A_scaled, geno.D_scaled, mgeno_scaled, nIter, burnIn) {
+                          suppressPackageStartupMessages(library(BGLR))
+
                           covTraits <- colnames(Y.covmasked)
                           # ---- Additive step ----
                           gebv_list <- list()
                           for (covt in covTraits) {
                             y <- Y.covmasked[[covt]]
                             ok <- !is.na(y)
-                            library(BGLR)
                             fm <- BGLR(y = y[ok], ETA = list(list(X = geno.A_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
                             b <- fm$ETA[[1]]$b
                             gebv_full <- rep(NA, length(y))
@@ -4488,9 +4493,9 @@ holostackGP <- function(
                         }
 
                         # Wrapper to run all models in parallel
-                        run_parallel_stack <- function(Y.masked, Y.covmasked = NULL, geno.A_scaled, geno.D_scaled, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
-                          ## --- Normalize covariates ONCE ---
-                          if (is.null(covariate)) {Y.covmasked <- NULL}
+                        run_parallel_stack <- function(Y.masked, Y.covmasked, covariate = NULL, geno.A_scaled, geno.D_scaled, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
+                          # Enforce non-NULL Y.covmasked for downstream code
+                          if (is.null(covariate)) {Y.covmasked <- matrix(0, nrow = nrow(Y.masked),  ncol = 1, dimnames = list(rownames(Y.masked), "dummy_cov"))}
                           cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                           on.exit(parallel::stopCluster(cl), add = TRUE)
                           parallel::clusterSetRNGStream(cl, iseed = 12345)
@@ -4877,14 +4882,15 @@ holostackGP <- function(
                       gc()
                       if(any(grepl("Bayes",unlist(Additional_models)))){
                         # Function to fit a single Bayesian model for one phenotype and one or more multiple covariates
-                        run_independent_bayes <- function(model_name, Y.masked, Y.covmasked, geno_scaled, mgeno_scaled, nIter, burnIn) {
+                        run_independent_bayes <- function(model_name, Y.masked, Y.covmasked = NULL, geno_scaled, mgeno_scaled, nIter, burnIn) {
+                          suppressPackageStartupMessages(library(BGLR))
+
                           covTraits <- colnames(Y.covmasked)
                           # ---- Genomic step ----
                           gebv_list <- list()
                           for (covt in covTraits) {
                             y <- Y.covmasked[[covt]]
                             ok <- !is.na(y)
-                            library(BGLR)
                             fm <- BGLR(y = y[ok], ETA = list(list(X = geno_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
                             b <- fm$ETA[[1]]$b
                             gebv_full <- rep(NA, length(y))
@@ -4957,9 +4963,9 @@ holostackGP <- function(
                         }
 
                         # Wrapper to run all models in parallel
-                        run_parallel_stack <- function(Y.masked, Y.covmasked = NULL, geno_scaled, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
-                          ## --- Normalize covariates ONCE ---
-                          if (is.null(covariate)) {Y.covmasked <- NULL}
+                        run_parallel_stack <- function(Y.masked, Y.covmasked, covariate = NULL, geno_scaled, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
+                          # Enforce non-NULL Y.covmasked for downstream code
+                          if (is.null(covariate)) {Y.covmasked <- matrix(0, nrow = nrow(Y.masked),  ncol = 1, dimnames = list(rownames(Y.masked), "dummy_cov"))}
                           cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                           on.exit(parallel::stopCluster(cl), add = TRUE)
                           parallel::clusterSetRNGStream(cl, iseed = 12345)
