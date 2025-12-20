@@ -571,7 +571,10 @@ holostackGP <- function(
             pop_data <- subset(pop_data, no_missing < ncol(pop_data)*perc_missing)
             pop_data <- subset(pop_data, select=-c(no_missing))
             set.seed(123)
-            if (is.numeric(subsample_markers)) {pop_data <- sample_n(pop_data, subsample_markers)}
+            if (is.numeric(subsample_markers)) {
+              set.seed(123)
+              pop_data <- dplyr::sample_n(pop_data, subsample_markers)
+            }
             pop_data <- as.matrix(t(pop_data))
             #Computing the full-autopolyploid matrix based on Slater 2016 (Eq. 8 and 9)
             if (gene_model == "Additive"){
