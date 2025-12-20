@@ -1363,7 +1363,6 @@ holostackGP <- function(
                           preds_list <- parallel::parLapply(cl, bayes_models, function(model) {
                             run_independent_bayes(model, Y.masked = Y.masked, Y.covmasked = Y.covmasked, geno.A_scaled = geno.A_scaled, geno.D_scaled = geno.D_scaled, nIter = nIter, burnIn = burnIn)
                           })
-                          stopCluster(cl)
                           names(preds_list) <- bayes_models
                           return(preds_list)
                         }
@@ -1583,7 +1582,6 @@ holostackGP <- function(
                           preds_list <- parallel::parLapply(cl, bayes_models, function(model) {
                             run_independent_bayes(model, Y.masked = Y.masked, Y.covmasked = Y.covmasked, geno_scaled = geno_scaled, nIter = nIter, burnIn = burnIn)
                           })
-                          stopCluster(cl)
                           names(preds_list) <- bayes_models
                           return(preds_list)
                         }
@@ -1819,7 +1817,6 @@ holostackGP <- function(
                           preds_list <- parallel::parLapply(cl, bayes_models, function(model) {
                             run_independent_bayes(model, Y.masked = Y.masked, Y.covmasked = Y.covmasked,mgeno_scaled = mgeno_scaled, nIter = nIter, burnIn = burnIn)
                           })
-                          stopCluster(cl)
                           names(preds_list) <- bayes_models
                           return(preds_list)
                         }
@@ -2040,7 +2037,6 @@ holostackGP <- function(
                           preds_list <- parallel::parLapply(cl, bayes_models, function(model) {
                             run_independent_bayes(model, Y.masked = Y.masked, Y.covmasked = Y.covmasked, mgeno_scaled = mgeno_scaled, nIter = nIter, burnIn = burnIn)
                           })
-                          stopCluster(cl)
                           names(preds_list) <- bayes_models
                           return(preds_list)
                         }
@@ -2431,7 +2427,6 @@ holostackGP <- function(
                             preds_list <- parallel::parLapply(cl, bayes_models, function(model) {
                               run_independent_bayes(model, Y.masked = Y.masked, Y.covmasked = Y.covmasked,geno.A_scaled = geno.A_scaled, geno.D_scaled = geno.D_scaled, mgeno_scaled = mgeno_scaled, nIter = nIter, burnIn = burnIn)
                             })
-                            stopCluster(cl)
                             names(preds_list) <- bayes_models
                             return(preds_list)
                           }
@@ -2871,7 +2866,6 @@ holostackGP <- function(
                             preds_list <- parallel::parLapply(cl, bayes_models, function(model) {
                               run_independent_bayes(model, Y.masked = Y.masked, Y.covmasked = Y.covmasked, geno_scaled = geno_scaled, mgeno_scaled = mgeno_scaled, nIter = nIter, burnIn = burnIn)
                             })
-                            stopCluster(cl)
                             names(preds_list) <- bayes_models
                             return(preds_list)
                           }
@@ -3310,7 +3304,6 @@ holostackGP <- function(
                           preds_list <- parallel::parLapply(cl, bayes_models, function(model) {
                             run_independent_bayes(model, Y.masked = Y.masked, Y.covmasked = Y.covmasked,geno.A_scaled = geno.A_scaled, geno.D_scaled = geno.D_scaled, mgeno_scaled = mgeno_scaled, nIter = nIter, burnIn = burnIn)
                           })
-                          stopCluster(cl)
                           names(preds_list) <- bayes_models
                           return(preds_list)
                         }
@@ -3664,7 +3657,6 @@ holostackGP <- function(
                           preds_list <- parallel::parLapply(cl, bayes_models, function(model) {
                             run_independent_bayes(model, Y.masked = Y.masked, Y.covmasked = Y.covmasked, geno_scaled = geno_scaled, mgeno_scaled = mgeno_scaled, nIter = nIter, burnIn = burnIn)
                           })
-                          stopCluster(cl)
                           names(preds_list) <- bayes_models
                           return(preds_list)
                         }
