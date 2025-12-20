@@ -1369,7 +1369,7 @@ holostackGP <- function(
                         if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
                         ## Step 4: build ETA conditionally
                         ETA <- list(list(K = K_train, model = "RKHS"))
-                        if (!is.null(Xcov_mat)) {
+                        if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {
                           X_train <- Xcov_mat[train_idx, , drop = FALSE]
                           ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
                         }
@@ -1420,7 +1420,7 @@ holostackGP <- function(
                           if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
                           ## Step 4: build ETA conditionally
                           ETA <- list(list(X = geno.A_scaled[train_idx, , drop = FALSE], model = model_name))
-                          if (!is.null(Xcov_mat)) {
+                          if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {
                             X_train <- Xcov_mat[train_idx, , drop = FALSE]
                             ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
                           }
@@ -1462,7 +1462,7 @@ holostackGP <- function(
                           if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
                           ## Step 4: build ETA conditionally
                           ETA <- list(list(X = geno.D_scaled[train_idx, , drop = FALSE], model = model_name))
-                          if (!is.null(Xcov_mat)) {
+                          if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {
                             X_train <- Xcov_mat[train_idx, , drop = FALSE]
                             ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
                           }
@@ -1483,8 +1483,6 @@ holostackGP <- function(
 
                         # Wrapper to run all models in parallel
                         run_parallel_stack <- function(Y.masked, Y.covmasked, covariate = NULL, geno.A_scaled, geno.D_scaled, nIter, burnIn, n.cores = ncores) {
-                          # Enforce non-NULL Y.covmasked for downstream code
-                          if (is.null(covariate)) {Y.covmasked <- matrix(0, nrow = nrow(Y.masked),  ncol = 1, dimnames = list(rownames(Y.masked), "dummy_cov"))}
                           cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                           on.exit(parallel::stopCluster(cl), add = TRUE)
                           parallel::clusterSetRNGStream(cl, iseed = 12345)
@@ -1773,7 +1771,7 @@ holostackGP <- function(
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
                       ## Step 4: build ETA conditionally
                       ETA <- list(list(K = K_train, model = "RKHS"))
-                      if (!is.null(Xcov_mat)) {
+                      if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {
                         X_train <- Xcov_mat[train_idx, , drop = FALSE]
                         ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
                       }
@@ -1820,7 +1818,7 @@ holostackGP <- function(
                           if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
                           ## Step 4: build ETA conditionally
                           ETA <- list(list(X = geno_scaled[train_idx, , drop = FALSE], model = model_name))
-                          if (!is.null(Xcov_mat)) {
+                          if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {
                             X_train <- Xcov_mat[train_idx, , drop = FALSE]
                             ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
                           }
@@ -1839,8 +1837,6 @@ holostackGP <- function(
 
                         # Wrapper to run all models in parallel
                         run_parallel_stack <- function(Y.masked, Y.covmasked, covariate = NULL, geno_scaled, nIter, burnIn, n.cores = ncores) {
-                          # Enforce non-NULL Y.covmasked for downstream code
-                          if (is.null(covariate)) {Y.covmasked <- matrix(0, nrow = nrow(Y.masked),  ncol = 1, dimnames = list(rownames(Y.masked), "dummy_cov"))}
                           cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                           on.exit(parallel::stopCluster(cl), add = TRUE)
                           parallel::clusterSetRNGStream(cl, iseed = 12345)
@@ -2140,7 +2136,7 @@ holostackGP <- function(
                         if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
                         ## Step 4: build ETA conditionally
                         ETA <- list(list(K = K_train, model = "RKHS"))
-                        if (!is.null(Xcov_mat)) {
+                        if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {
                           X_train <- Xcov_mat[train_idx, , drop = FALSE]
                           ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
                         }
@@ -2191,7 +2187,7 @@ holostackGP <- function(
                           if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
                           ## Step 4: build ETA conditionally
                           ETA <- list(list(X = mgeno_scaled[train_idx, , drop = FALSE], model = model_name))
-                          if (!is.null(Xcov_mat)) {
+                          if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {
                             X_train <- Xcov_mat[train_idx, , drop = FALSE]
                             ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
                           }
@@ -2212,8 +2208,6 @@ holostackGP <- function(
 
                         # Wrapper to run all models in parallel
                         run_parallel_stack <- function(Y.masked, Y.covmasked, covariate = NULL, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
-                          # Enforce non-NULL Y.covmasked for downstream code
-                          if (is.null(covariate)) {Y.covmasked <- matrix(0, nrow = nrow(Y.masked),  ncol = 1, dimnames = list(rownames(Y.masked), "dummy_cov"))}
                           cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                           on.exit(parallel::stopCluster(cl), add = TRUE)
                           parallel::clusterSetRNGStream(cl, iseed = 12345)
@@ -2503,7 +2497,7 @@ holostackGP <- function(
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
                       ## Step 4: build ETA conditionally
                       ETA <- list(list(K = K_train, model = "RKHS"))
-                      if (!is.null(Xcov_mat)) {
+                      if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {
                         X_train <- Xcov_mat[train_idx, , drop = FALSE]
                         ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
                       }
@@ -2550,7 +2544,7 @@ holostackGP <- function(
                           if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
                           ## Step 4: build ETA conditionally
                           ETA <- list(list(X = mgeno_scaled[train_idx, , drop = FALSE], model = model_name))
-                          if (!is.null(Xcov_mat)) {
+                          if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {
                             X_train <- Xcov_mat[train_idx, , drop = FALSE]
                             ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
                           }
@@ -2569,8 +2563,6 @@ holostackGP <- function(
 
                         # Wrapper to run all models in parallel
                         run_parallel_stack <- function(Y.masked, Y.covmasked, covariate = NULL, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
-                          # Enforce non-NULL Y.covmasked for downstream code
-                          if (is.null(covariate)) {Y.covmasked <- matrix(0, nrow = nrow(Y.masked),  ncol = 1, dimnames = list(rownames(Y.masked), "dummy_cov"))}
                           cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                           on.exit(parallel::stopCluster(cl), add = TRUE)
                           parallel::clusterSetRNGStream(cl, iseed = 12345)
@@ -3072,7 +3064,7 @@ holostackGP <- function(
                           if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
                           ## Step 4: build ETA conditionally
                           ETA <- list(list(K = K_train, model = "RKHS"))
-                          if (!is.null(Xcov_mat)) {
+                          if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {
                             X_train <- Xcov_mat[train_idx, , drop = FALSE]
                             ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
                           }
@@ -3130,7 +3122,7 @@ holostackGP <- function(
                             if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
                             ## Step 4: build ETA conditionally
                             ETA <- list(list(X = geno.A_scaled[train_idx, , drop = FALSE], model = model_name))
-                            if (!is.null(Xcov_mat)) {
+                            if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {
                               X_train <- Xcov_mat[train_idx, , drop = FALSE]
                               ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
                             }
@@ -3172,7 +3164,7 @@ holostackGP <- function(
                             if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
                             ## Step 4: build ETA conditionally
                             ETA <- list(list(X = geno.D_scaled[train_idx, , drop = FALSE], model = model_name))
-                            if (!is.null(Xcov_mat)) {
+                            if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {
                               X_train <- Xcov_mat[train_idx, , drop = FALSE]
                               ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
                             }
@@ -3214,7 +3206,7 @@ holostackGP <- function(
                             if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
                             ## Step 4: build ETA conditionally
                             ETA <- list(list(X = mgeno_scaled[train_idx, , drop = FALSE], model = model_name))
-                            if (!is.null(Xcov_mat)) {
+                            if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {
                               X_train <- Xcov_mat[train_idx, , drop = FALSE]
                               ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
                             }
@@ -3234,8 +3226,6 @@ holostackGP <- function(
 
                           # Wrapper to run all models in parallel
                           run_parallel_stack <- function(Y.masked, Y.covmasked, covariate = NULL, geno.A_scaled, geno.D_scaled, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
-                            # Enforce non-NULL Y.covmasked for downstream code
-                            if (is.null(covariate)) {Y.covmasked <- matrix(0, nrow = nrow(Y.masked),  ncol = 1, dimnames = list(rownames(Y.masked), "dummy_cov"))}
                             cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                             on.exit(parallel::stopCluster(cl), add = TRUE)
                             parallel::clusterSetRNGStream(cl, iseed = 12345)
@@ -3495,7 +3485,7 @@ holostackGP <- function(
                         if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
                         ## Step 4: build ETA conditionally
                         ETA <- list(list(K = K_train, model = "RKHS"))
-                        if (!is.null(Xcov_mat)) {
+                        if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {
                           X_train <- Xcov_mat[train_idx, , drop = FALSE]
                           ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
                         }
@@ -3532,7 +3522,7 @@ holostackGP <- function(
                         if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
                         ## Step 4: build ETA conditionally
                         ETA <- list(list(K = K_train, model = "RKHS"))
-                        if (!is.null(Xcov_mat)) {
+                        if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {
                           X_train <- Xcov_mat[train_idx, , drop = FALSE]
                           ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
                         }
@@ -3820,7 +3810,7 @@ holostackGP <- function(
                             if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
                             ## Step 4: build ETA conditionally
                             ETA <- list(list(X = geno_scaled[train_idx, , drop = FALSE], model = model_name))
-                            if (!is.null(Xcov_mat)) {
+                            if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {
                               X_train <- Xcov_mat[train_idx, , drop = FALSE]
                               ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
                             }
@@ -3861,7 +3851,7 @@ holostackGP <- function(
                             if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
                             ## Step 4: build ETA conditionally
                             ETA <- list(list(X = mgeno_scaled[train_idx, , drop = FALSE], model = model_name))
-                            if (!is.null(Xcov_mat)) {
+                            if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {
                               X_train <- Xcov_mat[train_idx, , drop = FALSE]
                               ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
                             }
@@ -3880,8 +3870,6 @@ holostackGP <- function(
 
                           # Wrapper to run all models in parallel
                           run_parallel_stack <- function(Y.masked, Y.covmasked, covariate = NULL, geno_scaled, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
-                            # Enforce non-NULL Y.covmasked for downstream code
-                            if (is.null(covariate)) {Y.covmasked <- matrix(0, nrow = nrow(Y.masked),  ncol = 1, dimnames = list(rownames(Y.masked), "dummy_cov"))}
                             cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                             on.exit(parallel::stopCluster(cl), add = TRUE)
                             parallel::clusterSetRNGStream(cl, iseed = 12345)
@@ -4439,7 +4427,7 @@ holostackGP <- function(
                         if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
                         ## Step 4: build ETA conditionally
                         ETA <- list(list(K = K_train, model = "RKHS"))
-                        if (!is.null(Xcov_mat)) {
+                        if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {
                           X_train <- Xcov_mat[train_idx, , drop = FALSE]
                           ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
                         }
@@ -4490,7 +4478,7 @@ holostackGP <- function(
                           if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
                           ## Step 4: build ETA conditionally
                           ETA <- list(list(X = geno.A_scaled[train_idx, , drop = FALSE], model = model_name))
-                          if (!is.null(Xcov_mat)) {
+                          if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {
                             X_train <- Xcov_mat[train_idx, , drop = FALSE]
                             ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
                           }
@@ -4532,7 +4520,7 @@ holostackGP <- function(
                           if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
                           ## Step 4: build ETA conditionally
                           ETA <- list(list(X = geno.D_scaled[train_idx, , drop = FALSE], model = model_name))
-                          if (!is.null(Xcov_mat)) {
+                          if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {
                             X_train <- Xcov_mat[train_idx, , drop = FALSE]
                             ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
                           }
@@ -4574,7 +4562,7 @@ holostackGP <- function(
                           if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
                           ## Step 4: build ETA conditionally
                           ETA <- list(list(X = mgeno_scaled[train_idx, , drop = FALSE], model = model_name))
-                          if (!is.null(Xcov_mat)) {
+                          if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {
                             X_train <- Xcov_mat[train_idx, , drop = FALSE]
                             ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
                           }
@@ -4594,8 +4582,6 @@ holostackGP <- function(
 
                         # Wrapper to run all models in parallel
                         run_parallel_stack <- function(Y.masked, Y.covmasked, covariate = NULL, geno.A_scaled, geno.D_scaled, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
-                          # Enforce non-NULL Y.covmasked for downstream code
-                          if (is.null(covariate)) {Y.covmasked <- matrix(0, nrow = nrow(Y.masked),  ncol = 1, dimnames = list(rownames(Y.masked), "dummy_cov"))}
                           cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                           on.exit(parallel::stopCluster(cl), add = TRUE)
                           parallel::clusterSetRNGStream(cl, iseed = 12345)
@@ -4802,7 +4788,7 @@ holostackGP <- function(
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
                       ## Step 4: build ETA conditionally
                       ETA <- list(list(K = K_train, model = "RKHS"))
-                      if (!is.null(Xcov_mat)) {
+                      if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {
                         X_train <- Xcov_mat[train_idx, , drop = FALSE]
                         ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
                       }
@@ -4839,7 +4825,7 @@ holostackGP <- function(
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
                       ## Step 4: build ETA conditionally
                       ETA <- list(list(K = K_train, model = "RKHS"))
-                      if (!is.null(Xcov_mat)) {
+                      if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {
                         X_train <- Xcov_mat[train_idx, , drop = FALSE]
                         ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
                       }
@@ -5024,7 +5010,7 @@ holostackGP <- function(
                           if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
                           ## Step 4: build ETA conditionally
                           ETA <- list(list(X = geno_scaled[train_idx, , drop = FALSE], model = model_name))
-                          if (!is.null(Xcov_mat)) {
+                          if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {
                             X_train <- Xcov_mat[train_idx, , drop = FALSE]
                             ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
                           }
@@ -5065,7 +5051,7 @@ holostackGP <- function(
                           if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {Xcov_mat <- NULL}
                           ## Step 4: build ETA conditionally
                           ETA <- list(list(X = mgeno_scaled[train_idx, , drop = FALSE], model = model_name))
-                          if (!is.null(Xcov_mat)) {
+                          if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {
                             X_train <- Xcov_mat[train_idx, , drop = FALSE]
                             ETA <- c(ETA, list(list(X = X_train, model = "FIXED")))
                           }
@@ -5084,8 +5070,6 @@ holostackGP <- function(
 
                         # Wrapper to run all models in parallel
                         run_parallel_stack <- function(Y.masked, Y.covmasked, covariate = NULL, geno_scaled, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
-                          # Enforce non-NULL Y.covmasked for downstream code
-                          if (is.null(covariate)) {Y.covmasked <- matrix(0, nrow = nrow(Y.masked),  ncol = 1, dimnames = list(rownames(Y.masked), "dummy_cov"))}
                           cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                           on.exit(parallel::stopCluster(cl), add = TRUE)
                           parallel::clusterSetRNGStream(cl, iseed = 12345)
