@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 
 args <- commandArgs(trailingOnly = TRUE)
-stopifnot(length(args) >= 9)
+stopifnot(length(args) >= 8)
 
 source("https://raw.githubusercontent.com/bodeolukolu/holostackGP/refs/heads/master/holostackGP.R")
 setwd("./")
@@ -14,7 +14,7 @@ covariate <- if (is.na(args[6]) || args[6] == "" || tolower(args[6]) == "null") 
 gene_model <- if (is.na(args[8]) || args[8] == "" || tolower(args[8]) == "null") {
   NULL
 } else {
-  trimws(strsplit(args[9], ",", fixed = TRUE)[[1]])
+  trimws(strsplit(args[8], ",", fixed = TRUE)[[1]])
 }
 
 holostackGP(
