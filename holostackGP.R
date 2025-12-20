@@ -684,7 +684,7 @@ holostackGP <- function(
             rep <- as.integer(rep)
             # create dataframe for out-of-fold (OOF) predictions
             if (MTME == TRUE){
-              print("working on it")
+              print("run MTME a false to generate predictions, which you can use for stacking in a separate R script")
             } else {
               if(gp_model == "GBLUP"){
                 if (gene_model == "Full" || gene_model == "All"){
@@ -1060,7 +1060,7 @@ holostackGP <- function(
 
               # Genomic predictions
               if (MTME == TRUE){
-                print("working on it")
+                print("run MTME a false to generate predictions, which you can use for stacking in a separate R script")
               } else {
                 if(gp_model == "GBLUP"){
                   if (gene_model == "Full" || gene_model == "All"){
@@ -1291,7 +1291,7 @@ holostackGP <- function(
                           yHat_all_A <- rep(NA, nrow(Y.tmasked))
                           yHat_all_A[train_idx] <- fit_A$yHat
                           b_markersA <- fit_A$ETA[[1]]$b
-                          b_fixedA   <- fit_A$ETA[[2]]$b
+                          b_fixedA <- if (length(fit_A$ETA) >= 2) fit_A$ETA[[2]]$b else NULL
                           X_test[is.na(X_test)] <- 0
                           marker_part <- if (!is.null(b_markersA)) geno.A_scaled[test_idx, , drop = FALSE] %*% b_markersA else 0
                           fixed_part  <- if (!is.null(b_fixedA))   X_test %*% b_fixedA else 0
@@ -1333,7 +1333,7 @@ holostackGP <- function(
                           yHat_all_D <- rep(NA, nrow(Y.tmasked))
                           yHat_all_D[train_idx] <- fit_D$yHat
                           b_markersD <- fit_D$ETA[[1]]$b
-                          b_fixedD   <- fit_D$ETA[[2]]$b
+                          b_fixedD <- if (length(fit_D$ETA) >= 2) fit_D$ETA[[2]]$b else NULL
                           X_test[is.na(X_test)] <- 0
                           marker_part <- if (!is.null(b_markersD)) geno.D_scaled[test_idx, , drop = FALSE] %*% b_markersD else 0
                           fixed_part  <- if (!is.null(b_fixedD))   X_test %*% b_fixedD else 0
@@ -1555,7 +1555,7 @@ holostackGP <- function(
                           yHat_all <- rep(NA, nrow(Y.tmasked))
                           yHat_all[train_idx] <- fit$yHat
                           b_markers <- fit$ETA[[1]]$b
-                          b_fixed   <- fit$ETA[[2]]$b
+                          b_fixed <- if (length(fit$ETA) >= 2) fit$ETA[[2]]$b else NULL
                           X_test[is.na(X_test)] <- 0
                           marker_part <- if (!is.null(b_markers)) geno_scaled[test_idx, , drop = FALSE] %*% b_markers else 0
                           fixed_part  <- if (!is.null(b_fixed))   X_test %*% b_fixed else 0
@@ -1594,7 +1594,6 @@ holostackGP <- function(
                     }
                   }
                 }
-                gc()
                 if(gp_model == "gBLUP"){
                   if (gene_model == "Full" || gene_model == "All"){
                     # GBLUP  with rrBLUP package
@@ -1790,7 +1789,7 @@ holostackGP <- function(
                           yHat_all_M <- rep(NA, nrow(Y.tmasked))
                           yHat_all_M[train_idx] <- fit_M$yHat
                           b_markersM <- fit_M$ETA[[1]]$b
-                          b_fixedM   <- fit_M$ETA[[2]]$b
+                          b_fixedM <- if (length(fit_M$ETA) >= 2) fit_M$ETA[[2]]$b else NULL
                           X_test[is.na(X_test)] <- 0
                           marker_part <- if (!is.null(b_markersM)) mgeno_scaled[test_idx, , drop = FALSE] %*% b_markersM else 0
                           fixed_part  <- if (!is.null(b_fixedM))   X_test %*% b_fixedM else 0
@@ -2013,7 +2012,7 @@ holostackGP <- function(
                           yHat_all <- rep(NA, nrow(Y.tmasked))
                           yHat_all[train_idx] <- fit$yHat
                           b_markers <- fit$ETA[[1]]$b
-                          b_fixed   <- fit$ETA[[2]]$b
+                          b_fixed <- if (length(fit$ETA) >= 2) fit$ETA[[2]]$b else NULL
                           X_test[is.na(X_test)] <- 0
                           marker_part <- if (!is.null(b_markers)) mgeno_scaled[test_idx, , drop = FALSE] %*% b_markers else 0
                           fixed_part  <- if (!is.null(b_fixed))   X_test %*% b_fixed else 0
@@ -2319,7 +2318,7 @@ holostackGP <- function(
                             yHat_all_A <- rep(NA, nrow(Y.tmasked))
                             yHat_all_A[train_idx] <- fit_A$yHat
                             b_markersA <- fit_A$ETA[[1]]$b
-                            b_fixedA   <- fit_A$ETA[[2]]$b
+                            b_fixedA <- if (length(fit_A$ETA) >= 2) fit_A$ETA[[2]]$b else NULL
                             X_test[is.na(X_test)] <- 0
                             marker_part <- if (!is.null(b_markersA)) geno.A_scaled[test_idx, , drop = FALSE] %*% b_markersA else 0
                             fixed_part  <- if (!is.null(b_fixedA))   X_test %*% b_fixedA else 0
@@ -2361,7 +2360,7 @@ holostackGP <- function(
                             yHat_all_D <- rep(NA, nrow(Y.tmasked))
                             yHat_all_D[train_idx] <- fit_D$yHat
                             b_markersD <- fit_D$ETA[[1]]$b
-                            b_fixedD   <- fit_D$ETA[[2]]$b
+                            b_fixedD <- if (length(fit_D$ETA) >= 2) fit_D$ETA[[2]]$b else NULL
                             X_test[is.na(X_test)] <- 0
                             marker_part <- if (!is.null(b_markersD)) geno.D_scaled[test_idx, , drop = FALSE] %*% b_markersD else 0
                             fixed_part  <- if (!is.null(b_fixedD))   X_test %*% b_fixedD else 0
@@ -2403,7 +2402,7 @@ holostackGP <- function(
                             yHat_all_M <- rep(NA, nrow(Y.tmasked))
                             yHat_all_M[train_idx] <- fit_M$yHat
                             b_markersM <- fit_M$ETA[[1]]$b
-                            b_fixedM   <- fit_M$ETA[[2]]$b
+                            b_fixedM <- if (length(fit_M$ETA) >= 2) fit_M$ETA[[2]]$b else NULL
                             X_test[is.na(X_test)] <- 0
                             marker_part <- if (!is.null(b_markersM)) mgeno_scaled[test_idx, , drop = FALSE] %*% b_markersM else 0
                             fixed_part  <- if (!is.null(b_fixedM))   X_test %*% b_fixedM else 0
@@ -2803,7 +2802,7 @@ holostackGP <- function(
                             yHat_all <- rep(NA, nrow(Y.tmasked))
                             yHat_all[train_idx] <- fit$yHat
                             b_markers <- fit$ETA[[1]]$b
-                            b_fixed   <- fit$ETA[[2]]$b
+                            b_fixed <- if (length(fit$ETA) >= 2) fit$ETA[[2]]$b else NULL
                             X_test[is.na(X_test)] <- 0
                             marker_part <- if (!is.null(b_markers)) geno_scaled[test_idx, , drop = FALSE] %*% b_markers else 0
                             fixed_part  <- if (!is.null(b_fixed))   X_test %*% b_fixed else 0
@@ -2844,7 +2843,7 @@ holostackGP <- function(
                             yHat_all <- rep(NA, nrow(Y.tmasked))
                             yHat_all[train_idx] <- fit$yHat
                             b_markers <- fit$ETA[[1]]$b
-                            b_fixed   <- fit$ETA[[2]]$b
+                            b_fixed <- if (length(fit$ETA) >= 2) fit$ETA[[2]]$b else NULL
                             X_test[is.na(X_test)] <- 0
                             marker_part <- if (!is.null(b_markers)) mgeno_scaled[test_idx, , drop = FALSE] %*% b_markers else 0
                             fixed_part  <- if (!is.null(b_fixed))   X_test %*% b_fixed else 0
@@ -2934,7 +2933,6 @@ holostackGP <- function(
                     }
                   }
                 }
-                gc()
                 if(gp_model == "gGBLUP"){
                   if (gene_model == "Full" || gene_model == "All"){
                     # GBLUP  with rrBLUP package
@@ -3199,7 +3197,7 @@ holostackGP <- function(
                           yHat_all_A <- rep(NA, nrow(Y.tmasked))
                           yHat_all_A[train_idx] <- fit_A$yHat
                           b_markersA <- fit_A$ETA[[1]]$b
-                          b_fixedA   <- fit_A$ETA[[2]]$b
+                          b_fixedA <- if (length(fit_A$ETA) >= 2) fit_A$ETA[[2]]$b else NULL
                           X_test[is.na(X_test)] <- 0
                           marker_part <- if (!is.null(b_markersA)) geno.A_scaled[test_idx, , drop = FALSE] %*% b_markersA else 0
                           fixed_part  <- if (!is.null(b_fixedA))   X_test %*% b_fixedA else 0
@@ -3241,7 +3239,7 @@ holostackGP <- function(
                           yHat_all_D <- rep(NA, nrow(Y.tmasked))
                           yHat_all_D[train_idx] <- fit_D$yHat
                           b_markersD <- fit_D$ETA[[1]]$b
-                          b_fixedD   <- fit_D$ETA[[2]]$b
+                          b_fixedD <- if (length(fit_D$ETA) >= 2) fit_D$ETA[[2]]$b else NULL
                           X_test[is.na(X_test)] <- 0
                           marker_part <- if (!is.null(b_markersD)) geno.D_scaled[test_idx, , drop = FALSE] %*% b_markersD else 0
                           fixed_part  <- if (!is.null(b_fixedD))   X_test %*% b_fixedD else 0
@@ -3283,7 +3281,7 @@ holostackGP <- function(
                           yHat_all_M <- rep(NA, nrow(Y.tmasked))
                           yHat_all_M[train_idx] <- fit_M$yHat
                           b_markersM <- fit_M$ETA[[1]]$b
-                          b_fixedM   <- fit_M$ETA[[2]]$b
+                          b_fixedM <- if (length(fit_M$ETA) >= 2) fit_M$ETA[[2]]$b else NULL
                           X_test[is.na(X_test)] <- 0
                           marker_part <- if (!is.null(b_markersM)) mgeno_scaled[test_idx, , drop = FALSE] %*% b_markersM else 0
                           fixed_part  <- if (!is.null(b_fixedM))   X_test %*% b_fixedM else 0
@@ -3597,7 +3595,7 @@ holostackGP <- function(
                           yHat_all <- rep(NA, nrow(Y.tmasked))
                           yHat_all[train_idx] <- fit$yHat
                           b_markers <- fit$ETA[[1]]$b
-                          b_fixed   <- fit$ETA[[2]]$b
+                          b_fixed <- if (length(fit$ETA) >= 2) fit$ETA[[2]]$b else NULL
                           X_test[is.na(X_test)] <- 0
                           marker_part <- if (!is.null(b_markers)) geno_scaled[test_idx, , drop = FALSE] %*% b_markers else 0
                           fixed_part  <- if (!is.null(b_fixed))   X_test %*% b_fixed else 0
@@ -3638,7 +3636,7 @@ holostackGP <- function(
                           yHat_all <- rep(NA, nrow(Y.tmasked))
                           yHat_all[train_idx] <- fit$yHat
                           b_markers <- fit$ETA[[1]]$b
-                          b_fixed   <- fit$ETA[[2]]$b
+                          b_fixed <- if (length(fit$ETA) >= 2) fit$ETA[[2]]$b else NULL
                           X_test[is.na(X_test)] <- 0
                           marker_part <- if (!is.null(b_markers)) mgeno_scaled[test_idx, , drop = FALSE] %*% b_markers else 0
                           fixed_part  <- if (!is.null(b_fixed))   X_test %*% b_fixed else 0
@@ -3687,7 +3685,7 @@ holostackGP <- function(
 
             # Model stacking
             if (MTME == TRUE){
-              print("working on it")
+              print("run MTME a false to generate predictions, which you can use for stacking in a separate R script")
             } else {
               if(gp_model == "GBLUP"){
                 if (gene_model == "Full" || gene_model == "All"){
@@ -3906,6 +3904,7 @@ holostackGP <- function(
                   }
                 }
               }
+              pred_all$rep <- rep
             }
 
             #Calculate correlation and store them
@@ -3996,6 +3995,8 @@ holostackGP <- function(
               }
             }
             gc()
+            outfile_predall <- paste("../",GP_run_title,"/",outdir,"_ALL_PREDICTIONS.txt",sep="")
+            write.table(pred_all, outfile_predall, col.names = !file.exists(outfile_predall), row.names=FALSE, quote = FALSE, sep = "\t", append=file.exists(outfile_predall))
           }#End of for (rep in 1:t)
 
           stderror <- function(x) sd(x)/sqrt(length(x))
