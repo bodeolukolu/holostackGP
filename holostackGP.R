@@ -3,6 +3,7 @@
 holostackGP <- function(
     wdir = "./",
     projname="proj_GP",
+    MTME=FALSE,
     phenofile=NULL,
     genofile=NULL,
     metagenomefile=NULL,
@@ -59,13 +60,14 @@ holostackGP <- function(
             "nlme", "lsmeans", "agricolae", "parallel", "doParallel", "foreach", "rrBLUP", "BGLR", "GWASpoly")
 
 
+
   #############################################################################################################################################################################
   # Specify parameters
   ####################
   # Step 1: Specify covariate if required and import data.
   setwd(wdir)
   GP_run_title <- projname
-  MTME <- FALSE
+  MTME <- MTME
   traits <- traits
   if (is.null(covariate)) {
     covariate <- NULL
@@ -159,7 +161,7 @@ holostackGP <- function(
         if (gene_model == "dominance" || gene_model == "DOMINANCE" ){ gene_model <- "Dominance"}
         if(gp_model == "GBLUP"){metagenome_covariate <- FALSE; metagenome_data <- NULL}
         if(gp_model == "gGBLUP"){metagenome_covariate <- TRUE; metag_method <- "Aitchison"}
-        if(gp_model == "gBLUP"){gene_models <- "metagenome"; metag_method <- "Aitchison"; metagenome_covariate <- FALSE; myG <- NULL}
+        if(gp_model == "gBLUP"){gene_models <- "metagenome"; metag_method <- "Aitchison"; metagenome_covariate <- FALSE}
         metag_pca <- TRUE
         dir.create(GP_run_title, showWarnings=FALSE, recursive=TRUE)
         colnames(myY)[1] <- "Taxa"
@@ -1090,7 +1092,6 @@ holostackGP <- function(
                       }
                       Xcov_mat <- prepare_covariates(Y.tmasked[, -1, drop = FALSE])
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
-                        message("⚠️ No valid covariates left, setting Xcov_mat = NULL")
                         Xcov_mat <- NULL
                       } else {
                         # Optional: impute missing values
@@ -1395,7 +1396,6 @@ holostackGP <- function(
                       }
                       Xcov_mat <- prepare_covariates(Y.tmasked[, -1, drop = FALSE])
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
-                        message("⚠️ No valid covariates left, setting Xcov_mat = NULL")
                         Xcov_mat <- NULL
                       } else {
                         # Optional: impute missing values
@@ -1620,7 +1620,6 @@ holostackGP <- function(
                       }
                       Xcov_mat <- prepare_covariates(Y.tmasked[, -1, drop = FALSE])
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
-                        message("⚠️ No valid covariates left, setting Xcov_mat = NULL")
                         Xcov_mat <- NULL
                       } else {
                         # Optional: impute missing values
@@ -1850,7 +1849,6 @@ holostackGP <- function(
                       }
                       Xcov_mat <- prepare_covariates(Y.tmasked[, -1, drop = FALSE])
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
-                        message("⚠️ No valid covariates left, setting Xcov_mat = NULL")
                         Xcov_mat <- NULL
                       } else {
                         # Optional: impute missing values
@@ -2074,7 +2072,6 @@ holostackGP <- function(
                         }
                         Xcov_mat <- prepare_covariates(Y.tmasked[, -1, drop = FALSE])
                         if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
-                          message("⚠️ No valid covariates left, setting Xcov_mat = NULL")
                           Xcov_mat <- NULL
                         } else {
                           # Optional: impute missing values
@@ -2530,7 +2527,6 @@ holostackGP <- function(
                       }
                       Xcov_mat <- prepare_covariates(Y.tmasked[, -1, drop = FALSE])
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
-                        message("⚠️ No valid covariates left, setting Xcov_mat = NULL")
                         Xcov_mat <- NULL
                       } else {
                         # Optional: impute missing values
@@ -2955,7 +2951,6 @@ holostackGP <- function(
                       }
                       Xcov_mat <- prepare_covariates(Y.tmasked[, -1, drop = FALSE])
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
-                        message("⚠️ No valid covariates left, setting Xcov_mat = NULL")
                         Xcov_mat <- NULL
                       } else {
                         # Optional: impute missing values
@@ -3358,7 +3353,6 @@ holostackGP <- function(
                       }
                       Xcov_mat <- prepare_covariates(Y.tmasked[, -1, drop = FALSE])
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
-                        message("⚠️ No valid covariates left, setting Xcov_mat = NULL")
                         Xcov_mat <- NULL
                       } else {
                         # Optional: impute missing values
