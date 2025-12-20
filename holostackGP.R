@@ -987,7 +987,76 @@ holostackGP <- function(
                 }
               }
               method_names <- c("GBLUP", "rrBLUP_markers", "RKHS_BGLR", "BRR", "BayesA", "BayesB", "BayesC", "BL")
+              # --- Covariate preparation ---
+              prepare_covariates <- function(Xcov) {
 
+                # Return NULL immediately if no covariates
+                if (is.null(Xcov)) {
+                  return(NULL)
+                }
+
+                # Coerce to data.frame safely
+                if (is.list(Xcov) && !is.data.frame(Xcov)) {
+                  Xcov_df <- as.data.frame(do.call(cbind, Xcov))
+                } else {
+                  Xcov_df <- as.data.frame(Xcov)
+                }
+
+                # Empty data.frame guard
+                if (ncol(Xcov_df) == 0) {
+                  return(NULL)
+                }
+
+                # Drop all-NA or constant columns
+                keep <- vapply(Xcov_df, function(x) {
+                  !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
+                }, logical(1))
+                Xcov_df <- Xcov_df[, keep, drop = FALSE]
+
+                if (ncol(Xcov_df) == 0) {
+                  return(NULL)
+                }
+
+                # Build design matrix (no intercept)
+                Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
+
+                # Drop duplicate columns after factor expansion
+                dup <- duplicated(colnames(Xcov_mat))
+                if (any(dup)) {
+                  Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
+                }
+
+                # Drop near-zero variance columns
+                nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
+                if (any(nzv)) {
+                  message(
+                    "Dropping ", sum(nzv), " near-zero variance covariates: ",
+                    paste(colnames(Xcov_mat)[nzv], collapse = ", ")
+                  )
+                  Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
+                }
+
+                # Enforce full rank by dropping collinear columns
+                if (ncol(Xcov_mat) > 1) {
+                  qrX <- qr(Xcov_mat)
+                  if (qrX$rank < ncol(Xcov_mat)) {
+                    drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
+                    message(
+                      "Dropping collinear covariates: ",
+                      paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
+                    )
+                    keep_idx <- qrX$pivot[seq_len(qrX$rank)]
+                    Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
+                  }
+                }
+
+                # Final check: return NULL if no valid covariates left
+                if (ncol(Xcov_mat) == 0) {
+                  return(NULL)
+                }
+
+                return(Xcov_mat)
+              }
 
               # Genomic predictions
               if (MTME == TRUE){
@@ -995,81 +1064,12 @@ holostackGP <- function(
               } else {
                 if(gp_model == "GBLUP"){
                   if (gene_model == "Full" || gene_model == "All"){
-                    prepare_covariates <- function(Xcov) {
-
-                      # Return NULL immediately if no covariates
-                      if (is.null(Xcov)) {
-                        return(NULL)
-                      }
-
-                      # Coerce to data.frame safely
-                      if (is.list(Xcov) && !is.data.frame(Xcov)) {
-                        Xcov_df <- as.data.frame(do.call(cbind, Xcov))
-                      } else {
-                        Xcov_df <- as.data.frame(Xcov)
-                      }
-
-                      # Empty data.frame guard
-                      if (ncol(Xcov_df) == 0) {
-                        return(NULL)
-                      }
-
-                      # Drop all-NA or constant columns
-                      keep <- vapply(Xcov_df, function(x) {
-                        !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
-                      }, logical(1))
-                      Xcov_df <- Xcov_df[, keep, drop = FALSE]
-
-                      if (ncol(Xcov_df) == 0) {
-                        return(NULL)
-                      }
-
-                      # Build design matrix (no intercept)
-                      Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
-
-                      # Drop duplicate columns after factor expansion
-                      dup <- duplicated(colnames(Xcov_mat))
-                      if (any(dup)) {
-                        Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
-                      }
-
-                      # Drop near-zero variance columns
-                      nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
-                      if (any(nzv)) {
-                        message(
-                          "Dropping ", sum(nzv), " near-zero variance covariates: ",
-                          paste(colnames(Xcov_mat)[nzv], collapse = ", ")
-                        )
-                        Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
-                      }
-
-                      # Enforce full rank by dropping collinear columns
-                      if (ncol(Xcov_mat) > 1) {
-                        qrX <- qr(Xcov_mat)
-                        if (qrX$rank < ncol(Xcov_mat)) {
-                          drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                          message(
-                            "Dropping collinear covariates: ",
-                            paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
-                          )
-                          keep_idx <- qrX$pivot[seq_len(qrX$rank)]
-                          Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
-                        }
-                      }
-
-                      # Final check: return NULL if no valid covariates left
-                      if (ncol(Xcov_mat) == 0) {
-                        return(NULL)
-                      }
-
-                      return(Xcov_mat)
-                    }
-
                     # GBLUP  with rrBLUP package
                     pred_list <- list()
                     for (kernel_name in names(kernels)) {
                       K <- kernels[[kernel_name]]
-                      covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                      covTraits <- character(0)
+                      if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {covTraits <- colnames(Y.covmasked)}
                       gebv_list <- list()
                       if (length(covTraits) > 0) {
                         for (covt in covTraits){
@@ -1087,8 +1087,7 @@ holostackGP <- function(
                       if (length(covTraits) > 0) {
                         for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
                       }
-                      Xcov <- Y.tmasked[, -1, drop = FALSE]
-                      Xcov_mat <- prepare_covariates(Xcov)
+                      Xcov_mat <- prepare_covariates(Y.tmasked[, -1, drop = FALSE])
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
                         message("⚠️ No valid covariates left, setting Xcov_mat = NULL")
                         Xcov_mat <- NULL
@@ -1150,78 +1149,9 @@ holostackGP <- function(
                         return(Z_clean)
                       }
                       Z_train <- prepare_rrblup_matrix(geno.A_scaled[train_ids, ], y_train)
-                      # --- Covariate preparation ---
-                      prepare_covariates <- function(Xcov) {
 
-                        # Return NULL immediately if no covariates
-                        if (is.null(Xcov)) {
-                          return(NULL)
-                        }
-
-                        # Coerce to data.frame safely
-                        if (is.list(Xcov) && !is.data.frame(Xcov)) {
-                          Xcov_df <- as.data.frame(do.call(cbind, Xcov))
-                        } else {
-                          Xcov_df <- as.data.frame(Xcov)
-                        }
-
-                        # Empty data.frame guard
-                        if (ncol(Xcov_df) == 0) {
-                          return(NULL)
-                        }
-
-                        # Drop all-NA or constant columns
-                        keep <- vapply(Xcov_df, function(x) {
-                          !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
-                        }, logical(1))
-                        Xcov_df <- Xcov_df[, keep, drop = FALSE]
-
-                        if (ncol(Xcov_df) == 0) {
-                          return(NULL)
-                        }
-
-                        # Build design matrix (no intercept)
-                        Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
-
-                        # Drop duplicate columns after factor expansion
-                        dup <- duplicated(colnames(Xcov_mat))
-                        if (any(dup)) {
-                          Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
-                        }
-
-                        # Drop near-zero variance columns
-                        nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
-                        if (any(nzv)) {
-                          message(
-                            "Dropping ", sum(nzv), " near-zero variance covariates: ",
-                            paste(colnames(Xcov_mat)[nzv], collapse = ", ")
-                          )
-                          Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
-                        }
-
-                        # Enforce full rank by dropping collinear columns
-                        if (ncol(Xcov_mat) > 1) {
-                          qrX <- qr(Xcov_mat)
-                          if (qrX$rank < ncol(Xcov_mat)) {
-                            drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                            message(
-                              "Dropping collinear covariates: ",
-                              paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
-                            )
-                            keep_idx <- qrX$pivot[seq_len(qrX$rank)]
-                            Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
-                          }
-                        }
-
-                        # Final check: return NULL if no valid covariates left
-                        if (ncol(Xcov_mat) == 0) {
-                          return(NULL)
-                        }
-
-                        return(Xcov_mat)
-                      }
                       # Usage: safely assign or NULL
-                      Xcov_mat <- prepare_covariates(Xcov)
+                      Xcov_mat <- prepare_covariates(Y.tmasked[, -1, drop = FALSE])
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
                         Xcov_mat <- NULL
                       }
@@ -1252,78 +1182,9 @@ holostackGP <- function(
                         return(Z_clean)
                       }
                       Z_train <- prepare_rrblup_matrix(geno.D_scaled[train_ids, ], y_train)
-                      # --- Covariate preparation ---
-                      prepare_covariates <- function(Xcov) {
 
-                        # Return NULL immediately if no covariates
-                        if (is.null(Xcov)) {
-                          return(NULL)
-                        }
-
-                        # Coerce to data.frame safely
-                        if (is.list(Xcov) && !is.data.frame(Xcov)) {
-                          Xcov_df <- as.data.frame(do.call(cbind, Xcov))
-                        } else {
-                          Xcov_df <- as.data.frame(Xcov)
-                        }
-
-                        # Empty data.frame guard
-                        if (ncol(Xcov_df) == 0) {
-                          return(NULL)
-                        }
-
-                        # Drop all-NA or constant columns
-                        keep <- vapply(Xcov_df, function(x) {
-                          !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
-                        }, logical(1))
-                        Xcov_df <- Xcov_df[, keep, drop = FALSE]
-
-                        if (ncol(Xcov_df) == 0) {
-                          return(NULL)
-                        }
-
-                        # Build design matrix (no intercept)
-                        Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
-
-                        # Drop duplicate columns after factor expansion
-                        dup <- duplicated(colnames(Xcov_mat))
-                        if (any(dup)) {
-                          Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
-                        }
-
-                        # Drop near-zero variance columns
-                        nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
-                        if (any(nzv)) {
-                          message(
-                            "Dropping ", sum(nzv), " near-zero variance covariates: ",
-                            paste(colnames(Xcov_mat)[nzv], collapse = ", ")
-                          )
-                          Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
-                        }
-
-                        # Enforce full rank by dropping collinear columns
-                        if (ncol(Xcov_mat) > 1) {
-                          qrX <- qr(Xcov_mat)
-                          if (qrX$rank < ncol(Xcov_mat)) {
-                            drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                            message(
-                              "Dropping collinear covariates: ",
-                              paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
-                            )
-                            keep_idx <- qrX$pivot[seq_len(qrX$rank)]
-                            Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
-                          }
-                        }
-
-                        # Final check: return NULL if no valid covariates left
-                        if (ncol(Xcov_mat) == 0) {
-                          return(NULL)
-                        }
-
-                        return(Xcov_mat)
-                      }
                       # Usage: safely assign or NULL
-                      Xcov_mat <- prepare_covariates(Xcov)
+                      Xcov_mat <- prepare_covariates(Y.tmasked[, -1, drop = FALSE])
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
                         Xcov_mat <- NULL
                       }
@@ -1342,7 +1203,8 @@ holostackGP <- function(
                       pred_list <- list()
                       for (kernel_name in names(kernels)) {
                         K <- kernels[[kernel_name]]
-                        covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                        covTraits <- character(0)
+                        if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {covTraits <- colnames(Y.covmasked)}
                         gebv_list <- list()
                         for(covt in covTraits){
                           y <- Y.covmasked[[covt]]
@@ -1392,8 +1254,8 @@ holostackGP <- function(
                         # Function to fit a single Bayesian model for one phenotype and one or more multiple covariates
                         run_independent_bayes <- function(model_name, Y.masked, Y.covmasked = NULL, geno.A_scaled, geno.D_scaled, nIter, burnIn) {
                           suppressPackageStartupMessages(library(BGLR))
-
-                          covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                          covTraits <- character(0)
+                          if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {covTraits <- colnames(Y.covmasked)}
                           # ---- Additive step ----
                           gebv_list <- list()
                           if (length(covTraits) > 0) {
@@ -1494,7 +1356,7 @@ holostackGP <- function(
                             suppressPackageStartupMessages(library(BGLR))
                             NULL
                           })
-                          parallel::clusterExport(cl, varlist = c("Y.masked", "Y.covmasked", "geno.A_scaled", "geno.D_scaled", "nIter", "burnIn", "run_independent_bayes"), envir = environment())
+                          parallel::clusterExport(cl, varlist = c("Y.masked", "Y.covmasked", "geno.A_scaled", "geno.D_scaled", "nIter", "burnIn", "run_independent_bayes", "prepare_covariates"), envir = environment())
                           preds_list <- parallel::parLapply(cl, bayes_models, function(model) {
                             run_independent_bayes(model, Y.masked = Y.masked, Y.covmasked = Y.covmasked, geno.A_scaled = geno.A_scaled, geno.D_scaled = geno.D_scaled, nIter = nIter, burnIn = burnIn)
                           })
@@ -1511,78 +1373,9 @@ holostackGP <- function(
                     }
 
                   } else {
-                    prepare_covariates <- function(Xcov) {
-
-                      # Return NULL immediately if no covariates
-                      if (is.null(Xcov)) {
-                        return(NULL)
-                      }
-
-                      # Coerce to data.frame safely
-                      if (is.list(Xcov) && !is.data.frame(Xcov)) {
-                        Xcov_df <- as.data.frame(do.call(cbind, Xcov))
-                      } else {
-                        Xcov_df <- as.data.frame(Xcov)
-                      }
-
-                      # Empty data.frame guard
-                      if (ncol(Xcov_df) == 0) {
-                        return(NULL)
-                      }
-
-                      # Drop all-NA or constant columns
-                      keep <- vapply(Xcov_df, function(x) {
-                        !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
-                      }, logical(1))
-                      Xcov_df <- Xcov_df[, keep, drop = FALSE]
-
-                      if (ncol(Xcov_df) == 0) {
-                        return(NULL)
-                      }
-
-                      # Build design matrix (no intercept)
-                      Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
-
-                      # Drop duplicate columns after factor expansion
-                      dup <- duplicated(colnames(Xcov_mat))
-                      if (any(dup)) {
-                        Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
-                      }
-
-                      # Drop near-zero variance columns
-                      nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
-                      if (any(nzv)) {
-                        message(
-                          "Dropping ", sum(nzv), " near-zero variance covariates: ",
-                          paste(colnames(Xcov_mat)[nzv], collapse = ", ")
-                        )
-                        Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
-                      }
-
-                      # Enforce full rank by dropping collinear columns
-                      if (ncol(Xcov_mat) > 1) {
-                        qrX <- qr(Xcov_mat)
-                        if (qrX$rank < ncol(Xcov_mat)) {
-                          drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                          message(
-                            "Dropping collinear covariates: ",
-                            paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
-                          )
-                          keep_idx <- qrX$pivot[seq_len(qrX$rank)]
-                          Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
-                        }
-                      }
-
-                      # Final check: return NULL if no valid covariates left
-                      if (ncol(Xcov_mat) == 0) {
-                        return(NULL)
-                      }
-
-                      return(Xcov_mat)
-                    }
-
                     # GBLUP with rrBLUP package
-                    {covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                    covTraits <- character(0)
+                    {if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {covTraits <- colnames(Y.covmasked)}
                       gebv_list <- list()
                       if (length(covTraits) > 0) {
                         for (covt in covTraits){
@@ -1600,8 +1393,7 @@ holostackGP <- function(
                       if (length(covTraits) > 0) {
                         for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
                       }
-                      Xcov <- Y.tmasked[, -1, drop = FALSE]
-                      Xcov_mat <- prepare_covariates(Xcov)
+                      Xcov_mat <- prepare_covariates(Y.tmasked[, -1, drop = FALSE])
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
                         message("⚠️ No valid covariates left, setting Xcov_mat = NULL")
                         Xcov_mat <- NULL
@@ -1659,78 +1451,9 @@ holostackGP <- function(
                         return(Z_clean)
                       }
                       Z_train <- prepare_rrblup_matrix(geno_scaled[train_ids, ], y_train)
-                      # --- Covariate preparation ---
-                      prepare_covariates <- function(Xcov) {
 
-                        # Return NULL immediately if no covariates
-                        if (is.null(Xcov)) {
-                          return(NULL)
-                        }
-
-                        # Coerce to data.frame safely
-                        if (is.list(Xcov) && !is.data.frame(Xcov)) {
-                          Xcov_df <- as.data.frame(do.call(cbind, Xcov))
-                        } else {
-                          Xcov_df <- as.data.frame(Xcov)
-                        }
-
-                        # Empty data.frame guard
-                        if (ncol(Xcov_df) == 0) {
-                          return(NULL)
-                        }
-
-                        # Drop all-NA or constant columns
-                        keep <- vapply(Xcov_df, function(x) {
-                          !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
-                        }, logical(1))
-                        Xcov_df <- Xcov_df[, keep, drop = FALSE]
-
-                        if (ncol(Xcov_df) == 0) {
-                          return(NULL)
-                        }
-
-                        # Build design matrix (no intercept)
-                        Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
-
-                        # Drop duplicate columns after factor expansion
-                        dup <- duplicated(colnames(Xcov_mat))
-                        if (any(dup)) {
-                          Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
-                        }
-
-                        # Drop near-zero variance columns
-                        nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
-                        if (any(nzv)) {
-                          message(
-                            "Dropping ", sum(nzv), " near-zero variance covariates: ",
-                            paste(colnames(Xcov_mat)[nzv], collapse = ", ")
-                          )
-                          Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
-                        }
-
-                        # Enforce full rank by dropping collinear columns
-                        if (ncol(Xcov_mat) > 1) {
-                          qrX <- qr(Xcov_mat)
-                          if (qrX$rank < ncol(Xcov_mat)) {
-                            drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                            message(
-                              "Dropping collinear covariates: ",
-                              paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
-                            )
-                            keep_idx <- qrX$pivot[seq_len(qrX$rank)]
-                            Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
-                          }
-                        }
-
-                        # Final check: return NULL if no valid covariates left
-                        if (ncol(Xcov_mat) == 0) {
-                          return(NULL)
-                        }
-
-                        return(Xcov_mat)
-                      }
                       # Usage: safely assign or NULL
-                      Xcov_mat <- prepare_covariates(Xcov)
+                      Xcov_mat <- prepare_covariates(Y.tmasked[, -1, drop = FALSE])
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
                         Xcov_mat <- NULL
                       }
@@ -1748,7 +1471,8 @@ holostackGP <- function(
                       pred_rrblup_OOF <- rbind(pred_rrblup_OOF,pred_rrblup)
 
                       # RHKs with BGLR package
-                      covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                      covTraits <- character(0)
+                      if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {covTraits <- colnames(Y.covmasked)}
                       gebv_list <- list()
                       for(covt in covTraits){
                         y <- Y.covmasked[[covt]]
@@ -1794,8 +1518,8 @@ holostackGP <- function(
                         # Function to fit a single Bayesian model for one phenotype and one or more multiple covariates
                         run_independent_bayes <- function(model_name, Y.masked, Y.covmasked = NULL, geno_scaled, nIter, burnIn) {
                           suppressPackageStartupMessages(library(BGLR))
-
-                          covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                          covTraits <- character(0)
+                          if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {covTraits <- colnames(Y.covmasked)}
                           # ---- Additive step ----
                           gebv_list <- list()
                           if (length(covTraits) > 0) {
@@ -1852,7 +1576,7 @@ holostackGP <- function(
                             suppressPackageStartupMessages(library(BGLR))
                             NULL
                           })
-                          parallel::clusterExport(cl, varlist = c("Y.masked", "Y.covmasked", "geno_scaled", "nIter", "burnIn", "run_independent_bayes"), envir = environment())
+                          parallel::clusterExport(cl, varlist = c("Y.masked", "Y.covmasked", "geno_scaled", "nIter", "burnIn", "run_independent_bayes", "prepare_covariates"), envir = environment())
                           preds_list <- parallel::parLapply(cl, bayes_models, function(model) {
                             run_independent_bayes(model, Y.masked = Y.masked, Y.covmasked = Y.covmasked, geno_scaled = geno_scaled, nIter = nIter, burnIn = burnIn)
                           })
@@ -1873,81 +1597,12 @@ holostackGP <- function(
                 gc()
                 if(gp_model == "gBLUP"){
                   if (gene_model == "Full" || gene_model == "All"){
-                    prepare_covariates <- function(Xcov) {
-
-                      # Return NULL immediately if no covariates
-                      if (is.null(Xcov)) {
-                        return(NULL)
-                      }
-
-                      # Coerce to data.frame safely
-                      if (is.list(Xcov) && !is.data.frame(Xcov)) {
-                        Xcov_df <- as.data.frame(do.call(cbind, Xcov))
-                      } else {
-                        Xcov_df <- as.data.frame(Xcov)
-                      }
-
-                      # Empty data.frame guard
-                      if (ncol(Xcov_df) == 0) {
-                        return(NULL)
-                      }
-
-                      # Drop all-NA or constant columns
-                      keep <- vapply(Xcov_df, function(x) {
-                        !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
-                      }, logical(1))
-                      Xcov_df <- Xcov_df[, keep, drop = FALSE]
-
-                      if (ncol(Xcov_df) == 0) {
-                        return(NULL)
-                      }
-
-                      # Build design matrix (no intercept)
-                      Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
-
-                      # Drop duplicate columns after factor expansion
-                      dup <- duplicated(colnames(Xcov_mat))
-                      if (any(dup)) {
-                        Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
-                      }
-
-                      # Drop near-zero variance columns
-                      nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
-                      if (any(nzv)) {
-                        message(
-                          "Dropping ", sum(nzv), " near-zero variance covariates: ",
-                          paste(colnames(Xcov_mat)[nzv], collapse = ", ")
-                        )
-                        Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
-                      }
-
-                      # Enforce full rank by dropping collinear columns
-                      if (ncol(Xcov_mat) > 1) {
-                        qrX <- qr(Xcov_mat)
-                        if (qrX$rank < ncol(Xcov_mat)) {
-                          drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                          message(
-                            "Dropping collinear covariates: ",
-                            paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
-                          )
-                          keep_idx <- qrX$pivot[seq_len(qrX$rank)]
-                          Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
-                        }
-                      }
-
-                      # Final check: return NULL if no valid covariates left
-                      if (ncol(Xcov_mat) == 0) {
-                        return(NULL)
-                      }
-
-                      return(Xcov_mat)
-                    }
-
                     # GBLUP  with rrBLUP package
                     pred_list <- list()
                     for (kernel_name in names(kernels)) {
                       K <- kernels[[kernel_name]]
-                      covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                      covTraits <- character(0)
+                      if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {covTraits <- colnames(Y.covmasked)}
                       gebv_list <- list()
                       if (length(covTraits) > 0) {
                         for (covt in covTraits){
@@ -1965,8 +1620,7 @@ holostackGP <- function(
                       if (length(covTraits) > 0) {
                         for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
                       }
-                      Xcov <- Y.tmasked[, -1, drop = FALSE]
-                      Xcov_mat <- prepare_covariates(Xcov)
+                      Xcov_mat <- prepare_covariates(Y.tmasked[, -1, drop = FALSE])
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
                         message("⚠️ No valid covariates left, setting Xcov_mat = NULL")
                         Xcov_mat <- NULL
@@ -2028,78 +1682,9 @@ holostackGP <- function(
                         return(Z_clean)
                       }
                       Z_train <- prepare_rrblup_matrix(mgeno_scaled[train_ids, ], y_train)
-                      # --- Covariate preparation ---
-                      prepare_covariates <- function(Xcov) {
 
-                        # Return NULL immediately if no covariates
-                        if (is.null(Xcov)) {
-                          return(NULL)
-                        }
-
-                        # Coerce to data.frame safely
-                        if (is.list(Xcov) && !is.data.frame(Xcov)) {
-                          Xcov_df <- as.data.frame(do.call(cbind, Xcov))
-                        } else {
-                          Xcov_df <- as.data.frame(Xcov)
-                        }
-
-                        # Empty data.frame guard
-                        if (ncol(Xcov_df) == 0) {
-                          return(NULL)
-                        }
-
-                        # Drop all-NA or constant columns
-                        keep <- vapply(Xcov_df, function(x) {
-                          !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
-                        }, logical(1))
-                        Xcov_df <- Xcov_df[, keep, drop = FALSE]
-
-                        if (ncol(Xcov_df) == 0) {
-                          return(NULL)
-                        }
-
-                        # Build design matrix (no intercept)
-                        Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
-
-                        # Drop duplicate columns after factor expansion
-                        dup <- duplicated(colnames(Xcov_mat))
-                        if (any(dup)) {
-                          Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
-                        }
-
-                        # Drop near-zero variance columns
-                        nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
-                        if (any(nzv)) {
-                          message(
-                            "Dropping ", sum(nzv), " near-zero variance covariates: ",
-                            paste(colnames(Xcov_mat)[nzv], collapse = ", ")
-                          )
-                          Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
-                        }
-
-                        # Enforce full rank by dropping collinear columns
-                        if (ncol(Xcov_mat) > 1) {
-                          qrX <- qr(Xcov_mat)
-                          if (qrX$rank < ncol(Xcov_mat)) {
-                            drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                            message(
-                              "Dropping collinear covariates: ",
-                              paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
-                            )
-                            keep_idx <- qrX$pivot[seq_len(qrX$rank)]
-                            Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
-                          }
-                        }
-
-                        # Final check: return NULL if no valid covariates left
-                        if (ncol(Xcov_mat) == 0) {
-                          return(NULL)
-                        }
-
-                        return(Xcov_mat)
-                      }
                       # Usage: safely assign or NULL
-                      Xcov_mat <- prepare_covariates(Xcov)
+                      Xcov_mat <- prepare_covariates(Y.tmasked[, -1, drop = FALSE])
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
                         Xcov_mat <- NULL
                       }
@@ -2117,7 +1702,8 @@ holostackGP <- function(
                       pred_list <- list()
                       for (kernel_name in names(kernels)) {
                         K <- kernels[[kernel_name]]
-                        covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                        covTraits <- character(0)
+                        if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {covTraits <- colnames(Y.covmasked)}
                         gebv_list <- list()
                         for(covt in covTraits){
                           y <- Y.covmasked[[covt]]
@@ -2167,8 +1753,8 @@ holostackGP <- function(
                         # Function to fit a single Bayesian model for one phenotype and one or more multiple covariates
                         run_independent_bayes <- function(model_name, Y.masked, Y.covmasked = NULL, mgeno_scaled, nIter, burnIn) {
                           suppressPackageStartupMessages(library(BGLR))
-
-                          covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                          covTraits <- character(0)
+                          if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {covTraits <- colnames(Y.covmasked)}
                           # ---- Metagenome step ----
                           gebv_list <- list()
                           if (length(covTraits) > 0) {
@@ -2227,7 +1813,7 @@ holostackGP <- function(
                             suppressPackageStartupMessages(library(BGLR))
                             NULL
                           })
-                          parallel::clusterExport(cl, varlist = c("Y.masked", "Y.covmasked", "mgeno_scaled", "nIter", "burnIn", "run_independent_bayes"), envir = environment())
+                          parallel::clusterExport(cl, varlist = c("Y.masked", "Y.covmasked", "mgeno_scaled", "nIter", "burnIn", "run_independent_bayes", "prepare_covariates"), envir = environment())
                           preds_list <- parallel::parLapply(cl, bayes_models, function(model) {
                             run_independent_bayes(model, Y.masked = Y.masked, Y.covmasked = Y.covmasked,mgeno_scaled = mgeno_scaled, nIter = nIter, burnIn = burnIn)
                           })
@@ -2244,79 +1830,10 @@ holostackGP <- function(
                       }
                     }
                   } else {
-                    prepare_covariates <- function(Xcov) {
-
-                      # Return NULL immediately if no covariates
-                      if (is.null(Xcov)) {
-                        return(NULL)
-                      }
-
-                      # Coerce to data.frame safely
-                      if (is.list(Xcov) && !is.data.frame(Xcov)) {
-                        Xcov_df <- as.data.frame(do.call(cbind, Xcov))
-                      } else {
-                        Xcov_df <- as.data.frame(Xcov)
-                      }
-
-                      # Empty data.frame guard
-                      if (ncol(Xcov_df) == 0) {
-                        return(NULL)
-                      }
-
-                      # Drop all-NA or constant columns
-                      keep <- vapply(Xcov_df, function(x) {
-                        !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
-                      }, logical(1))
-                      Xcov_df <- Xcov_df[, keep, drop = FALSE]
-
-                      if (ncol(Xcov_df) == 0) {
-                        return(NULL)
-                      }
-
-                      # Build design matrix (no intercept)
-                      Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
-
-                      # Drop duplicate columns after factor expansion
-                      dup <- duplicated(colnames(Xcov_mat))
-                      if (any(dup)) {
-                        Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
-                      }
-
-                      # Drop near-zero variance columns
-                      nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
-                      if (any(nzv)) {
-                        message(
-                          "Dropping ", sum(nzv), " near-zero variance covariates: ",
-                          paste(colnames(Xcov_mat)[nzv], collapse = ", ")
-                        )
-                        Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
-                      }
-
-                      # Enforce full rank by dropping collinear columns
-                      if (ncol(Xcov_mat) > 1) {
-                        qrX <- qr(Xcov_mat)
-                        if (qrX$rank < ncol(Xcov_mat)) {
-                          drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                          message(
-                            "Dropping collinear covariates: ",
-                            paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
-                          )
-                          keep_idx <- qrX$pivot[seq_len(qrX$rank)]
-                          Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
-                        }
-                      }
-
-                      # Final check: return NULL if no valid covariates left
-                      if (ncol(Xcov_mat) == 0) {
-                        return(NULL)
-                      }
-
-                      return(Xcov_mat)
-                    }
-
                     # GBLUP with rrBLUP package
                     {
-                      covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                      covTraits <- character(0)
+                      if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {covTraits <- colnames(Y.covmasked)}
                       gebv_list <- list()
                       if (length(covTraits) > 0) {
                        for (covt in covTraits){
@@ -2334,8 +1851,7 @@ holostackGP <- function(
                       if (length(covTraits) > 0) {
                         for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
                       }
-                      Xcov <- Y.tmasked[, -1, drop = FALSE]
-                      Xcov_mat <- prepare_covariates(Xcov)
+                      Xcov_mat <- prepare_covariates(Y.tmasked[, -1, drop = FALSE])
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
                         message("⚠️ No valid covariates left, setting Xcov_mat = NULL")
                         Xcov_mat <- NULL
@@ -2394,78 +1910,9 @@ holostackGP <- function(
                         return(Z_clean)
                       }
                       Z_train <- prepare_rrblup_matrix(mgeno_scaled[train_ids, ], y_train)
-                      # --- Covariate preparation ---
-                      prepare_covariates <- function(Xcov) {
 
-                        # Return NULL immediately if no covariates
-                        if (is.null(Xcov)) {
-                          return(NULL)
-                        }
-
-                        # Coerce to data.frame safely
-                        if (is.list(Xcov) && !is.data.frame(Xcov)) {
-                          Xcov_df <- as.data.frame(do.call(cbind, Xcov))
-                        } else {
-                          Xcov_df <- as.data.frame(Xcov)
-                        }
-
-                        # Empty data.frame guard
-                        if (ncol(Xcov_df) == 0) {
-                          return(NULL)
-                        }
-
-                        # Drop all-NA or constant columns
-                        keep <- vapply(Xcov_df, function(x) {
-                          !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
-                        }, logical(1))
-                        Xcov_df <- Xcov_df[, keep, drop = FALSE]
-
-                        if (ncol(Xcov_df) == 0) {
-                          return(NULL)
-                        }
-
-                        # Build design matrix (no intercept)
-                        Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
-
-                        # Drop duplicate columns after factor expansion
-                        dup <- duplicated(colnames(Xcov_mat))
-                        if (any(dup)) {
-                          Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
-                        }
-
-                        # Drop near-zero variance columns
-                        nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
-                        if (any(nzv)) {
-                          message(
-                            "Dropping ", sum(nzv), " near-zero variance covariates: ",
-                            paste(colnames(Xcov_mat)[nzv], collapse = ", ")
-                          )
-                          Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
-                        }
-
-                        # Enforce full rank by dropping collinear columns
-                        if (ncol(Xcov_mat) > 1) {
-                          qrX <- qr(Xcov_mat)
-                          if (qrX$rank < ncol(Xcov_mat)) {
-                            drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                            message(
-                              "Dropping collinear covariates: ",
-                              paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
-                            )
-                            keep_idx <- qrX$pivot[seq_len(qrX$rank)]
-                            Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
-                          }
-                        }
-
-                        # Final check: return NULL if no valid covariates left
-                        if (ncol(Xcov_mat) == 0) {
-                          return(NULL)
-                        }
-
-                        return(Xcov_mat)
-                      }
                       # Usage: safely assign or NULL
-                      Xcov_mat <- prepare_covariates(Xcov)
+                      Xcov_mat <- prepare_covariates(Y.tmasked[, -1, drop = FALSE])
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
                         Xcov_mat <- NULL
                       }
@@ -2482,7 +1929,8 @@ holostackGP <- function(
                       pred_rrblup_OOF <- rbind(pred_rrblup_OOF,pred_rrblup)
 
                       # RHKs with BGLR package
-                      covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                      covTraits <- character(0)
+                      if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {covTraits <- colnames(Y.covmasked)}
                       gebv_list <- list()
                       for(covt in covTraits){
                         y <- Y.covmasked[[covt]]
@@ -2528,8 +1976,8 @@ holostackGP <- function(
                         # Function to fit a single Bayesian model for one phenotype and one or more multiple covariates
                         run_independent_bayes <- function(model_name, Y.masked, Y.covmasked = NULL, mgeno_scaled, nIter, burnIn) {
                           suppressPackageStartupMessages(library(BGLR))
-
-                          covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                          covTraits <- character(0)
+                          if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {covTraits <- colnames(Y.covmasked)}
                           # ---- Metagenome step ----
                           gebv_list <- list()
                           if (length(covTraits) > 0) {
@@ -2586,7 +2034,7 @@ holostackGP <- function(
                             suppressPackageStartupMessages(library(BGLR))
                             NULL
                           })
-                          parallel::clusterExport(cl, varlist = c("Y.masked", "Y.covmasked", "mgeno_scaled", "nIter", "burnIn", "run_independent_bayes"), envir = environment())
+                          parallel::clusterExport(cl, varlist = c("Y.masked", "Y.covmasked", "mgeno_scaled", "nIter", "burnIn", "run_independent_bayes", "prepare_covariates"), envir = environment())
                           preds_list <- parallel::parLapply(cl, bayes_models, function(model) {
                             run_independent_bayes(model, Y.masked = Y.masked, Y.covmasked = Y.covmasked, mgeno_scaled = mgeno_scaled, nIter = nIter, burnIn = burnIn)
                           })
@@ -2605,81 +2053,12 @@ holostackGP <- function(
                   }
                   if(gp_model == "gGBLUP"){
                     if (gene_model == "Full" || gene_model == "All"){
-                      prepare_covariates <- function(Xcov) {
-
-                        # Return NULL immediately if no covariates
-                        if (is.null(Xcov)) {
-                          return(NULL)
-                        }
-
-                        # Coerce to data.frame safely
-                        if (is.list(Xcov) && !is.data.frame(Xcov)) {
-                          Xcov_df <- as.data.frame(do.call(cbind, Xcov))
-                        } else {
-                          Xcov_df <- as.data.frame(Xcov)
-                        }
-
-                        # Empty data.frame guard
-                        if (ncol(Xcov_df) == 0) {
-                          return(NULL)
-                        }
-
-                        # Drop all-NA or constant columns
-                        keep <- vapply(Xcov_df, function(x) {
-                          !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
-                        }, logical(1))
-                        Xcov_df <- Xcov_df[, keep, drop = FALSE]
-
-                        if (ncol(Xcov_df) == 0) {
-                          return(NULL)
-                        }
-
-                        # Build design matrix (no intercept)
-                        Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
-
-                        # Drop duplicate columns after factor expansion
-                        dup <- duplicated(colnames(Xcov_mat))
-                        if (any(dup)) {
-                          Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
-                        }
-
-                        # Drop near-zero variance columns
-                        nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
-                        if (any(nzv)) {
-                          message(
-                            "Dropping ", sum(nzv), " near-zero variance covariates: ",
-                            paste(colnames(Xcov_mat)[nzv], collapse = ", ")
-                          )
-                          Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
-                        }
-
-                        # Enforce full rank by dropping collinear columns
-                        if (ncol(Xcov_mat) > 1) {
-                          qrX <- qr(Xcov_mat)
-                          if (qrX$rank < ncol(Xcov_mat)) {
-                            drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                            message(
-                              "Dropping collinear covariates: ",
-                              paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
-                            )
-                            keep_idx <- qrX$pivot[seq_len(qrX$rank)]
-                            Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
-                          }
-                        }
-
-                        # Final check: return NULL if no valid covariates left
-                        if (ncol(Xcov_mat) == 0) {
-                          return(NULL)
-                        }
-
-                        return(Xcov_mat)
-                      }
-
                       # GBLUP  with rrBLUP package
                       pred_list <- list()
                       for (kernel_name in names(kernels)) {
                         K <- kernels[[kernel_name]]
-                        covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                        covTraits <- character(0)
+                        if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {covTraits <- colnames(Y.covmasked)}
                         gebv_list <- list()
                         if (length(covTraits) > 0) {
                           for (covt in covTraits){
@@ -2697,8 +2076,7 @@ holostackGP <- function(
                         if (length(covTraits) > 0) {
                           for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
                         }
-                        Xcov <- Y.tmasked[, -1, drop = FALSE]
-                        Xcov_mat <- prepare_covariates(Xcov)
+                        Xcov_mat <- prepare_covariates(Y.tmasked[, -1, drop = FALSE])
                         if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
                           message("⚠️ No valid covariates left, setting Xcov_mat = NULL")
                           Xcov_mat <- NULL
@@ -2760,78 +2138,9 @@ holostackGP <- function(
                           return(Z_clean)
                         }
                         Z_train <- prepare_rrblup_matrix(geno.A_scaled[train_ids, ], y_train)
-                        # --- Covariate preparation ---
-                        prepare_covariates <- function(Xcov) {
 
-                          # Return NULL immediately if no covariates
-                          if (is.null(Xcov)) {
-                            return(NULL)
-                          }
-
-                          # Coerce to data.frame safely
-                          if (is.list(Xcov) && !is.data.frame(Xcov)) {
-                            Xcov_df <- as.data.frame(do.call(cbind, Xcov))
-                          } else {
-                            Xcov_df <- as.data.frame(Xcov)
-                          }
-
-                          # Empty data.frame guard
-                          if (ncol(Xcov_df) == 0) {
-                            return(NULL)
-                          }
-
-                          # Drop all-NA or constant columns
-                          keep <- vapply(Xcov_df, function(x) {
-                            !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
-                          }, logical(1))
-                          Xcov_df <- Xcov_df[, keep, drop = FALSE]
-
-                          if (ncol(Xcov_df) == 0) {
-                            return(NULL)
-                          }
-
-                          # Build design matrix (no intercept)
-                          Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
-
-                          # Drop duplicate columns after factor expansion
-                          dup <- duplicated(colnames(Xcov_mat))
-                          if (any(dup)) {
-                            Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
-                          }
-
-                          # Drop near-zero variance columns
-                          nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
-                          if (any(nzv)) {
-                            message(
-                              "Dropping ", sum(nzv), " near-zero variance covariates: ",
-                              paste(colnames(Xcov_mat)[nzv], collapse = ", ")
-                            )
-                            Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
-                          }
-
-                          # Enforce full rank by dropping collinear columns
-                          if (ncol(Xcov_mat) > 1) {
-                            qrX <- qr(Xcov_mat)
-                            if (qrX$rank < ncol(Xcov_mat)) {
-                              drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                              message(
-                                "Dropping collinear covariates: ",
-                                paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
-                              )
-                              keep_idx <- qrX$pivot[seq_len(qrX$rank)]
-                              Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
-                            }
-                          }
-
-                          # Final check: return NULL if no valid covariates left
-                          if (ncol(Xcov_mat) == 0) {
-                            return(NULL)
-                          }
-
-                          return(Xcov_mat)
-                        }
                         # Usage: safely assign or NULL
-                        Xcov_mat <- prepare_covariates(Xcov)
+                        Xcov_mat <- prepare_covariates(Y.tmasked[, -1, drop = FALSE])
                         if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
                           Xcov_mat <- NULL
                         }
@@ -2863,78 +2172,9 @@ holostackGP <- function(
                           return(Z_clean)
                         }
                         Z_train <- prepare_rrblup_matrix(geno.D_scaled[train_ids, ], y_train)
-                        # --- Covariate preparation ---
-                        prepare_covariates <- function(Xcov) {
 
-                          # Return NULL immediately if no covariates
-                          if (is.null(Xcov)) {
-                            return(NULL)
-                          }
-
-                          # Coerce to data.frame safely
-                          if (is.list(Xcov) && !is.data.frame(Xcov)) {
-                            Xcov_df <- as.data.frame(do.call(cbind, Xcov))
-                          } else {
-                            Xcov_df <- as.data.frame(Xcov)
-                          }
-
-                          # Empty data.frame guard
-                          if (ncol(Xcov_df) == 0) {
-                            return(NULL)
-                          }
-
-                          # Drop all-NA or constant columns
-                          keep <- vapply(Xcov_df, function(x) {
-                            !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
-                          }, logical(1))
-                          Xcov_df <- Xcov_df[, keep, drop = FALSE]
-
-                          if (ncol(Xcov_df) == 0) {
-                            return(NULL)
-                          }
-
-                          # Build design matrix (no intercept)
-                          Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
-
-                          # Drop duplicate columns after factor expansion
-                          dup <- duplicated(colnames(Xcov_mat))
-                          if (any(dup)) {
-                            Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
-                          }
-
-                          # Drop near-zero variance columns
-                          nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
-                          if (any(nzv)) {
-                            message(
-                              "Dropping ", sum(nzv), " near-zero variance covariates: ",
-                              paste(colnames(Xcov_mat)[nzv], collapse = ", ")
-                            )
-                            Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
-                          }
-
-                          # Enforce full rank by dropping collinear columns
-                          if (ncol(Xcov_mat) > 1) {
-                            qrX <- qr(Xcov_mat)
-                            if (qrX$rank < ncol(Xcov_mat)) {
-                              drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                              message(
-                                "Dropping collinear covariates: ",
-                                paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
-                              )
-                              keep_idx <- qrX$pivot[seq_len(qrX$rank)]
-                              Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
-                            }
-                          }
-
-                          # Final check: return NULL if no valid covariates left
-                          if (ncol(Xcov_mat) == 0) {
-                            return(NULL)
-                          }
-
-                          return(Xcov_mat)
-                        }
                         # Usage: safely assign or NULL
-                        Xcov_mat <- prepare_covariates(Xcov)
+                        Xcov_mat <- prepare_covariates(Y.tmasked[, -1, drop = FALSE])
                         if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
                           Xcov_mat <- NULL
                         }
@@ -2965,78 +2205,9 @@ holostackGP <- function(
                           return(Z_clean)
                         }
                         Z_train <- prepare_rrblup_matrix(mgeno_scaled[train_ids, ], y_train)
-                        # --- Covariate preparation ---
-                        prepare_covariates <- function(Xcov) {
 
-                          # Return NULL immediately if no covariates
-                          if (is.null(Xcov)) {
-                            return(NULL)
-                          }
-
-                          # Coerce to data.frame safely
-                          if (is.list(Xcov) && !is.data.frame(Xcov)) {
-                            Xcov_df <- as.data.frame(do.call(cbind, Xcov))
-                          } else {
-                            Xcov_df <- as.data.frame(Xcov)
-                          }
-
-                          # Empty data.frame guard
-                          if (ncol(Xcov_df) == 0) {
-                            return(NULL)
-                          }
-
-                          # Drop all-NA or constant columns
-                          keep <- vapply(Xcov_df, function(x) {
-                            !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
-                          }, logical(1))
-                          Xcov_df <- Xcov_df[, keep, drop = FALSE]
-
-                          if (ncol(Xcov_df) == 0) {
-                            return(NULL)
-                          }
-
-                          # Build design matrix (no intercept)
-                          Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
-
-                          # Drop duplicate columns after factor expansion
-                          dup <- duplicated(colnames(Xcov_mat))
-                          if (any(dup)) {
-                            Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
-                          }
-
-                          # Drop near-zero variance columns
-                          nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
-                          if (any(nzv)) {
-                            message(
-                              "Dropping ", sum(nzv), " near-zero variance covariates: ",
-                              paste(colnames(Xcov_mat)[nzv], collapse = ", ")
-                            )
-                            Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
-                          }
-
-                          # Enforce full rank by dropping collinear columns
-                          if (ncol(Xcov_mat) > 1) {
-                            qrX <- qr(Xcov_mat)
-                            if (qrX$rank < ncol(Xcov_mat)) {
-                              drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                              message(
-                                "Dropping collinear covariates: ",
-                                paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
-                              )
-                              keep_idx <- qrX$pivot[seq_len(qrX$rank)]
-                              Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
-                            }
-                          }
-
-                          # Final check: return NULL if no valid covariates left
-                          if (ncol(Xcov_mat) == 0) {
-                            return(NULL)
-                          }
-
-                          return(Xcov_mat)
-                        }
                         # Usage: safely assign or NULL
-                        Xcov_mat <- prepare_covariates(Xcov)
+                        Xcov_mat <- prepare_covariates(Y.tmasked[, -1, drop = FALSE])
                         if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
                           Xcov_mat <- NULL
                         }
@@ -3053,7 +2224,8 @@ holostackGP <- function(
                         pred_list <- list()
                         for (kernel_name in names(kernels)) {
                           K <- kernels[[kernel_name]]
-                          covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                          covTraits <- character(0)
+                          if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {covTraits <- colnames(Y.covmasked)}
                           gebv_list <- list()
                           for(covt in covTraits){
                             y <- Y.covmasked[[covt]]
@@ -3110,8 +2282,8 @@ holostackGP <- function(
                           # Function to fit a single Bayesian model for one phenotype and one or more multiple covariates
                           run_independent_bayes <- function(model_name, Y.masked, Y.covmasked = NULL, geno.A_scaled, geno.D_scaled, mgeno_scaled, nIter, burnIn) {
                             suppressPackageStartupMessages(library(BGLR))
-
-                            covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                            covTraits <- character(0)
+                            if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {covTraits <- colnames(Y.covmasked)}
                             # ---- Additive step ----
                             gebv_list <- list()
                             if (length(covTraits) > 0) {
@@ -3253,7 +2425,7 @@ holostackGP <- function(
                               suppressPackageStartupMessages(library(BGLR))
                               NULL
                             })
-                            parallel::clusterExport(cl, varlist = c("Y.masked", "Y.covmasked", "geno.A_scaled", "geno.D_scaled", "mgeno_scaled", "nIter", "burnIn", "run_independent_bayes"), envir = environment())
+                            parallel::clusterExport(cl, varlist = c("Y.masked", "Y.covmasked", "geno.A_scaled", "geno.D_scaled", "mgeno_scaled", "nIter", "burnIn", "run_independent_bayes", "prepare_covariates"), envir = environment())
                             preds_list <- parallel::parLapply(cl, bayes_models, function(model) {
                               run_independent_bayes(model, Y.masked = Y.masked, Y.covmasked = Y.covmasked,geno.A_scaled = geno.A_scaled, geno.D_scaled = geno.D_scaled, mgeno_scaled = mgeno_scaled, nIter = nIter, burnIn = burnIn)
                             })
@@ -3321,78 +2493,9 @@ holostackGP <- function(
                         }
                       }
                     } else {
-                      prepare_covariates <- function(Xcov) {
-
-                        # Return NULL immediately if no covariates
-                        if (is.null(Xcov)) {
-                          return(NULL)
-                        }
-
-                        # Coerce to data.frame safely
-                        if (is.list(Xcov) && !is.data.frame(Xcov)) {
-                          Xcov_df <- as.data.frame(do.call(cbind, Xcov))
-                        } else {
-                          Xcov_df <- as.data.frame(Xcov)
-                        }
-
-                        # Empty data.frame guard
-                        if (ncol(Xcov_df) == 0) {
-                          return(NULL)
-                        }
-
-                        # Drop all-NA or constant columns
-                        keep <- vapply(Xcov_df, function(x) {
-                          !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
-                        }, logical(1))
-                        Xcov_df <- Xcov_df[, keep, drop = FALSE]
-
-                        if (ncol(Xcov_df) == 0) {
-                          return(NULL)
-                        }
-
-                        # Build design matrix (no intercept)
-                        Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
-
-                        # Drop duplicate columns after factor expansion
-                        dup <- duplicated(colnames(Xcov_mat))
-                        if (any(dup)) {
-                          Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
-                        }
-
-                        # Drop near-zero variance columns
-                        nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
-                        if (any(nzv)) {
-                          message(
-                            "Dropping ", sum(nzv), " near-zero variance covariates: ",
-                            paste(colnames(Xcov_mat)[nzv], collapse = ", ")
-                          )
-                          Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
-                        }
-
-                        # Enforce full rank by dropping collinear columns
-                        if (ncol(Xcov_mat) > 1) {
-                          qrX <- qr(Xcov_mat)
-                          if (qrX$rank < ncol(Xcov_mat)) {
-                            drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                            message(
-                              "Dropping collinear covariates: ",
-                              paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
-                            )
-                            keep_idx <- qrX$pivot[seq_len(qrX$rank)]
-                            Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
-                          }
-                        }
-
-                        # Final check: return NULL if no valid covariates left
-                        if (ncol(Xcov_mat) == 0) {
-                          return(NULL)
-                        }
-
-                        return(Xcov_mat)
-                      }
-
                       # GBLUP with rrBLUP package
-                      covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                      covTraits <- character(0)
+                      if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {covTraits <- colnames(Y.covmasked)}
                       gebv_list <- list()
                       if (length(covTraits) > 0) {
                         for (covt in covTraits){
@@ -3430,8 +2533,7 @@ holostackGP <- function(
                       if (length(covTraits) > 0) {
                         for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
                       }
-                      Xcov <- Y.tmasked[, -1, drop = FALSE]
-                      Xcov_mat <- prepare_covariates(Xcov)
+                      Xcov_mat <- prepare_covariates(Y.tmasked[, -1, drop = FALSE])
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
                         message("⚠️ No valid covariates left, setting Xcov_mat = NULL")
                         Xcov_mat <- NULL
@@ -3478,7 +2580,8 @@ holostackGP <- function(
 
                       if (!is.null(Additional_models)){
                         # metagenomic RHKs with BGLR package
-                        covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                        covTraits <- character(0)
+                        if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {covTraits <- colnames(Y.covmasked)}
                         gebv_list <- list()
                         for(covt in covTraits){
                           y <- Y.covmasked[[covt]]
@@ -3609,78 +2712,8 @@ holostackGP <- function(
                           return(Z_clean)
                         }
                         Z_train <- prepare_rrblup_matrix(geno_scaled[train_ids, ], y_train)
-                        # --- Covariate preparation ---
-                        prepare_covariates <- function(Xcov) {
-
-                          # Return NULL immediately if no covariates
-                          if (is.null(Xcov)) {
-                            return(NULL)
-                          }
-
-                          # Coerce to data.frame safely
-                          if (is.list(Xcov) && !is.data.frame(Xcov)) {
-                            Xcov_df <- as.data.frame(do.call(cbind, Xcov))
-                          } else {
-                            Xcov_df <- as.data.frame(Xcov)
-                          }
-
-                          # Empty data.frame guard
-                          if (ncol(Xcov_df) == 0) {
-                            return(NULL)
-                          }
-
-                          # Drop all-NA or constant columns
-                          keep <- vapply(Xcov_df, function(x) {
-                            !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
-                          }, logical(1))
-                          Xcov_df <- Xcov_df[, keep, drop = FALSE]
-
-                          if (ncol(Xcov_df) == 0) {
-                            return(NULL)
-                          }
-
-                          # Build design matrix (no intercept)
-                          Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
-
-                          # Drop duplicate columns after factor expansion
-                          dup <- duplicated(colnames(Xcov_mat))
-                          if (any(dup)) {
-                            Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
-                          }
-
-                          # Drop near-zero variance columns
-                          nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
-                          if (any(nzv)) {
-                            message(
-                              "Dropping ", sum(nzv), " near-zero variance covariates: ",
-                              paste(colnames(Xcov_mat)[nzv], collapse = ", ")
-                            )
-                            Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
-                          }
-
-                          # Enforce full rank by dropping collinear columns
-                          if (ncol(Xcov_mat) > 1) {
-                            qrX <- qr(Xcov_mat)
-                            if (qrX$rank < ncol(Xcov_mat)) {
-                              drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                              message(
-                                "Dropping collinear covariates: ",
-                                paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
-                              )
-                              keep_idx <- qrX$pivot[seq_len(qrX$rank)]
-                              Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
-                            }
-                          }
-
-                          # Final check: return NULL if no valid covariates left
-                          if (ncol(Xcov_mat) == 0) {
-                            return(NULL)
-                          }
-
-                          return(Xcov_mat)
-                        }
                         # Usage: safely assign or NULL
-                        Xcov_mat <- prepare_covariates(Xcov)
+                        Xcov_mat <- prepare_covariates(Y.tmasked[, -1, drop = FALSE])
                         if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
                           Xcov_mat <- NULL
                         }
@@ -3711,78 +2744,9 @@ holostackGP <- function(
                           return(Z_clean)
                         }
                         Z_train <- prepare_rrblup_matrix(mgeno_scaled[train_ids, ], y_train)
-                        # --- Covariate preparation ---
-                        prepare_covariates <- function(Xcov) {
 
-                          # Return NULL immediately if no covariates
-                          if (is.null(Xcov)) {
-                            return(NULL)
-                          }
-
-                          # Coerce to data.frame safely
-                          if (is.list(Xcov) && !is.data.frame(Xcov)) {
-                            Xcov_df <- as.data.frame(do.call(cbind, Xcov))
-                          } else {
-                            Xcov_df <- as.data.frame(Xcov)
-                          }
-
-                          # Empty data.frame guard
-                          if (ncol(Xcov_df) == 0) {
-                            return(NULL)
-                          }
-
-                          # Drop all-NA or constant columns
-                          keep <- vapply(Xcov_df, function(x) {
-                            !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
-                          }, logical(1))
-                          Xcov_df <- Xcov_df[, keep, drop = FALSE]
-
-                          if (ncol(Xcov_df) == 0) {
-                            return(NULL)
-                          }
-
-                          # Build design matrix (no intercept)
-                          Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
-
-                          # Drop duplicate columns after factor expansion
-                          dup <- duplicated(colnames(Xcov_mat))
-                          if (any(dup)) {
-                            Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
-                          }
-
-                          # Drop near-zero variance columns
-                          nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
-                          if (any(nzv)) {
-                            message(
-                              "Dropping ", sum(nzv), " near-zero variance covariates: ",
-                              paste(colnames(Xcov_mat)[nzv], collapse = ", ")
-                            )
-                            Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
-                          }
-
-                          # Enforce full rank by dropping collinear columns
-                          if (ncol(Xcov_mat) > 1) {
-                            qrX <- qr(Xcov_mat)
-                            if (qrX$rank < ncol(Xcov_mat)) {
-                              drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                              message(
-                                "Dropping collinear covariates: ",
-                                paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
-                              )
-                              keep_idx <- qrX$pivot[seq_len(qrX$rank)]
-                              Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
-                            }
-                          }
-
-                          # Final check: return NULL if no valid covariates left
-                          if (ncol(Xcov_mat) == 0) {
-                            return(NULL)
-                          }
-
-                          return(Xcov_mat)
-                        }
                         # Usage: safely assign or NULL
-                        Xcov_mat <- prepare_covariates(Xcov)
+                        Xcov_mat <- prepare_covariates(Y.tmasked[, -1, drop = FALSE])
                         if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
                           Xcov_mat <- NULL
                         }
@@ -3802,8 +2766,8 @@ holostackGP <- function(
                           # Function to fit a single Bayesian model for one phenotype and one or more multiple covariates
                           run_independent_bayes <- function(model_name, Y.masked, Y.covmasked = NULL, geno_scaled, mgeno_scaled, nIter, burnIn) {
                             suppressPackageStartupMessages(library(BGLR))
-
-                            covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                            covTraits <- character(0)
+                            if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {covTraits <- colnames(Y.covmasked)}
                             # ---- Genomic step ----
                             gebv_list <- list()
                             if (length(covTraits) > 0) {
@@ -3901,7 +2865,7 @@ holostackGP <- function(
                               suppressPackageStartupMessages(library(BGLR))
                               NULL
                             })
-                            parallel::clusterExport(cl, varlist = c("Y.masked", "Y.covmasked", "geno_scaled","mgeno_scaled", "nIter", "burnIn", "run_independent_bayes"), envir = environment())
+                            parallel::clusterExport(cl, varlist = c("Y.masked", "Y.covmasked", "geno_scaled","mgeno_scaled", "nIter", "burnIn", "run_independent_bayes", "prepare_covariates"), envir = environment())
                             preds_list <- parallel::parLapply(cl, bayes_models, function(model) {
                               run_independent_bayes(model, Y.masked = Y.masked, Y.covmasked = Y.covmasked, geno_scaled = geno_scaled, mgeno_scaled = mgeno_scaled, nIter = nIter, burnIn = burnIn)
                             })
@@ -3973,81 +2937,12 @@ holostackGP <- function(
                 gc()
                 if(gp_model == "gGBLUP"){
                   if (gene_model == "Full" || gene_model == "All"){
-                    prepare_covariates <- function(Xcov) {
-
-                      # Return NULL immediately if no covariates
-                      if (is.null(Xcov)) {
-                        return(NULL)
-                      }
-
-                      # Coerce to data.frame safely
-                      if (is.list(Xcov) && !is.data.frame(Xcov)) {
-                        Xcov_df <- as.data.frame(do.call(cbind, Xcov))
-                      } else {
-                        Xcov_df <- as.data.frame(Xcov)
-                      }
-
-                      # Empty data.frame guard
-                      if (ncol(Xcov_df) == 0) {
-                        return(NULL)
-                      }
-
-                      # Drop all-NA or constant columns
-                      keep <- vapply(Xcov_df, function(x) {
-                        !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
-                      }, logical(1))
-                      Xcov_df <- Xcov_df[, keep, drop = FALSE]
-
-                      if (ncol(Xcov_df) == 0) {
-                        return(NULL)
-                      }
-
-                      # Build design matrix (no intercept)
-                      Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
-
-                      # Drop duplicate columns after factor expansion
-                      dup <- duplicated(colnames(Xcov_mat))
-                      if (any(dup)) {
-                        Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
-                      }
-
-                      # Drop near-zero variance columns
-                      nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
-                      if (any(nzv)) {
-                        message(
-                          "Dropping ", sum(nzv), " near-zero variance covariates: ",
-                          paste(colnames(Xcov_mat)[nzv], collapse = ", ")
-                        )
-                        Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
-                      }
-
-                      # Enforce full rank by dropping collinear columns
-                      if (ncol(Xcov_mat) > 1) {
-                        qrX <- qr(Xcov_mat)
-                        if (qrX$rank < ncol(Xcov_mat)) {
-                          drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                          message(
-                            "Dropping collinear covariates: ",
-                            paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
-                          )
-                          keep_idx <- qrX$pivot[seq_len(qrX$rank)]
-                          Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
-                        }
-                      }
-
-                      # Final check: return NULL if no valid covariates left
-                      if (ncol(Xcov_mat) == 0) {
-                        return(NULL)
-                      }
-
-                      return(Xcov_mat)
-                    }
-
                     # GBLUP  with rrBLUP package
                     pred_list <- list()
                     for (kernel_name in names(kernels)) {
                       K <- kernels[[kernel_name]]
-                      covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                      covTraits <- character(0)
+                      if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {covTraits <- colnames(Y.covmasked)}
                       gebv_list <- list()
                       if (length(covTraits) > 0) {
                         for (covt in covTraits){
@@ -4065,8 +2960,7 @@ holostackGP <- function(
                       if (length(covTraits) > 0) {
                         for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
                       }
-                      Xcov <- Y.tmasked[, -1, drop = FALSE]
-                      Xcov_mat <- prepare_covariates(Xcov)
+                      Xcov_mat <- prepare_covariates(Y.tmasked[, -1, drop = FALSE])
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
                         message("⚠️ No valid covariates left, setting Xcov_mat = NULL")
                         Xcov_mat <- NULL
@@ -4128,78 +3022,9 @@ holostackGP <- function(
                         return(Z_clean)
                       }
                       Z_train <- prepare_rrblup_matrix(geno.A_scaled[train_ids, ], y_train)
-                      # --- Covariate preparation ---
-                      prepare_covariates <- function(Xcov) {
 
-                        # Return NULL immediately if no covariates
-                        if (is.null(Xcov)) {
-                          return(NULL)
-                        }
-
-                        # Coerce to data.frame safely
-                        if (is.list(Xcov) && !is.data.frame(Xcov)) {
-                          Xcov_df <- as.data.frame(do.call(cbind, Xcov))
-                        } else {
-                          Xcov_df <- as.data.frame(Xcov)
-                        }
-
-                        # Empty data.frame guard
-                        if (ncol(Xcov_df) == 0) {
-                          return(NULL)
-                        }
-
-                        # Drop all-NA or constant columns
-                        keep <- vapply(Xcov_df, function(x) {
-                          !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
-                        }, logical(1))
-                        Xcov_df <- Xcov_df[, keep, drop = FALSE]
-
-                        if (ncol(Xcov_df) == 0) {
-                          return(NULL)
-                        }
-
-                        # Build design matrix (no intercept)
-                        Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
-
-                        # Drop duplicate columns after factor expansion
-                        dup <- duplicated(colnames(Xcov_mat))
-                        if (any(dup)) {
-                          Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
-                        }
-
-                        # Drop near-zero variance columns
-                        nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
-                        if (any(nzv)) {
-                          message(
-                            "Dropping ", sum(nzv), " near-zero variance covariates: ",
-                            paste(colnames(Xcov_mat)[nzv], collapse = ", ")
-                          )
-                          Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
-                        }
-
-                        # Enforce full rank by dropping collinear columns
-                        if (ncol(Xcov_mat) > 1) {
-                          qrX <- qr(Xcov_mat)
-                          if (qrX$rank < ncol(Xcov_mat)) {
-                            drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                            message(
-                              "Dropping collinear covariates: ",
-                              paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
-                            )
-                            keep_idx <- qrX$pivot[seq_len(qrX$rank)]
-                            Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
-                          }
-                        }
-
-                        # Final check: return NULL if no valid covariates left
-                        if (ncol(Xcov_mat) == 0) {
-                          return(NULL)
-                        }
-
-                        return(Xcov_mat)
-                      }
                       # Usage: safely assign or NULL
-                      Xcov_mat <- prepare_covariates(Xcov)
+                      Xcov_mat <- prepare_covariates(Y.tmasked[, -1, drop = FALSE])
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
                         Xcov_mat <- NULL
                       }
@@ -4230,78 +3055,9 @@ holostackGP <- function(
                         return(Z_clean)
                       }
                       Z_train <- prepare_rrblup_matrix(geno.D_scaled[train_ids, ], y_train)
-                      # --- Covariate preparation ---
-                      prepare_covariates <- function(Xcov) {
 
-                        # Return NULL immediately if no covariates
-                        if (is.null(Xcov)) {
-                          return(NULL)
-                        }
-
-                        # Coerce to data.frame safely
-                        if (is.list(Xcov) && !is.data.frame(Xcov)) {
-                          Xcov_df <- as.data.frame(do.call(cbind, Xcov))
-                        } else {
-                          Xcov_df <- as.data.frame(Xcov)
-                        }
-
-                        # Empty data.frame guard
-                        if (ncol(Xcov_df) == 0) {
-                          return(NULL)
-                        }
-
-                        # Drop all-NA or constant columns
-                        keep <- vapply(Xcov_df, function(x) {
-                          !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
-                        }, logical(1))
-                        Xcov_df <- Xcov_df[, keep, drop = FALSE]
-
-                        if (ncol(Xcov_df) == 0) {
-                          return(NULL)
-                        }
-
-                        # Build design matrix (no intercept)
-                        Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
-
-                        # Drop duplicate columns after factor expansion
-                        dup <- duplicated(colnames(Xcov_mat))
-                        if (any(dup)) {
-                          Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
-                        }
-
-                        # Drop near-zero variance columns
-                        nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
-                        if (any(nzv)) {
-                          message(
-                            "Dropping ", sum(nzv), " near-zero variance covariates: ",
-                            paste(colnames(Xcov_mat)[nzv], collapse = ", ")
-                          )
-                          Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
-                        }
-
-                        # Enforce full rank by dropping collinear columns
-                        if (ncol(Xcov_mat) > 1) {
-                          qrX <- qr(Xcov_mat)
-                          if (qrX$rank < ncol(Xcov_mat)) {
-                            drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                            message(
-                              "Dropping collinear covariates: ",
-                              paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
-                            )
-                            keep_idx <- qrX$pivot[seq_len(qrX$rank)]
-                            Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
-                          }
-                        }
-
-                        # Final check: return NULL if no valid covariates left
-                        if (ncol(Xcov_mat) == 0) {
-                          return(NULL)
-                        }
-
-                        return(Xcov_mat)
-                      }
                       # Usage: safely assign or NULL
-                      Xcov_mat <- prepare_covariates(Xcov)
+                      Xcov_mat <- prepare_covariates(Y.tmasked[, -1, drop = FALSE])
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
                         Xcov_mat <- NULL
                       }
@@ -4332,78 +3088,9 @@ holostackGP <- function(
                         return(Z_clean)
                       }
                       Z_train <- prepare_rrblup_matrix(mgeno_scaled[train_ids, ], y_train)
-                      # --- Covariate preparation ---
-                      prepare_covariates <- function(Xcov) {
 
-                        # Return NULL immediately if no covariates
-                        if (is.null(Xcov)) {
-                          return(NULL)
-                        }
-
-                        # Coerce to data.frame safely
-                        if (is.list(Xcov) && !is.data.frame(Xcov)) {
-                          Xcov_df <- as.data.frame(do.call(cbind, Xcov))
-                        } else {
-                          Xcov_df <- as.data.frame(Xcov)
-                        }
-
-                        # Empty data.frame guard
-                        if (ncol(Xcov_df) == 0) {
-                          return(NULL)
-                        }
-
-                        # Drop all-NA or constant columns
-                        keep <- vapply(Xcov_df, function(x) {
-                          !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
-                        }, logical(1))
-                        Xcov_df <- Xcov_df[, keep, drop = FALSE]
-
-                        if (ncol(Xcov_df) == 0) {
-                          return(NULL)
-                        }
-
-                        # Build design matrix (no intercept)
-                        Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
-
-                        # Drop duplicate columns after factor expansion
-                        dup <- duplicated(colnames(Xcov_mat))
-                        if (any(dup)) {
-                          Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
-                        }
-
-                        # Drop near-zero variance columns
-                        nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
-                        if (any(nzv)) {
-                          message(
-                            "Dropping ", sum(nzv), " near-zero variance covariates: ",
-                            paste(colnames(Xcov_mat)[nzv], collapse = ", ")
-                          )
-                          Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
-                        }
-
-                        # Enforce full rank by dropping collinear columns
-                        if (ncol(Xcov_mat) > 1) {
-                          qrX <- qr(Xcov_mat)
-                          if (qrX$rank < ncol(Xcov_mat)) {
-                            drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                            message(
-                              "Dropping collinear covariates: ",
-                              paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
-                            )
-                            keep_idx <- qrX$pivot[seq_len(qrX$rank)]
-                            Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
-                          }
-                        }
-
-                        # Final check: return NULL if no valid covariates left
-                        if (ncol(Xcov_mat) == 0) {
-                          return(NULL)
-                        }
-
-                        return(Xcov_mat)
-                      }
                       # Usage: safely assign or NULL
-                      Xcov_mat <- prepare_covariates(Xcov)
+                      Xcov_mat <- prepare_covariates(Y.tmasked[, -1, drop = FALSE])
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
                         Xcov_mat <- NULL
                       }
@@ -4424,7 +3111,8 @@ holostackGP <- function(
                       pred_list <- list()
                       for (kernel_name in names(kernels)) {
                         K <- kernels[[kernel_name]]
-                        covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                        covTraits <- character(0)
+                        if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {covTraits <- colnames(Y.covmasked)}
                         gebv_list <- list()
                         for(covt in covTraits){
                           y <- Y.covmasked[[covt]]
@@ -4474,8 +3162,8 @@ holostackGP <- function(
                         # Function to fit a single Bayesian model for one phenotype and one or more multiple covariates
                         run_independent_bayes <- function(model_name, Y.masked, Y.covmasked = NULL, geno.A_scaled, geno.D_scaled, mgeno_scaled, nIter, burnIn) {
                           suppressPackageStartupMessages(library(BGLR))
-
-                          covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                          covTraits <- character(0)
+                          if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {covTraits <- colnames(Y.covmasked)}
                           # ---- Additive step ----
                           gebv_list <- list()
                           if (length(covTraits) > 0) {
@@ -4617,7 +3305,7 @@ holostackGP <- function(
                             suppressPackageStartupMessages(library(BGLR))
                             NULL
                           })
-                          parallel::clusterExport(cl, varlist = c("Y.masked", "Y.covmasked", "geno.A_scaled", "geno.D_scaled", "mgeno_scaled", "nIter", "burnIn", "run_independent_bayes"), envir = environment())
+                          parallel::clusterExport(cl, varlist = c("Y.masked", "Y.covmasked", "geno.A_scaled", "geno.D_scaled", "mgeno_scaled", "nIter", "burnIn", "run_independent_bayes", "prepare_covariates"), envir = environment())
                           preds_list <- parallel::parLapply(cl, bayes_models, function(model) {
                             run_independent_bayes(model, Y.masked = Y.masked, Y.covmasked = Y.covmasked,geno.A_scaled = geno.A_scaled, geno.D_scaled = geno.D_scaled, mgeno_scaled = mgeno_scaled, nIter = nIter, burnIn = burnIn)
                           })
@@ -4635,79 +3323,10 @@ holostackGP <- function(
 
                     }
                   } else {
-                    prepare_covariates <- function(Xcov) {
-
-                      # Return NULL immediately if no covariates
-                      if (is.null(Xcov)) {
-                        return(NULL)
-                      }
-
-                      # Coerce to data.frame safely
-                      if (is.list(Xcov) && !is.data.frame(Xcov)) {
-                        Xcov_df <- as.data.frame(do.call(cbind, Xcov))
-                      } else {
-                        Xcov_df <- as.data.frame(Xcov)
-                      }
-
-                      # Empty data.frame guard
-                      if (ncol(Xcov_df) == 0) {
-                        return(NULL)
-                      }
-
-                      # Drop all-NA or constant columns
-                      keep <- vapply(Xcov_df, function(x) {
-                        !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
-                      }, logical(1))
-                      Xcov_df <- Xcov_df[, keep, drop = FALSE]
-
-                      if (ncol(Xcov_df) == 0) {
-                        return(NULL)
-                      }
-
-                      # Build design matrix (no intercept)
-                      Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
-
-                      # Drop duplicate columns after factor expansion
-                      dup <- duplicated(colnames(Xcov_mat))
-                      if (any(dup)) {
-                        Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
-                      }
-
-                      # Drop near-zero variance columns
-                      nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
-                      if (any(nzv)) {
-                        message(
-                          "Dropping ", sum(nzv), " near-zero variance covariates: ",
-                          paste(colnames(Xcov_mat)[nzv], collapse = ", ")
-                        )
-                        Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
-                      }
-
-                      # Enforce full rank by dropping collinear columns
-                      if (ncol(Xcov_mat) > 1) {
-                        qrX <- qr(Xcov_mat)
-                        if (qrX$rank < ncol(Xcov_mat)) {
-                          drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                          message(
-                            "Dropping collinear covariates: ",
-                            paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
-                          )
-                          keep_idx <- qrX$pivot[seq_len(qrX$rank)]
-                          Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
-                        }
-                      }
-
-                      # Final check: return NULL if no valid covariates left
-                      if (ncol(Xcov_mat) == 0) {
-                        return(NULL)
-                      }
-
-                      return(Xcov_mat)
-                    }
-
                     # GBLUP with rrBLUP package
                     {
-                      covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                      covTraits <- character(0)
+                      if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {covTraits <- colnames(Y.covmasked)}
                       gebv_list <- list()
                       if (length(covTraits) > 0) {
                         for (covt in covTraits){
@@ -4745,8 +3364,7 @@ holostackGP <- function(
                       if (length(covTraits) > 0) {
                         for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
                       }
-                      Xcov <- Y.tmasked[, -1, drop = FALSE]
-                      Xcov_mat <- prepare_covariates(Xcov)
+                      Xcov_mat <- prepare_covariates(Y.tmasked[, -1, drop = FALSE])
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
                         message("⚠️ No valid covariates left, setting Xcov_mat = NULL")
                         Xcov_mat <- NULL
@@ -4789,7 +3407,8 @@ holostackGP <- function(
 
                     if (!is.null(Additional_models)){
                       # metagenomic RHKs with BGLR package
-                      covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                      covTraits <- character(0)
+                      if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {covTraits <- colnames(Y.covmasked)}
                       gebv_list <- list()
                       for(covt in covTraits){
                         y <- Y.covmasked[[covt]]
@@ -4916,78 +3535,9 @@ holostackGP <- function(
                         return(Z_clean)
                       }
                       Z_train <- prepare_rrblup_matrix(geno_scaled[train_ids, ], y_train)
-                      # --- Covariate preparation ---
-                      prepare_covariates <- function(Xcov) {
 
-                        # Return NULL immediately if no covariates
-                        if (is.null(Xcov)) {
-                          return(NULL)
-                        }
-
-                        # Coerce to data.frame safely
-                        if (is.list(Xcov) && !is.data.frame(Xcov)) {
-                          Xcov_df <- as.data.frame(do.call(cbind, Xcov))
-                        } else {
-                          Xcov_df <- as.data.frame(Xcov)
-                        }
-
-                        # Empty data.frame guard
-                        if (ncol(Xcov_df) == 0) {
-                          return(NULL)
-                        }
-
-                        # Drop all-NA or constant columns
-                        keep <- vapply(Xcov_df, function(x) {
-                          !(all(is.na(x)) || length(unique(na.omit(x))) <= 1)
-                        }, logical(1))
-                        Xcov_df <- Xcov_df[, keep, drop = FALSE]
-
-                        if (ncol(Xcov_df) == 0) {
-                          return(NULL)
-                        }
-
-                        # Build design matrix (no intercept)
-                        Xcov_mat <- model.matrix(~ . - 1, data = Xcov_df)
-
-                        # Drop duplicate columns after factor expansion
-                        dup <- duplicated(colnames(Xcov_mat))
-                        if (any(dup)) {
-                          Xcov_mat <- Xcov_mat[, !dup, drop = FALSE]
-                        }
-
-                        # Drop near-zero variance columns
-                        nzv <- apply(Xcov_mat, 2, function(x) var(x, na.rm = TRUE) < 1e-8)
-                        if (any(nzv)) {
-                          message(
-                            "Dropping ", sum(nzv), " near-zero variance covariates: ",
-                            paste(colnames(Xcov_mat)[nzv], collapse = ", ")
-                          )
-                          Xcov_mat <- Xcov_mat[, !nzv, drop = FALSE]
-                        }
-
-                        # Enforce full rank by dropping collinear columns
-                        if (ncol(Xcov_mat) > 1) {
-                          qrX <- qr(Xcov_mat)
-                          if (qrX$rank < ncol(Xcov_mat)) {
-                            drop_idx <- setdiff(seq_len(ncol(Xcov_mat)), qrX$pivot[seq_len(qrX$rank)])
-                            message(
-                              "Dropping collinear covariates: ",
-                              paste(colnames(Xcov_mat)[drop_idx], collapse = ", ")
-                            )
-                            keep_idx <- qrX$pivot[seq_len(qrX$rank)]
-                            Xcov_mat <- Xcov_mat[, keep_idx, drop = FALSE]
-                          }
-                        }
-
-                        # Final check: return NULL if no valid covariates left
-                        if (ncol(Xcov_mat) == 0) {
-                          return(NULL)
-                        }
-
-                        return(Xcov_mat)
-                      }
                       # Usage: safely assign or NULL
-                      Xcov_mat <- prepare_covariates(Xcov)
+                      Xcov_mat <- prepare_covariates(Y.tmasked[, -1, drop = FALSE])
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
                         Xcov_mat <- NULL
                       }
@@ -5010,8 +3560,8 @@ holostackGP <- function(
                         # Function to fit a single Bayesian model for one phenotype and one or more multiple covariates
                         run_independent_bayes <- function(model_name, Y.masked, Y.covmasked = NULL, geno_scaled, mgeno_scaled, nIter, burnIn) {
                           suppressPackageStartupMessages(library(BGLR))
-
-                          covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                          covTraits <- character(0)
+                          if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {covTraits <- colnames(Y.covmasked)}
                           # ---- Genomic step ----
                           gebv_list <- list()
                           if (length(covTraits) > 0) {
@@ -5109,7 +3659,7 @@ holostackGP <- function(
                             suppressPackageStartupMessages(library(BGLR))
                             NULL
                           })
-                          parallel::clusterExport(cl, varlist = c("Y.masked", "Y.covmasked", "geno_scaled","mgeno_scaled", "nIter", "burnIn", "run_independent_bayes"), envir = environment())
+                          parallel::clusterExport(cl, varlist = c("Y.masked", "Y.covmasked", "geno_scaled","mgeno_scaled", "nIter", "burnIn", "run_independent_bayes", "prepare_covariates"), envir = environment())
                           preds_list <- parallel::parLapply(cl, bayes_models, function(model) {
                             run_independent_bayes(model, Y.masked = Y.masked, Y.covmasked = Y.covmasked, geno_scaled = geno_scaled, mgeno_scaled = mgeno_scaled, nIter = nIter, burnIn = burnIn)
                           })
