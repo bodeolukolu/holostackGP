@@ -1069,24 +1069,20 @@ holostackGP <- function(
                     pred_list <- list()
                     for (kernel_name in names(kernels)) {
                       K <- kernels[[kernel_name]]
-                      covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                      covTraits <- colnames(Y.covmasked)
                       gebv_list <- list()
-                      if (length(covTraits) > 0) {
-                        for (covt in covTraits){
-                          y <- Y.covmasked[[covt]]
-                          # remove NA individuals (mixed.solve handles but safer)
-                          ok <- !is.na(y)
-                          sol <- mixed.solve(y = y[ok], K = K[ok, ok, drop = FALSE])
-                          # sol$u is GEBV vector for individuals with y; bring back into full n vector
-                          u_full <- rep(NA, nrow(Y.covmasked))
-                          u_full[which(ok)] <- sol$u[rownames(K)[ok]]   # name-align
-                          gebv_list[[covt]] <- u_full
-                        }
+                      for (covt in covTraits){
+                        y <- Y.covmasked[[covt]]
+                        # remove NA individuals (mixed.solve handles but safer)
+                        ok <- !is.na(y)
+                        sol <- mixed.solve(y = y[ok], K = K[ok, ok, drop = FALSE])
+                        # sol$u is GEBV vector for individuals with y; bring back into full n vector
+                        u_full <- rep(NA, nrow(Y.covmasked))
+                        u_full[which(ok)] <- sol$u[rownames(K)[ok]]   # name-align
+                        gebv_list[[covt]] <- u_full
                       }
                       Y.tmasked <- as.data.frame(Y.masked)
-                      if (length(covTraits) > 0) {
-                        for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
-                      }
+                      for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
                       Xcov <- Y.tmasked[, -1, drop = FALSE]
                       Xcov_mat <- prepare_covariates(Xcov)
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
@@ -1342,7 +1338,7 @@ holostackGP <- function(
                       pred_list <- list()
                       for (kernel_name in names(kernels)) {
                         K <- kernels[[kernel_name]]
-                        covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                        covTraits <- colnames(Y.covmasked)
                         gebv_list <- list()
                         for(covt in covTraits){
                           y <- Y.covmasked[[covt]]
@@ -1356,9 +1352,7 @@ holostackGP <- function(
                           gebv_list[[covt]] <- gebv_full
                         }
                         Y.tmasked <- as.data.frame(Y.masked)
-                        if (length(covTraits) > 0) {
-                          for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
-                        }
+                        for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
                         Xcov_mat <- as.matrix(Y.tmasked[, -1, drop = FALSE])
                         train_idx <- which(!is.na(Y.tmasked[,1]))
                         test_idx  <- which(is.na(Y.tmasked[,1]))
@@ -1393,11 +1387,10 @@ holostackGP <- function(
                         run_independent_bayes <- function(model_name, Y.masked, Y.covmasked = NULL, geno.A_scaled, geno.D_scaled, nIter, burnIn) {
                           suppressPackageStartupMessages(library(BGLR))
 
-                          covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                          covTraits <- colnames(Y.covmasked)
                           # ---- Additive step ----
                           gebv_list <- list()
-                          if (length(covTraits) > 0) {
-                            for (covt in covTraits) {
+                          for (covt in covTraits) {
                             y <- Y.covmasked[[covt]]
                             ok <- !is.na(y)
                             fm <- BGLR(y = y[ok], ETA = list(list(X = geno.A_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
@@ -1405,12 +1398,9 @@ holostackGP <- function(
                             gebv_full <- rep(NA, length(y))
                             gebv_full[ok] <- as.numeric(geno.A_scaled[ok, , drop = FALSE] %*% b)
                             gebv_list[[covt]] <- gebv_full
-                            }
                           }
                           Y.tmasked <- as.data.frame(Y.masked)
-                          if (length(covTraits) > 0) {
-                            for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
-                          }
+                          for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
                           train_idx <- which(!is.na(Y.tmasked[,1]))
                           test_idx  <- which(is.na(Y.tmasked[,1]))
                           y_train <- Y.tmasked[train_idx, 1]
@@ -1437,22 +1427,18 @@ holostackGP <- function(
                           # pred_A <- as.numeric(geno.A_scaled[test_idx, , drop = FALSE] %*% b_markersA + X_test %*% b_fixedA)
                           # ---- Dominance step ----
                           gebv_list <- list()
-                          if (length(covTraits) > 0) {
-                            for (covt in covTraits) {
-                              y <- Y.covmasked[[covt]]
-                              ok <- !is.na(y)
-                              library(BGLR)
-                              fm <- BGLR(y = y[ok], ETA = list(list(X = geno.D_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
-                              b <- fm$ETA[[1]]$b
-                              gebv_full <- rep(NA, length(y))
-                              gebv_full[ok] <- as.numeric(geno.D_scaled[ok, , drop = FALSE] %*% b)
-                              gebv_list[[covt]] <- gebv_full
-                            }
+                          for (covt in covTraits) {
+                            y <- Y.covmasked[[covt]]
+                            ok <- !is.na(y)
+                            library(BGLR)
+                            fm <- BGLR(y = y[ok], ETA = list(list(X = geno.D_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                            b <- fm$ETA[[1]]$b
+                            gebv_full <- rep(NA, length(y))
+                            gebv_full[ok] <- as.numeric(geno.D_scaled[ok, , drop = FALSE] %*% b)
+                            gebv_list[[covt]] <- gebv_full
                           }
                           Y.tmasked <- as.data.frame(Y.masked)
-                          if (length(covTraits) > 0) {
-                            for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
-                          }
+                          for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
                           train_idx <- which(!is.na(Y.tmasked[,1]))
                           test_idx  <- which(is.na(Y.tmasked[,1]))
                           y_train <- Y.tmasked[train_idx, 1]
@@ -1580,10 +1566,9 @@ holostackGP <- function(
                     }
 
                     # GBLUP with rrBLUP package
-                    {covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                    {covTraits <- colnames(Y.covmasked)
                       gebv_list <- list()
-                      if (length(covTraits) > 0) {
-                        for (covt in covTraits){
+                      for (covt in covTraits){
                         y <- Y.covmasked[[covt]]
                         # remove NA individuals (mixed.solve handles but safer)
                         ok <- !is.na(y)
@@ -1592,12 +1577,9 @@ holostackGP <- function(
                         u_full <- rep(NA, nrow(Y.covmasked))
                         u_full[which(ok)] <- sol$u[rownames(myKIx)[ok]]   # name-align
                         gebv_list[[covt]] <- u_full
-                        }
                       }
                       Y.tmasked <- as.data.frame(Y.masked)
-                      if (length(covTraits) > 0) {
-                        for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
-                      }
+                      for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
                       Xcov <- Y.tmasked[, -1, drop = FALSE]
                       Xcov_mat <- prepare_covariates(Xcov)
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
@@ -1746,7 +1728,7 @@ holostackGP <- function(
                       pred_rrblup_OOF <- rbind(pred_rrblup_OOF,pred_rrblup)
 
                       # RHKs with BGLR package
-                      covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                      covTraits <- colnames(Y.covmasked)
                       gebv_list <- list()
                       for(covt in covTraits){
                         y <- Y.covmasked[[covt]]
@@ -1760,9 +1742,7 @@ holostackGP <- function(
                         gebv_list[[covt]] <- gebv_full
                       }
                       Y.tmasked <- as.data.frame(Y.masked)
-                      if (length(covTraits) > 0) {
-                        for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
-                      }
+                      for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
                       Xcov_mat <- as.matrix(Y.tmasked[, -1, drop = FALSE])
                       train_idx <- which(!is.na(Y.tmasked[,1]))
                       test_idx  <- which(is.na(Y.tmasked[,1]))
@@ -1793,11 +1773,10 @@ holostackGP <- function(
                         run_independent_bayes <- function(model_name, Y.masked, Y.covmasked = NULL, geno_scaled, nIter, burnIn) {
                           suppressPackageStartupMessages(library(BGLR))
 
-                          covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                          covTraits <- colnames(Y.covmasked)
                           # ---- Additive step ----
                           gebv_list <- list()
-                          if (length(covTraits) > 0) {
-                            for (covt in covTraits) {
+                          for (covt in covTraits) {
                             y <- Y.covmasked[[covt]]
                             ok <- !is.na(y)
                             fm <- BGLR(y = y[ok], ETA = list(list(X = geno_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
@@ -1806,11 +1785,8 @@ holostackGP <- function(
                             gebv_full[ok] <- as.numeric(geno_scaled[ok, , drop = FALSE] %*% b)
                             gebv_list[[covt]] <- gebv_full
                           }
-                          }
                           Y.tmasked <- as.data.frame(Y.masked)
-                          if (length(covTraits) > 0) {
-                            for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
-                          }
+                          for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
                           train_idx <- which(!is.na(Y.tmasked[,1]))
                           test_idx  <- which(is.na(Y.tmasked[,1]))
                           y_train <- Y.tmasked[train_idx, 1]
@@ -1943,10 +1919,9 @@ holostackGP <- function(
                     pred_list <- list()
                     for (kernel_name in names(kernels)) {
                       K <- kernels[[kernel_name]]
-                      covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                      covTraits <- colnames(Y.covmasked)
                       gebv_list <- list()
-                      if (length(covTraits) > 0) {
-                        for (covt in covTraits){
+                      for (covt in covTraits){
                         y <- Y.covmasked[[covt]]
                         # remove NA individuals (mixed.solve handles but safer)
                         ok <- !is.na(y)
@@ -1956,11 +1931,8 @@ holostackGP <- function(
                         u_full[which(ok)] <- sol$u[rownames(K)[ok]]   # name-align
                         gebv_list[[covt]] <- u_full
                       }
-                      }
                       Y.tmasked <- as.data.frame(Y.masked)
-                      if (length(covTraits) > 0) {
-                        for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
-                      }
+                      for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
                       Xcov <- Y.tmasked[, -1, drop = FALSE]
                       Xcov_mat <- prepare_covariates(Xcov)
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
@@ -2113,7 +2085,7 @@ holostackGP <- function(
                       pred_list <- list()
                       for (kernel_name in names(kernels)) {
                         K <- kernels[[kernel_name]]
-                        covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                        covTraits <- colnames(Y.covmasked)
                         gebv_list <- list()
                         for(covt in covTraits){
                           y <- Y.covmasked[[covt]]
@@ -2127,9 +2099,7 @@ holostackGP <- function(
                           gebv_list[[covt]] <- gebv_full
                         }
                         Y.tmasked <- as.data.frame(Y.masked)
-                        if (length(covTraits) > 0) {
-                          for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
-                        }
+                        for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
                         Xcov_mat <- as.matrix(Y.tmasked[, -1, drop = FALSE])
                         train_idx <- which(!is.na(Y.tmasked[,1]))
                         test_idx  <- which(is.na(Y.tmasked[,1]))
@@ -2164,11 +2134,10 @@ holostackGP <- function(
                         run_independent_bayes <- function(model_name, Y.masked, Y.covmasked = NULL, mgeno_scaled, nIter, burnIn) {
                           suppressPackageStartupMessages(library(BGLR))
 
-                          covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                          covTraits <- colnames(Y.covmasked)
                           # ---- Metagenome step ----
                           gebv_list <- list()
-                          if (length(covTraits) > 0) {
-                            for (covt in covTraits) {
+                          for (covt in covTraits) {
                             y <- Y.covmasked[[covt]]
                             ok <- !is.na(y)
                             fm <- BGLR(y = y[ok], ETA = list(list(X = mgeno_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
@@ -2177,11 +2146,8 @@ holostackGP <- function(
                             gebv_full[ok] <- as.numeric(mgeno_scaled[ok, , drop = FALSE] %*% b)
                             gebv_list[[covt]] <- gebv_full
                           }
-                          }
                           Y.tmasked <- as.data.frame(Y.masked)
-                          if (length(covTraits) > 0) {
-                            for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
-                          }
+                          for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
                           train_idx <- which(!is.na(Y.tmasked[,1]))
                           test_idx  <- which(is.na(Y.tmasked[,1]))
                           y_train <- Y.tmasked[train_idx, 1]
@@ -2310,10 +2276,9 @@ holostackGP <- function(
 
                     # GBLUP with rrBLUP package
                     {
-                      covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                      covTraits <- colnames(Y.covmasked)
                       gebv_list <- list()
-                      if (length(covTraits) > 0) {
-                       for (covt in covTraits){
+                      for (covt in covTraits){
                         y <- Y.covmasked[[covt]]
                         # remove NA individuals (mixed.solve handles but safer)
                         ok <- !is.na(y)
@@ -2323,11 +2288,8 @@ holostackGP <- function(
                         u_full[which(ok)] <- sol$u[rownames(metagKIx)[ok]]   # name-align
                         gebv_list[[covt]] <- u_full
                       }
-                      }
                       Y.tmasked <- as.data.frame(Y.masked)
-                      if (length(covTraits) > 0) {
-                        for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
-                      }
+                      for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
                       Xcov <- Y.tmasked[, -1, drop = FALSE]
                       Xcov_mat <- prepare_covariates(Xcov)
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
@@ -2476,7 +2438,7 @@ holostackGP <- function(
                       pred_rrblup_OOF <- rbind(pred_rrblup_OOF,pred_rrblup)
 
                       # RHKs with BGLR package
-                      covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                      covTraits <- colnames(Y.covmasked)
                       gebv_list <- list()
                       for(covt in covTraits){
                         y <- Y.covmasked[[covt]]
@@ -2490,9 +2452,7 @@ holostackGP <- function(
                         gebv_list[[covt]] <- gebv_full
                       }
                       Y.tmasked <- as.data.frame(Y.masked)
-                      if (length(covTraits) > 0) {
-                        for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
-                      }
+                      for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
                       Xcov_mat <- as.matrix(Y.tmasked[, -1, drop = FALSE])
                       train_idx <- which(!is.na(Y.tmasked[,1]))
                       test_idx  <- which(is.na(Y.tmasked[,1]))
@@ -2523,11 +2483,10 @@ holostackGP <- function(
                         run_independent_bayes <- function(model_name, Y.masked, Y.covmasked = NULL, mgeno_scaled, nIter, burnIn) {
                           suppressPackageStartupMessages(library(BGLR))
 
-                          covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                          covTraits <- colnames(Y.covmasked)
                           # ---- Metagenome step ----
                           gebv_list <- list()
-                          if (length(covTraits) > 0) {
-                            for (covt in covTraits) {
+                          for (covt in covTraits) {
                             y <- Y.covmasked[[covt]]
                             ok <- !is.na(y)
                             fm <- BGLR(y = y[ok], ETA = list(list(X = mgeno_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
@@ -2536,11 +2495,8 @@ holostackGP <- function(
                             gebv_full[ok] <- as.numeric(mgeno_scaled[ok, , drop = FALSE] %*% b)
                             gebv_list[[covt]] <- gebv_full
                           }
-                          }
                           Y.tmasked <- as.data.frame(Y.masked)
-                          if (length(covTraits) > 0) {
-                            for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
-                          }
+                          for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
                           train_idx <- which(!is.na(Y.tmasked[,1]))
                           test_idx  <- which(is.na(Y.tmasked[,1]))
                           y_train <- Y.tmasked[train_idx, 1]
@@ -2671,10 +2627,9 @@ holostackGP <- function(
                       pred_list <- list()
                       for (kernel_name in names(kernels)) {
                         K <- kernels[[kernel_name]]
-                        covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                        covTraits <- colnames(Y.covmasked)
                         gebv_list <- list()
-                        if (length(covTraits) > 0) {
-                          for (covt in covTraits){
+                        for (covt in covTraits){
                           y <- Y.covmasked[[covt]]
                           # remove NA individuals (mixed.solve handles but safer)
                           ok <- !is.na(y)
@@ -2684,11 +2639,8 @@ holostackGP <- function(
                           u_full[which(ok)] <- sol$u[rownames(K)[ok]]   # name-align
                           gebv_list[[covt]] <- u_full
                         }
-                        }
                         Y.tmasked <- as.data.frame(Y.masked)
-                        if (length(covTraits) > 0) {
-                          for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
-                        }
+                        for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
                         Xcov <- Y.tmasked[, -1, drop = FALSE]
                         Xcov_mat <- prepare_covariates(Xcov)
                         if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
@@ -3045,7 +2997,7 @@ holostackGP <- function(
                         pred_list <- list()
                         for (kernel_name in names(kernels)) {
                           K <- kernels[[kernel_name]]
-                          covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                          covTraits <- colnames(Y.covmasked)
                           gebv_list <- list()
                           for(covt in covTraits){
                             y <- Y.covmasked[[covt]]
@@ -3059,9 +3011,7 @@ holostackGP <- function(
                             gebv_list[[covt]] <- gebv_full
                           }
                           Y.tmasked <- as.data.frame(Y.masked)
-                          if (length(covTraits) > 0) {
-                            for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
-                          }
+                          for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
                           Xcov_mat <- as.matrix(Y.tmasked[, -1, drop = FALSE])
                           train_idx <- which(!is.na(Y.tmasked[,1]))
                           test_idx  <- which(is.na(Y.tmasked[,1]))
@@ -3103,11 +3053,10 @@ holostackGP <- function(
                           run_independent_bayes <- function(model_name, Y.masked, Y.covmasked = NULL, geno.A_scaled, geno.D_scaled, mgeno_scaled, nIter, burnIn) {
                             suppressPackageStartupMessages(library(BGLR))
 
-                            covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                            covTraits <- colnames(Y.covmasked)
                             # ---- Additive step ----
                             gebv_list <- list()
-                            if (length(covTraits) > 0) {
-                              for (covt in covTraits) {
+                            for (covt in covTraits) {
                               y <- Y.covmasked[[covt]]
                               ok <- !is.na(y)
                               fm <- BGLR(y = y[ok], ETA = list(list(X = geno.A_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
@@ -3115,12 +3064,9 @@ holostackGP <- function(
                               gebv_full <- rep(NA, length(y))
                               gebv_full[ok] <- as.numeric(geno.A_scaled[ok, , drop = FALSE] %*% b)
                               gebv_list[[covt]] <- gebv_full
-                              }
                             }
                             Y.tmasked <- as.data.frame(Y.masked)
-                            if (length(covTraits) > 0) {
-                              for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
-                            }
+                            for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
                             train_idx <- which(!is.na(Y.tmasked[,1]))
                             test_idx  <- which(is.na(Y.tmasked[,1]))
                             y_train <- Y.tmasked[train_idx, 1]
@@ -3147,8 +3093,7 @@ holostackGP <- function(
                             # pred_A <- as.numeric(geno.A_scaled[test_idx, , drop = FALSE] %*% b_markersA + X_test %*% b_fixedA)
                             # ---- Dominance step ----
                             gebv_list <- list()
-                            if (length(covTraits) > 0) {
-                              for (covt in covTraits) {
+                            for (covt in covTraits) {
                               y <- Y.covmasked[[covt]]
                               ok <- !is.na(y)
                               library(BGLR)
@@ -3158,11 +3103,8 @@ holostackGP <- function(
                               gebv_full[ok] <- as.numeric(geno.D_scaled[ok, , drop = FALSE] %*% b)
                               gebv_list[[covt]] <- gebv_full
                             }
-                            }
                             Y.tmasked <- as.data.frame(Y.masked)
-                            if (length(covTraits) > 0) {
-                              for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
-                            }
+                            for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
                             train_idx <- which(!is.na(Y.tmasked[,1]))
                             test_idx  <- which(is.na(Y.tmasked[,1]))
                             y_train <- Y.tmasked[train_idx, 1]
@@ -3189,8 +3131,7 @@ holostackGP <- function(
                             # pred_D <- as.numeric(geno.D_scaled[test_idx, , drop = FALSE] %*% b_markersD + X_test %*% b_fixedD)
                             # ---- Metagenome step ----
                             gebv_list <- list()
-                            if (length(covTraits) > 0) {
-                              for (covt in covTraits) {
+                            for (covt in covTraits) {
                               y <- Y.covmasked[[covt]]
                               ok <- !is.na(y)
                               library(BGLR)
@@ -3200,11 +3141,8 @@ holostackGP <- function(
                               gebv_full[ok] <- as.numeric(mgeno_scaled[ok, , drop = FALSE] %*% b)
                               gebv_list[[covt]] <- gebv_full
                             }
-                            }
                             Y.tmasked <- as.data.frame(Y.masked)
-                            if (length(covTraits) > 0) {
-                              for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
-                            }
+                            for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
                             train_idx <- which(!is.na(Y.tmasked[,1]))
                             test_idx  <- which(is.na(Y.tmasked[,1]))
                             y_train <- Y.tmasked[train_idx, 1]
@@ -3382,10 +3320,9 @@ holostackGP <- function(
                       }
 
                       # GBLUP with rrBLUP package
-                      covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                      covTraits <- colnames(Y.covmasked)
                       gebv_list <- list()
-                      if (length(covTraits) > 0) {
-                        for (covt in covTraits){
+                      for (covt in covTraits){
                         y <- Y.covmasked[[covt]]
                         # remove NA individuals (mixed.solve handles but safer)
                         ok <- !is.na(y)
@@ -3394,18 +3331,14 @@ holostackGP <- function(
                         u_full <- rep(NA, nrow(Y.covmasked))
                         u_full[which(ok)] <- sol$u[rownames(myKIx)[ok]]   # name-align
                         gebv_list[[covt]] <- u_full
-                        }
                       }
                       Y.tmasked <- as.data.frame(Y.masked)
-                      if (length(covTraits) > 0) {
-                        for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
-                      }
+                      for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
                       Xcov <- Y.tmasked[,-1]
                       model_gblup_g <- rrBLUP::mixed.solve(y = Y.tmasked[,1], K = myKIx, X=Xcov)
                       pred_gblup_g <- model_gblup_g$u[test_ids]  # genomic breeding values
                       gebv_list <- list()
-                      if (length(covTraits) > 0) {
-                        for (covt in covTraits){
+                      for (covt in covTraits){
                         y <- Y.covmasked[[covt]]
                         # remove NA individuals (mixed.solve handles but safer)
                         ok <- !is.na(y)
@@ -3414,12 +3347,9 @@ holostackGP <- function(
                         u_full <- rep(NA, nrow(Y.covmasked))
                         u_full[which(ok)] <- sol$u[rownames(metagKIx)[ok]]   # name-align
                         gebv_list[[covt]] <- u_full
-                        }
                       }
                       Y.tmasked <- as.data.frame(Y.masked)
-                      if (length(covTraits) > 0) {
-                        for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
-                      }
+                      for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
                       Xcov <- Y.tmasked[, -1, drop = FALSE]
                       Xcov_mat <- prepare_covariates(Xcov)
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
@@ -3468,7 +3398,7 @@ holostackGP <- function(
 
                       if (!is.null(Additional_models)){
                         # metagenomic RHKs with BGLR package
-                        covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                        covTraits <- colnames(Y.covmasked)
                         gebv_list <- list()
                         for(covt in covTraits){
                           y <- Y.covmasked[[covt]]
@@ -3482,9 +3412,7 @@ holostackGP <- function(
                           gebv_list[[covt]] <- gebv_full
                         }
                         Y.tmasked <- as.data.frame(Y.masked)
-                        if (length(covTraits) > 0) {
-                          for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
-                        }
+                        for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
                         Xcov_mat <- as.matrix(Y.tmasked[, -1, drop = FALSE])
                         train_idx <- which(!is.na(Y.tmasked[,1]))
                         test_idx  <- which(is.na(Y.tmasked[,1]))
@@ -3519,9 +3447,7 @@ holostackGP <- function(
                           gebv_list[[covt]] <- gebv_full
                         }
                         Y.tmasked <- as.data.frame(Y.masked)
-                        if (length(covTraits) > 0) {
-                          for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
-                        }
+                        for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
                         Xcov_mat <- as.matrix(Y.tmasked[, -1, drop = FALSE])
                         train_idx <- which(!is.na(Y.tmasked[,1]))
                         test_idx  <- which(is.na(Y.tmasked[,1]))
@@ -3793,11 +3719,10 @@ holostackGP <- function(
                           run_independent_bayes <- function(model_name, Y.masked, Y.covmasked = NULL, geno_scaled, mgeno_scaled, nIter, burnIn) {
                             suppressPackageStartupMessages(library(BGLR))
 
-                            covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                            covTraits <- colnames(Y.covmasked)
                             # ---- Genomic step ----
                             gebv_list <- list()
-                            if (length(covTraits) > 0) {
-                              for (covt in covTraits) {
+                            for (covt in covTraits) {
                               y <- Y.covmasked[[covt]]
                               ok <- !is.na(y)
                               fm <- BGLR(y = y[ok], ETA = list(list(X = geno_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
@@ -3806,11 +3731,8 @@ holostackGP <- function(
                               gebv_full[ok] <- as.numeric(geno_scaled[ok, , drop = FALSE] %*% b)
                               gebv_list[[covt]] <- gebv_full
                             }
-                            }
                             Y.tmasked <- as.data.frame(Y.masked)
-                            if (length(covTraits) > 0) {
-                              for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
-                            }
+                            for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
                             train_idx <- which(!is.na(Y.tmasked[,1]))
                             test_idx  <- which(is.na(Y.tmasked[,1]))
                             y_train <- Y.tmasked[train_idx, 1]
@@ -3836,8 +3758,7 @@ holostackGP <- function(
                             pred_g <- as.numeric(marker_part + fixed_part)
                             # ---- Metagenomic step ----
                             gebv_list <- list()
-                            if (length(covTraits) > 0) {
-                              for (covt in covTraits) {
+                            for (covt in covTraits) {
                               y <- Y.covmasked[[covt]]
                               ok <- !is.na(y)
                               library(BGLR)
@@ -3847,11 +3768,8 @@ holostackGP <- function(
                               gebv_full[ok] <- as.numeric(mgeno_scaled[ok, , drop = FALSE] %*% b)
                               gebv_list[[covt]] <- gebv_full
                             }
-                            }
                             Y.tmasked <- as.data.frame(Y.masked)
-                            if (length(covTraits) > 0) {
-                              for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
-                            }
+                            for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
                             train_idx <- which(!is.na(Y.tmasked[,1]))
                             test_idx  <- which(is.na(Y.tmasked[,1]))
                             y_train <- Y.tmasked[train_idx, 1]
@@ -4035,10 +3953,9 @@ holostackGP <- function(
                     pred_list <- list()
                     for (kernel_name in names(kernels)) {
                       K <- kernels[[kernel_name]]
-                      covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                      covTraits <- colnames(Y.covmasked)
                       gebv_list <- list()
-                      if (length(covTraits) > 0) {
-                        for (covt in covTraits){
+                      for (covt in covTraits){
                         y <- Y.covmasked[[covt]]
                         # remove NA individuals (mixed.solve handles but safer)
                         ok <- !is.na(y)
@@ -4048,11 +3965,8 @@ holostackGP <- function(
                         u_full[which(ok)] <- sol$u[rownames(K)[ok]]   # name-align
                         gebv_list[[covt]] <- u_full
                       }
-                      }
                       Y.tmasked <- as.data.frame(Y.masked)
-                      if (length(covTraits) > 0) {
-                        for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
-                      }
+                      for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
                       Xcov <- Y.tmasked[, -1, drop = FALSE]
                       Xcov_mat <- prepare_covariates(Xcov)
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
@@ -4412,7 +4326,7 @@ holostackGP <- function(
                       pred_list <- list()
                       for (kernel_name in names(kernels)) {
                         K <- kernels[[kernel_name]]
-                        covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                        covTraits <- colnames(Y.covmasked)
                         gebv_list <- list()
                         for(covt in covTraits){
                           y <- Y.covmasked[[covt]]
@@ -4426,9 +4340,7 @@ holostackGP <- function(
                           gebv_list[[covt]] <- gebv_full
                         }
                         Y.tmasked <- as.data.frame(Y.masked)
-                        if (length(covTraits) > 0) {
-                          for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
-                        }
+                        for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
                         Xcov_mat <- as.matrix(Y.tmasked[, -1, drop = FALSE])
                         train_idx <- which(!is.na(Y.tmasked[,1]))
                         test_idx  <- which(is.na(Y.tmasked[,1]))
@@ -4463,11 +4375,10 @@ holostackGP <- function(
                         run_independent_bayes <- function(model_name, Y.masked, Y.covmasked = NULL, geno.A_scaled, geno.D_scaled, mgeno_scaled, nIter, burnIn) {
                           suppressPackageStartupMessages(library(BGLR))
 
-                          covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                          covTraits <- colnames(Y.covmasked)
                           # ---- Additive step ----
                           gebv_list <- list()
-                          if (length(covTraits) > 0) {
-                            for (covt in covTraits) {
+                          for (covt in covTraits) {
                             y <- Y.covmasked[[covt]]
                             ok <- !is.na(y)
                             fm <- BGLR(y = y[ok], ETA = list(list(X = geno.A_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
@@ -4476,11 +4387,8 @@ holostackGP <- function(
                             gebv_full[ok] <- as.numeric(geno.A_scaled[ok, , drop = FALSE] %*% b)
                             gebv_list[[covt]] <- gebv_full
                           }
-                          }
                           Y.tmasked <- as.data.frame(Y.masked)
-                          if (length(covTraits) > 0) {
-                            for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
-                          }
+                          for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
                           train_idx <- which(!is.na(Y.tmasked[,1]))
                           test_idx  <- which(is.na(Y.tmasked[,1]))
                           y_train <- Y.tmasked[train_idx, 1]
@@ -4507,8 +4415,7 @@ holostackGP <- function(
                           # pred_A <- as.numeric(geno.A_scaled[test_idx, , drop = FALSE] %*% b_markersA + X_test %*% b_fixedA)
                           # ---- Dominance step ----
                           gebv_list <- list()
-                          if (length(covTraits) > 0) {
-                            for (covt in covTraits) {
+                          for (covt in covTraits) {
                             y <- Y.covmasked[[covt]]
                             ok <- !is.na(y)
                             library(BGLR)
@@ -4518,11 +4425,8 @@ holostackGP <- function(
                             gebv_full[ok] <- as.numeric(geno.D_scaled[ok, , drop = FALSE] %*% b)
                             gebv_list[[covt]] <- gebv_full
                           }
-                          }
                           Y.tmasked <- as.data.frame(Y.masked)
-                          if (length(covTraits) > 0) {
-                            for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
-                          }
+                          for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
                           train_idx <- which(!is.na(Y.tmasked[,1]))
                           test_idx  <- which(is.na(Y.tmasked[,1]))
                           y_train <- Y.tmasked[train_idx, 1]
@@ -4549,8 +4453,7 @@ holostackGP <- function(
                           # pred_D <- as.numeric(geno.D_scaled[test_idx, , drop = FALSE] %*% b_markersD + X_test %*% b_fixedD)
                           # ---- Metagenome step ----
                           gebv_list <- list()
-                          if (length(covTraits) > 0) {
-                            for (covt in covTraits) {
+                          for (covt in covTraits) {
                             y <- Y.covmasked[[covt]]
                             ok <- !is.na(y)
                             library(BGLR)
@@ -4560,11 +4463,8 @@ holostackGP <- function(
                             gebv_full[ok] <- as.numeric(mgeno_scaled[ok, , drop = FALSE] %*% b)
                             gebv_list[[covt]] <- gebv_full
                           }
-                          }
                           Y.tmasked <- as.data.frame(Y.masked)
-                          if (length(covTraits) > 0) {
-                            for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
-                          }
+                          for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
                           train_idx <- which(!is.na(Y.tmasked[,1]))
                           test_idx  <- which(is.na(Y.tmasked[,1]))
                           y_train <- Y.tmasked[train_idx, 1]
@@ -4693,10 +4593,9 @@ holostackGP <- function(
 
                     # GBLUP with rrBLUP package
                     {
-                      covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                      covTraits <- colnames(Y.covmasked)
                       gebv_list <- list()
-                      if (length(covTraits) > 0) {
-                        for (covt in covTraits){
+                      for (covt in covTraits){
                         y <- Y.covmasked[[covt]]
                         # remove NA individuals (mixed.solve handles but safer)
                         ok <- !is.na(y)
@@ -4706,17 +4605,13 @@ holostackGP <- function(
                         u_full[which(ok)] <- sol$u[rownames(myKIx)[ok]]   # name-align
                         gebv_list[[covt]] <- u_full
                       }
-                      }
                       Y.tmasked <- as.data.frame(Y.masked)
-                      if (length(covTraits) > 0) {
-                        for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
-                      }
+                      for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
                       Xcov <- Y.tmasked[,-1]
                       model_gblup_g <- rrBLUP::mixed.solve(y = Y.tmasked[,1], K = myKIx, X=Xcov)
                       pred_gblup_g <- model_gblup_g$u[test_ids]  # genomic breeding values
                       gebv_list <- list()
-                      if (length(covTraits) > 0) {
-                        for (covt in covTraits){
+                      for (covt in covTraits){
                         y <- Y.covmasked[[covt]]
                         # remove NA individuals (mixed.solve handles but safer)
                         ok <- !is.na(y)
@@ -4726,11 +4621,8 @@ holostackGP <- function(
                         u_full[which(ok)] <- sol$u[rownames(metagKIx)[ok]]   # name-align
                         gebv_list[[covt]] <- u_full
                       }
-                      }
                       Y.tmasked <- as.data.frame(Y.masked)
-                      if (length(covTraits) > 0) {
-                        for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
-                      }
+                      for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
                       Xcov <- Y.tmasked[, -1, drop = FALSE]
                       Xcov_mat <- prepare_covariates(Xcov)
                       if (is.null(Xcov_mat) || ncol(Xcov_mat) == 0) {
@@ -4775,7 +4667,7 @@ holostackGP <- function(
 
                     if (!is.null(Additional_models)){
                       # metagenomic RHKs with BGLR package
-                      covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                      covTraits <- colnames(Y.covmasked)
                       gebv_list <- list()
                       for(covt in covTraits){
                         y <- Y.covmasked[[covt]]
@@ -4789,9 +4681,7 @@ holostackGP <- function(
                         gebv_list[[covt]] <- gebv_full
                       }
                       Y.tmasked <- as.data.frame(Y.masked)
-                      if (length(covTraits) > 0) {
-                        for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
-                      }
+                      for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
                       Xcov_mat <- as.matrix(Y.tmasked[, -1, drop = FALSE])
                       train_idx <- which(!is.na(Y.tmasked[,1]))
                       test_idx  <- which(is.na(Y.tmasked[,1]))
@@ -4826,9 +4716,7 @@ holostackGP <- function(
                         gebv_list[[covt]] <- gebv_full
                       }
                       Y.tmasked <- as.data.frame(Y.masked)
-                      if (length(covTraits) > 0) {
-                        for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
-                      }
+                      for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
                       Xcov_mat <- as.matrix(Y.tmasked[, -1, drop = FALSE])
                       train_idx <- which(!is.na(Y.tmasked[,1]))
                       test_idx  <- which(is.na(Y.tmasked[,1]))
@@ -4997,11 +4885,10 @@ holostackGP <- function(
                         run_independent_bayes <- function(model_name, Y.masked, Y.covmasked = NULL, geno_scaled, mgeno_scaled, nIter, burnIn) {
                           suppressPackageStartupMessages(library(BGLR))
 
-                          covTraits <- if (is.null(Y.covmasked)) character(0) else colnames(Y.covmasked)
+                          covTraits <- colnames(Y.covmasked)
                           # ---- Genomic step ----
                           gebv_list <- list()
-                          if (length(covTraits) > 0) {
-                            for (covt in covTraits) {
+                          for (covt in covTraits) {
                             y <- Y.covmasked[[covt]]
                             ok <- !is.na(y)
                             fm <- BGLR(y = y[ok], ETA = list(list(X = geno_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
@@ -5010,11 +4897,8 @@ holostackGP <- function(
                             gebv_full[ok] <- as.numeric(geno_scaled[ok, , drop = FALSE] %*% b)
                             gebv_list[[covt]] <- gebv_full
                           }
-                          }
                           Y.tmasked <- as.data.frame(Y.masked)
-                          if (length(covTraits) > 0) {
-                            for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
-                          }
+                          for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
                           train_idx <- which(!is.na(Y.tmasked[,1]))
                           test_idx  <- which(is.na(Y.tmasked[,1]))
                           y_train <- Y.tmasked[train_idx, 1]
@@ -5040,8 +4924,7 @@ holostackGP <- function(
                           pred_g <- as.numeric(marker_part + fixed_part)
                           # ---- Metagenomic step ----
                           gebv_list <- list()
-                          if (length(covTraits) > 0) {
-                            for (covt in covTraits) {
+                          for (covt in covTraits) {
                             y <- Y.covmasked[[covt]]
                             ok <- !is.na(y)
                             library(BGLR)
@@ -5051,11 +4934,8 @@ holostackGP <- function(
                             gebv_full[ok] <- as.numeric(mgeno_scaled[ok, , drop = FALSE] %*% b)
                             gebv_list[[covt]] <- gebv_full
                           }
-                          }
                           Y.tmasked <- as.data.frame(Y.masked)
-                          if (length(covTraits) > 0) {
-                            for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
-                          }
+                          for (covt in covTraits) {Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]])}
                           train_idx <- which(!is.na(Y.tmasked[,1]))
                           test_idx  <- which(is.na(Y.tmasked[,1]))
                           y_train <- Y.tmasked[train_idx, 1]
