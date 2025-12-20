@@ -3,7 +3,6 @@
 holostackGP <- function(
     wdir = "./",
     projname="proj_GP",
-    MTME=FALSE,
     phenofile=NULL,
     genofile=NULL,
     metagenomefile=NULL,
@@ -67,7 +66,7 @@ holostackGP <- function(
   # Step 1: Specify covariate if required and import data.
   setwd(wdir)
   GP_run_title <- projname
-  MTME <- MTME
+  MTME <- FALSE
   traits <- traits
   if (is.null(covariate)) {
     covariate <- NULL

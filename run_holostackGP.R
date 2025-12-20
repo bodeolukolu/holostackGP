@@ -6,7 +6,6 @@ setwd("./")
 
 holostackGP(
     projname="FER",
-    MTME=FALSE,
     phenofile="Traits_FER_lsmeans.txt",
     genofile="Zm_2x_rd6_maf0.02_dose.txt",
     metagenomefile="WGS_metagenome.txt",
@@ -21,7 +20,7 @@ holostackGP(
     geno_missing_rate=0.2,
     # if full marker data set, set to NULL
     subsample_markers=NULL,
-    # Additive, Dominance, metagenome or microbiome, Full       
+    # Additive, Dominance, metagenome or microbiome, Full
     gene_model=c("Full"),
     R_libpath=NULL
 )

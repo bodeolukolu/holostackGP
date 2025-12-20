@@ -1,5 +1,7 @@
 #!/bin/bash
+
 set -euo pipefail
+
 
 export OMP_NUM_THREADS=5
 export MKL_NUM_THREADS=5
@@ -12,7 +14,6 @@ main () {
 
 declare -a arr=("trait-1" "trait-2")
 projname="proj_GP"
-MTME="FALSE"
 phenofile="Traits.txt"
 genofile="geno.txt"
 metagenomefile="metagenome.txt"
@@ -26,7 +27,7 @@ gene_model="Full"
 
 for trait in "${arr[@]}"; do
   echo "Launching genomic prediction for trait: ${trait}"
-  Rscript batch_run_holostackGP.R "${trait}" "$projname" "$MTME" "$phenofile" "$genofile" "$metagenomefile" "$covariate" "$kernel" "$gene_model" & 
+  Rscript batch_run_holostackGP.R "${trait}" "$projname" "$phenofile" "$genofile" "$metagenomefile" "$covariate" "$kernel" "$gene_model" &
   sleep 10
   ((count++))
   if (( count % max_jobs == 0 )); then
