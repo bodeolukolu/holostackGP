@@ -1483,6 +1483,10 @@ holostackGP <- function(
 
                         # Wrapper to run all models in parallel
                         run_parallel_stack <- function(Y.masked, Y.covmasked, covariate = NULL, geno.A_scaled, geno.D_scaled, nIter, burnIn, n.cores = ncores) {
+                          # If covariate is NULL, make sure Y.covmasked is also NULL
+                          if (is.null(covariate)) {Y.covmasked <- NULL}
+                          # If Y.covmasked exists but has zero columns, set it to NULL
+                          if (!is.null(Y.covmasked) && ncol(Y.covmasked) == 0) {Y.covmasked <- NULL}
                           cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                           on.exit(parallel::stopCluster(cl), add = TRUE)
                           parallel::clusterSetRNGStream(cl, iseed = 12345)
@@ -1837,6 +1841,10 @@ holostackGP <- function(
 
                         # Wrapper to run all models in parallel
                         run_parallel_stack <- function(Y.masked, Y.covmasked, covariate = NULL, geno_scaled, nIter, burnIn, n.cores = ncores) {
+                          # If covariate is NULL, make sure Y.covmasked is also NULL
+                          if (is.null(covariate)) {Y.covmasked <- NULL}
+                          # If Y.covmasked exists but has zero columns, set it to NULL
+                          if (!is.null(Y.covmasked) && ncol(Y.covmasked) == 0) {Y.covmasked <- NULL}
                           cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                           on.exit(parallel::stopCluster(cl), add = TRUE)
                           parallel::clusterSetRNGStream(cl, iseed = 12345)
@@ -2208,6 +2216,10 @@ holostackGP <- function(
 
                         # Wrapper to run all models in parallel
                         run_parallel_stack <- function(Y.masked, Y.covmasked, covariate = NULL, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
+                          # If covariate is NULL, make sure Y.covmasked is also NULL
+                          if (is.null(covariate)) {Y.covmasked <- NULL}
+                          # If Y.covmasked exists but has zero columns, set it to NULL
+                          if (!is.null(Y.covmasked) && ncol(Y.covmasked) == 0) {Y.covmasked <- NULL}
                           cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                           on.exit(parallel::stopCluster(cl), add = TRUE)
                           parallel::clusterSetRNGStream(cl, iseed = 12345)
@@ -2563,6 +2575,10 @@ holostackGP <- function(
 
                         # Wrapper to run all models in parallel
                         run_parallel_stack <- function(Y.masked, Y.covmasked, covariate = NULL, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
+                          # If covariate is NULL, make sure Y.covmasked is also NULL
+                          if (is.null(covariate)) {Y.covmasked <- NULL}
+                          # If Y.covmasked exists but has zero columns, set it to NULL
+                          if (!is.null(Y.covmasked) && ncol(Y.covmasked) == 0) {Y.covmasked <- NULL}
                           cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                           on.exit(parallel::stopCluster(cl), add = TRUE)
                           parallel::clusterSetRNGStream(cl, iseed = 12345)
@@ -3226,6 +3242,10 @@ holostackGP <- function(
 
                           # Wrapper to run all models in parallel
                           run_parallel_stack <- function(Y.masked, Y.covmasked, covariate = NULL, geno.A_scaled, geno.D_scaled, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
+                            # If covariate is NULL, make sure Y.covmasked is also NULL
+                            if (is.null(covariate)) {Y.covmasked <- NULL}
+                            # If Y.covmasked exists but has zero columns, set it to NULL
+                            if (!is.null(Y.covmasked) && ncol(Y.covmasked) == 0) {Y.covmasked <- NULL}
                             cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                             on.exit(parallel::stopCluster(cl), add = TRUE)
                             parallel::clusterSetRNGStream(cl, iseed = 12345)
@@ -3870,6 +3890,10 @@ holostackGP <- function(
 
                           # Wrapper to run all models in parallel
                           run_parallel_stack <- function(Y.masked, Y.covmasked, covariate = NULL, geno_scaled, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
+                            # If covariate is NULL, make sure Y.covmasked is also NULL
+                            if (is.null(covariate)) {Y.covmasked <- NULL}
+                            # If Y.covmasked exists but has zero columns, set it to NULL
+                            if (!is.null(Y.covmasked) && ncol(Y.covmasked) == 0) {Y.covmasked <- NULL}
                             cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                             on.exit(parallel::stopCluster(cl), add = TRUE)
                             parallel::clusterSetRNGStream(cl, iseed = 12345)
@@ -4582,6 +4606,10 @@ holostackGP <- function(
 
                         # Wrapper to run all models in parallel
                         run_parallel_stack <- function(Y.masked, Y.covmasked, covariate = NULL, geno.A_scaled, geno.D_scaled, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
+                          # If covariate is NULL, make sure Y.covmasked is also NULL
+                          if (is.null(covariate)) {Y.covmasked <- NULL}
+                          # If Y.covmasked exists but has zero columns, set it to NULL
+                          if (!is.null(Y.covmasked) && ncol(Y.covmasked) == 0) {Y.covmasked <- NULL}
                           cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                           on.exit(parallel::stopCluster(cl), add = TRUE)
                           parallel::clusterSetRNGStream(cl, iseed = 12345)
@@ -5070,6 +5098,10 @@ holostackGP <- function(
 
                         # Wrapper to run all models in parallel
                         run_parallel_stack <- function(Y.masked, Y.covmasked, covariate = NULL, geno_scaled, mgeno_scaled, nIter, burnIn, n.cores = ncores) {
+                          # If covariate is NULL, make sure Y.covmasked is also NULL
+                          if (is.null(covariate)) {Y.covmasked <- NULL}
+                          # If Y.covmasked exists but has zero columns, set it to NULL
+                          if (!is.null(Y.covmasked) && ncol(Y.covmasked) == 0) {Y.covmasked <- NULL}
                           cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                           on.exit(parallel::stopCluster(cl), add = TRUE)
                           parallel::clusterSetRNGStream(cl, iseed = 12345)
