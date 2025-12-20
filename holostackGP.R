@@ -1483,8 +1483,8 @@ holostackGP <- function(
 
                         # Wrapper to run all models in parallel
                         run_parallel_stack <- function(Y.masked, Y.covmasked, covariate = NULL, geno.A_scaled, geno.D_scaled, nIter, burnIn, n.cores = ncores) {
-                          ## --- Normalize covariates ONCE ---
-                          if (is.null(covariate)) {Y.covmasked <- NULL}
+                          # Enforce non-NULL Y.covmasked for downstream code
+                          if (is.null(covariate)) {Y.covmasked <- matrix(0, nrow = nrow(Y.masked),  ncol = 1, dimnames = list(rownames(Y.masked), "dummy_cov"))}
                           cl <- parallel::makeCluster(n.cores, type = "PSOCK")
                           on.exit(parallel::stopCluster(cl), add = TRUE)
                           parallel::clusterSetRNGStream(cl, iseed = 12345)
