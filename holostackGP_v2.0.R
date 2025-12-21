@@ -1,4 +1,7 @@
 #!/usr/bin/env Rscript
+# Pipeline: Ensemble Stacking of Multi-omic and Full-interaction implemented with stacked statistical and machine learning models
+# Author: [Bode Olukolu]
+# Date: 2025-12-21
 
 holostackGP <- function(
     wdir = "./",
@@ -56,7 +59,7 @@ holostackGP <- function(
 
     invisible(TRUE)
   }
-  pkgs <- c("data.table", "dplyr", "mice", "AGHmatrix", "vegan", "compositions", "ggcorrplot", "glmnet",
+  pkgs <- c("data.table", "dplyr", "mice", "AGHmatrix", "vegan", "compositions", "ggcorrplot",
             "nlme", "lsmeans", "agricolae", "parallel", "doParallel", "foreach", "rrBLUP", "BGLR", "GWASpoly")
 
 
@@ -3678,143 +3681,281 @@ holostackGP <- function(
             if (MTME == TRUE){
               print("run MTME a false to generate predictions, which you can use for stacking in a separate R script")
             } else {
-              # -----------------------------------------
-              # Function: CV-aware Ridge Stacking
-              # -----------------------------------------
-              cv_ridge_stack <- function(pred_df, trait_col, fold_id) {
-                pred_stack <- numeric(nrow(pred_df))
-
-                for (k in unique(fold_id)) {
-                  train_idx <- which(fold_id != k)
-                  test_idx  <- which(fold_id == k)
-
-                  X_train <- as.matrix(pred_df[train_idx, !(colnames(pred_df) %in% c("Taxa", trait_col))])
-                  y_train <- pred_df[[trait_col]][train_idx]
-                  X_test  <- as.matrix(pred_df[test_idx, !(colnames(pred_df) %in% c("Taxa", trait_col))])
-
-                  fit <- cv.glmnet(X_train, y_train, alpha = 0, standardize = TRUE)
-                  pred_stack[test_idx] <- as.numeric(predict(fit, newx = X_test, s = "lambda.min"))
-                }
-
-                cor_val <- cor(pred_df[[trait_col]], pred_stack, use = "complete.obs")
-                pred_df$stacked <- pred_stack
-                return(list(pred = pred_df, cor = cor_val))
-              }
-
-              # -----------------------------------------
-              # Helper to prepare base predictions
-              # -----------------------------------------
-              prepare_base_preds <- function(pred_OOF, base_name) {
-                if (!"Taxa" %in% colnames(pred_OOF)) pred_OOF$Taxa <- rownames(pred_OOF)
-                colnames(pred_OOF)[!(colnames(pred_OOF) %in% c("Taxa", trait))] <- paste0(base_name, "_", colnames(pred_OOF)[!(colnames(pred_OOF) %in% c("Taxa", trait))])
-                return(pred_OOF)
-              }
-
-              # -----------------------------------------
-              # Determine base models based on gp_model
-              # -----------------------------------------
-              get_base_models <- function(gp_model) {
-                if (gp_model == "GBLUP") {
-                  return(c("GBLUP", "rrBLUP", "RKHS"))
-                } else if (gp_model == "gBLUP") {
-                  return(c("MBLUP", "rrBLUP", "RKHS"))
-                } else if (gp_model == "gGBLUP") {
-                  return(c("GBLUP", "rrBLUP", "RKHS"))
+              if(gp_model == "GBLUP"){
+                if (gene_model == "Full" || gene_model == "All"){
+                  # stack all models
+                  {
+                    pred_gblup_OOF <- merge(Y.raw, pred_gblup_OOF, by = "row.names")
+                    formula_gblup <- as.formula(paste(trait, "~", paste(colnames(pred_gblup_OOF)[-c(1:3)], collapse = " + ")))
+                    fit_stack  <- lm(formula_gblup, data = pred_gblup_OOF)
+                    pred_gblup <- as.data.frame(predict(fit_stack, newdata = pred_gblup_OOF))
+                    row.names(pred_gblup) <- pred_gblup_OOF$Taxa; colnames(pred_gblup)[1] <-  "GBLUP"
+                    pred_gblup <- merge(Y.raw, pred_gblup, by = "row.names")
+                    pred_gblup_cor <- cor(pred_gblup[,trait], pred_gblup[,"GBLUP"])
+                    # stack rrBLUP models
+                    pred_rrblup_OOF <- merge(Y.raw, pred_rrblup_OOF, by = "row.names")
+                    formula_rrblup <- as.formula(paste(trait, "~", paste(colnames(pred_rrblup_OOF)[-c(1:3)], collapse = " + ")))
+                    fit_stack  <- lm(formula_rrblup, data = pred_rrblup_OOF)
+                    pred_rrblup <- as.data.frame(predict(fit_stack, newdata = pred_rrblup_OOF))
+                    row.names(pred_rrblup) <- pred_rrblup_OOF$Taxa; colnames(pred_rrblup)[1] <-  "rrBLUP"
+                    pred_rrblup <- merge(Y.raw, pred_rrblup, by = "row.names")
+                    pred_rrblup_cor <- cor(pred_rrblup[,trait], pred_rrblup[,"rrBLUP"])
+                    # stack RKHS models
+                    pred_rkhs_OOF <- merge(Y.raw, pred_rkhs_OOF, by = "row.names")
+                    formula_rkhs <- as.formula(paste(trait, "~", paste(colnames(pred_rkhs_OOF)[-c(1:3)], collapse = " + ")))
+                    fit_stack  <- lm(formula_rkhs, data = pred_rkhs_OOF)
+                    pred_rkhs <- as.data.frame(predict(fit_stack, newdata = pred_rkhs_OOF))
+                    row.names(pred_rkhs) <- pred_rkhs_OOF$Taxa; colnames(pred_rkhs)[1] <-  "RKHS"
+                    pred_rkhs <- merge(Y.raw, pred_rkhs, by = "row.names")
+                    pred_rkhs_cor <- cor(pred_rkhs[,trait], pred_rkhs[,"RKHS"])
+                    # stack Bayes models
+                    pred_bayes_OOF <- merge(Y.raw, pred_bayes_OOF, by = "row.names")
+                    methods <- c("BRR", "BayesA", "BayesB", "BayesC", "BL")
+                    stack_pred_list <- list()
+                    stack_cor       <- numeric(length(methods))
+                    names(stack_cor) <- methods
+                    for (m in methods) {
+                      predA <- paste0(m, ".pred_A"); predD <- paste0(m, ".pred_D")
+                      formula_m <- as.formula(paste(trait, "~", paste(predA, "+", predD)))
+                      fit_stack <- lm(formula_m, data = pred_bayes_OOF)
+                      pred_m <- data.frame(Taxa = pred_bayes_OOF$Taxa,pred = predict(fit_stack, newdata = pred_bayes_OOF))
+                      colnames(pred_m)[2] <- paste0("pred_", m)
+                      pred_m <- merge(Y.raw, pred_m, by.x = "row.names", by.y = "Taxa")
+                      stack_cor[m] <- cor(pred_m[[trait]], pred_m[[paste0("pred_", m)]], use = "complete.obs")
+                      stack_pred_list[[m]] <- pred_m
+                    }
+                    pred_brr <- as.data.frame(stack_pred_list[["BRR"]]); pred_brr_cor <- stack_cor["BRR"]
+                    pred_bayesA <- as.data.frame(stack_pred_list[["BayesA"]]); pred_bayesA_cor <- stack_cor["BayesA"]
+                    pred_bayesB <- as.data.frame(stack_pred_list[["BayesB"]]); pred_bayesB_cor <- stack_cor["BayesB"]
+                    pred_bayesC <- as.data.frame(stack_pred_list[["BayesC"]]); pred_bayesC_cor <- stack_cor["BayesC"]
+                    pred_bl <- as.data.frame(stack_pred_list[["BL"]]); pred_bl_cor <- stack_cor["BL"]
+                    # stack all models
+                    predall_list <- list(pred_gblup, pred_rrblup, pred_rkhs, pred_brr, pred_bayesA, pred_bayesB, pred_bayesC, pred_bl)
+                    pred_all <- Reduce(function(x, y) {merge(x, y, by = c("Row.names","Taxa",trait), all = TRUE)}, predall_list)
+                    formula_stackall <- as.formula(paste(trait, "~", paste(colnames(pred_all)[-c(1:3)], collapse = " + ")))
+                    fit_stack  <- lm(formula_stackall, data = pred_all)
+                    pred_stack <- as.data.frame(predict(fit_stack, newdata = pred_all))
+                    row.names(pred_stack) <- pred_all$Taxa; colnames(pred_stack)[1] <-  "stacked"
+                    pred_stack <- merge(Y.raw, pred_stack, by = "row.names")
+                    pred_stack_cor <- cor(pred_stack[,trait], pred_stack[,"stacked"])
+                  }
                 } else {
-                  stop("Unknown gp_model")
+                  # stack all models
+                  {
+                    colnames(pred_gblup_OOF) <- "GBLUP"
+                    pred_gblup <- merge(Y.raw, pred_gblup_OOF, by = "row.names")
+                    pred_gblup_cor <- cor(pred_gblup[,trait], pred_gblup[,"GBLUP"])
+                    # stack rrBLUP models
+                    colnames(pred_rrblup_OOF) <- "rrBLUP"
+                    pred_rrblup <- merge(Y.raw, pred_rrblup_OOF, by = "row.names")
+                    pred_rrblup_cor <- cor(pred_rrblup[,trait], pred_rrblup[,"rrBLUP"])
+                    # stack RKHS models
+                    colnames(pred_rkhs_OOF) <- "RKHS"
+                    pred_rkhs <- merge(Y.raw, pred_rkhs_OOF, by = "row.names")
+                    pred_rkhs_cor <- cor(pred_rkhs[,trait], pred_rkhs[,"RKHS"])
+                    # stack Bayes models
+                    colnames(pred_bayes_OOF) <- c("BRR", "BayesA", "BayesB", "BayesC", "BL")
+                    pred_bayes <- merge(Y.raw, pred_bayes_OOF, by = "row.names")
+                    pred_brr <- pred_bayes[,c("Row.names","Taxa",trait,"BRR")]; pred_brr_cor <- cor(pred_brr[,trait], pred_brr[,"BRR"])
+                    pred_bayesA <- pred_bayes[,c("Row.names","Taxa",trait,"BayesA")]; pred_bayesA_cor <- cor(pred_bayesA[,trait], pred_bayesA[,"BayesA"])
+                    pred_bayesB <- pred_bayes[,c("Row.names","Taxa",trait,"BayesB")]; pred_bayesB_cor <- cor(pred_bayesB[,trait], pred_bayesB[,"BayesB"])
+                    pred_bayesC <- pred_bayes[,c("Row.names","Taxa",trait,"BayesC")]; pred_bayesC_cor <- cor(pred_bayesC[,trait], pred_bayesC[,"BayesC"])
+                    pred_bl <- pred_bayes[,c("Row.names","Taxa",trait,"BL")]; pred_bl_cor <- cor(pred_bl[,trait], pred_bl[,"BL"])
+                    # stack all models
+                    predall_list <- list(pred_gblup, pred_rrblup, pred_rkhs, pred_brr, pred_bayesA, pred_bayesB, pred_bayesC, pred_bl)
+                    pred_all <- Reduce(function(x, y) {merge(x, y, by = c("Row.names","Taxa",trait), all = TRUE)}, predall_list)
+                    formula_stackall <- as.formula(paste(trait, "~", paste(colnames(pred_all)[-c(1:3)], collapse = " + ")))
+                    fit_stack  <- lm(formula_stackall, data = pred_all)
+                    pred_stack <- as.data.frame(predict(fit_stack, newdata = pred_all))
+                    row.names(pred_stack) <- pred_all$Taxa; colnames(pred_stack)[1] <-  "stacked"
+                    pred_stack <- merge(Y.raw, pred_stack, by = "row.names")
+                    pred_stack_cor <- cor(pred_stack[,trait], pred_stack[,"stacked"])
+                  }
                 }
               }
-
-              # Example: fold_id vector exists (length = nrow(Y.raw))
-              # fold_id <- sample(1:nfolds, nrow(Y.raw), replace = TRUE)
-
-              stacked_preds_list <- list()
-              stacked_preds_cor <- list()
-
-              base_models <- get_base_models(gp_model)
-
-              # ------------------------
-              # Stack base models
-              # ------------------------
-              for (bm in base_models) {
-                pred_OOF <- get(paste0("pred_", tolower(bm), "_OOF"))
-                pred_OOF <- prepare_base_preds(pred_OOF, bm)
-
-                stacked_result <- cv_ridge_stack(pred_OOF, trait, fold_id)
-                stacked_preds_list[[bm]] <- stacked_result$pred
-                stacked_preds_cor[[bm]] <- stacked_result$cor
-
-                assign(paste0("pred_", tolower(bm)), stacked_result$pred)
-                assign(paste0("pred_", tolower(bm), "_cor"), stacked_result$cor)
+              if(gp_model == "gBLUP") {
+                # stack all models
+                {
+                  colnames(pred_gblup_OOF) <- "MBLUP"
+                  pred_gblup <- merge(Y.raw, pred_gblup_OOF, by = "row.names")
+                  pred_gblup_cor <- cor(pred_gblup[,trait], pred_gblup[,"MBLUP"])
+                  # stack rrBLUP models
+                  colnames(pred_rrblup_OOF) <- "rrBLUP"
+                  pred_rrblup <- merge(Y.raw, pred_rrblup_OOF, by = "row.names")
+                  pred_rrblup_cor <- cor(pred_rrblup[,trait], pred_rrblup[,"rrBLUP"])
+                  # stack RKHS models
+                  colnames(pred_rkhs_OOF) <- "RKHS"
+                  pred_rkhs <- merge(Y.raw, pred_rkhs_OOF, by = "row.names")
+                  pred_rkhs_cor <- cor(pred_rkhs[,trait], pred_rkhs[,"RKHS"])
+                  # stack Bayes models
+                  colnames(pred_bayes_OOF) <- c("BRR", "BayesA", "BayesB", "BayesC", "BL")
+                  pred_bayes <- merge(Y.raw, pred_bayes_OOF, by = "row.names")
+                  pred_brr <- pred_bayes[,c("Row.names","Taxa",trait,"BRR")]; pred_brr_cor <- cor(pred_brr[,trait], pred_brr[,"BRR"])
+                  pred_bayesA <- pred_bayes[,c("Row.names","Taxa",trait,"BayesA")]; pred_bayesA_cor <- cor(pred_bayesA[,trait], pred_bayesA[,"BayesA"])
+                  pred_bayesB <- pred_bayes[,c("Row.names","Taxa",trait,"BayesB")]; pred_bayesB_cor <- cor(pred_bayesB[,trait], pred_bayesB[,"BayesB"])
+                  pred_bayesC <- pred_bayes[,c("Row.names","Taxa",trait,"BayesC")]; pred_bayesC_cor <- cor(pred_bayesC[,trait], pred_bayesC[,"BayesC"])
+                  pred_bl <- pred_bayes[,c("Row.names","Taxa",trait,"BL")]; pred_bl_cor <- cor(pred_bl[,trait], pred_bl[,"BL"])
+                  # stack all models
+                  predall_list <- list(pred_gblup, pred_rrblup, pred_rkhs, pred_brr, pred_bayesA, pred_bayesB, pred_bayesC, pred_bl)
+                  pred_all <- Reduce(function(x, y) {merge(x, y, by = c("Row.names","Taxa",trait), all = TRUE)}, predall_list)
+                  formula_stackall <- as.formula(paste(trait, "~", paste(colnames(pred_all)[-c(1:3)], collapse = " + ")))
+                  fit_stack  <- lm(formula_stackall, data = pred_all)
+                  pred_stack <- as.data.frame(predict(fit_stack, newdata = pred_all))
+                  row.names(pred_stack) <- pred_all$Taxa; colnames(pred_stack)[1] <-  "stacked"
+                  pred_stack <- merge(Y.raw, pred_stack, by = "row.names")
+                  pred_stack_cor <- cor(pred_stack[,trait], pred_stack[,"stacked"])
+                }
               }
-
-              # ------------------------
-              # Stack Bayes models
-              # ------------------------
-              bayes_methods <- c("BRR", "BayesA", "BayesB", "BayesC", "BL")
-              stacked_bayes_list <- list()
-              stacked_bayes_cor <- numeric(length(bayes_methods))
-              names(stacked_bayes_cor) <- bayes_methods
-
-              pred_bayes_OOF$Taxa <- rownames(pred_bayes_OOF)
-
-              for (m in bayes_methods) {
-                predA <- paste0(m, ".pred_A")
-                predD <- paste0(m, ".pred_D")
-
-                if (!all(c(predA, predD) %in% colnames(pred_bayes_OOF))) next
-
-                df_tmp <- pred_bayes_OOF %>% select(Taxa, all_of(trait), all_of(c(predA, predD)))
-                stacked_result <- cv_ridge_stack(df_tmp, trait, fold_id)
-
-                stacked_bayes_list[[m]] <- stacked_result$pred
-                stacked_bayes_cor[m] <- stacked_result$cor
-
-                assign(paste0("pred_", tolower(m)), stacked_result$pred)
-                assign(paste0("pred_", tolower(m), "_cor"), stacked_result$cor)
+              if(gp_model == "gGBLUP"){
+                if (gene_model == "Full" || gene_model == "All"){
+                  # stack all models
+                  {
+                    pred_gblup_OOF <- merge(Y.raw, pred_gblup_OOF, by = "row.names")
+                    formula_gblup <- as.formula(paste(trait, "~", paste(colnames(pred_gblup_OOF)[-c(1:3)], collapse = " + ")))
+                    fit_stack  <- lm(formula_gblup, data = pred_gblup_OOF)
+                    pred_gblup <- as.data.frame(predict(fit_stack, newdata = pred_gblup_OOF))
+                    row.names(pred_gblup) <- pred_gblup_OOF$Taxa; colnames(pred_gblup)[1] <-  "GBLUP"
+                    pred_gblup <- merge(Y.raw, pred_gblup, by = "row.names")
+                    pred_gblup_cor <- cor(pred_gblup[,trait], pred_gblup[,"GBLUP"])
+                    # stack rrBLUP models
+                    pred_rrblup_OOF <- merge(Y.raw, pred_rrblup_OOF, by = "row.names")
+                    formula_rrblup <- as.formula(paste(trait, "~", paste(colnames(pred_rrblup_OOF)[-c(1:3)], collapse = " + ")))
+                    fit_stack  <- lm(formula_rrblup, data = pred_rrblup_OOF)
+                    pred_rrblup <- as.data.frame(predict(fit_stack, newdata = pred_rrblup_OOF))
+                    row.names(pred_rrblup) <- pred_rrblup_OOF$Taxa; colnames(pred_rrblup)[1] <-  "rrBLUP"
+                    pred_rrblup <- merge(Y.raw, pred_rrblup, by = "row.names")
+                    pred_rrblup_cor <- cor(pred_rrblup[,trait], pred_rrblup[,"rrBLUP"])
+                    # stack RKHS models
+                    pred_rkhs_OOF <- merge(Y.raw, pred_rkhs_OOF, by = "row.names")
+                    formula_rkhs <- as.formula(paste(trait, "~", paste(colnames(pred_rkhs_OOF)[-c(1:3)], collapse = " + ")))
+                    fit_stack  <- lm(formula_rkhs, data = pred_rkhs_OOF)
+                    pred_rkhs <- as.data.frame(predict(fit_stack, newdata = pred_rkhs_OOF))
+                    row.names(pred_rkhs) <- pred_rkhs_OOF$Taxa; colnames(pred_rkhs)[1] <-  "RKHS"
+                    pred_rkhs <- merge(Y.raw, pred_rkhs, by = "row.names")
+                    pred_rkhs_cor <- cor(pred_rkhs[,trait], pred_rkhs[,"RKHS"])
+                    # stack Bayes models
+                    pred_bayes_OOF <- merge(Y.raw, pred_bayes_OOF, by = "row.names")
+                    methods <- c("BRR", "BayesA", "BayesB", "BayesC", "BL")
+                    stack_pred_list <- list()
+                    stack_cor       <- numeric(length(methods))
+                    names(stack_cor) <- methods
+                    for (m in methods) {
+                      predA <- paste0(m, ".pred_A"); predD <- paste0(m, ".pred_D"); predM <- paste0(m, ".pred_M")
+                      formula_m <- as.formula(paste(trait, "~", paste(predA, "+", predD)))
+                      fit_stack <- lm(formula_m, data = pred_bayes_OOF)
+                      pred_m <- data.frame(Taxa = pred_bayes_OOF$Taxa,pred = predict(fit_stack, newdata = pred_bayes_OOF))
+                      colnames(pred_m)[2] <- paste0("pred_", m)
+                      pred_m <- merge(Y.raw, pred_m, by.x = "row.names", by.y = "Taxa")
+                      stack_cor[m] <- cor(pred_m[[trait]], pred_m[[paste0("pred_", m)]], use = "complete.obs")
+                      stack_pred_list[[m]] <- pred_m
+                    }
+                    pred_brr <- as.data.frame(stack_pred_list[["BRR"]]); pred_brr_cor <- stack_cor["BRR"]
+                    pred_bayesA <- as.data.frame(stack_pred_list[["BayesA"]]); pred_bayesA_cor <- stack_cor["BayesA"]
+                    pred_bayesB <- as.data.frame(stack_pred_list[["BayesB"]]); pred_bayesB_cor <- stack_cor["BayesB"]
+                    pred_bayesC <- as.data.frame(stack_pred_list[["BayesC"]]); pred_bayesC_cor <- stack_cor["BayesC"]
+                    pred_bl <- as.data.frame(stack_pred_list[["BL"]]); pred_bl_cor <- stack_cor["BL"]
+                    # stack all models
+                    predall_list <- list(pred_gblup, pred_rrblup, pred_rkhs, pred_brr, pred_bayesA, pred_bayesB, pred_bayesC, pred_bl)
+                    pred_all <- Reduce(function(x, y) {merge(x, y, by = c("Row.names","Taxa",trait), all = TRUE)}, predall_list)
+                    formula_stackall <- as.formula(paste(trait, "~", paste(colnames(pred_all)[-c(1:3)], collapse = " + ")))
+                    fit_stack  <- lm(formula_stackall, data = pred_all)
+                    pred_stack <- as.data.frame(predict(fit_stack, newdata = pred_all))
+                    row.names(pred_stack) <- pred_all$Taxa; colnames(pred_stack)[1] <-  "stacked"
+                    pred_stack <- merge(Y.raw, pred_stack, by = "row.names")
+                    pred_stack_cor <- cor(pred_stack[,trait], pred_stack[,"stacked"])
+                  }
+                } else {
+                  # stack all models
+                  {
+                    colnames(pred_gblup_OOF) <- "GBLUP"
+                    pred_gblup <- merge(Y.raw, pred_gblup_OOF, by = "row.names")
+                    pred_gblup_cor <- cor(pred_gblup[,trait], pred_gblup[,"GBLUP"])
+                    # stack rrBLUP models
+                    colnames(pred_rrblup_OOF) <- "rrBLUP"
+                    pred_rrblup <- merge(Y.raw, pred_rrblup_OOF, by = "row.names")
+                    pred_rrblup_cor <- cor(pred_rrblup[,trait], pred_rrblup[,"rrBLUP"])
+                    # stack RKHS models
+                    colnames(pred_rkhs_OOF) <- "RKHS"
+                    pred_rkhs <- merge(Y.raw, pred_rkhs_OOF, by = "row.names")
+                    pred_rkhs_cor <- cor(pred_rkhs[,trait], pred_rkhs[,"RKHS"])
+                    # stack Bayes models
+                    colnames(pred_bayes_OOF) <- c("BRR", "BayesA", "BayesB", "BayesC", "BL")
+                    pred_bayes <- merge(Y.raw, pred_bayes_OOF, by = "row.names")
+                    pred_brr <- pred_bayes[,c("Row.names","Taxa",trait,"BRR")]; pred_brr_cor <- cor(pred_brr[,trait], pred_brr[,"BRR"])
+                    pred_bayesA <- pred_bayes[,c("Row.names","Taxa",trait,"BayesA")]; pred_bayesA_cor <- cor(pred_bayesA[,trait], pred_bayesA[,"BayesA"])
+                    pred_bayesB <- pred_bayes[,c("Row.names","Taxa",trait,"BayesB")]; pred_bayesB_cor <- cor(pred_bayesB[,trait], pred_bayesB[,"BayesB"])
+                    pred_bayesC <- pred_bayes[,c("Row.names","Taxa",trait,"BayesC")]; pred_bayesC_cor <- cor(pred_bayesC[,trait], pred_bayesC[,"BayesC"])
+                    pred_bl <- pred_bayes[,c("Row.names","Taxa",trait,"BL")]; pred_bl_cor <- cor(pred_bl[,trait], pred_bl[,"BL"])
+                    # stack all models
+                    predall_list <- list(pred_gblup, pred_rrblup, pred_rkhs, pred_brr, pred_bayesA, pred_bayesB, pred_bayesC, pred_bl)
+                    pred_all <- Reduce(function(x, y) {merge(x, y, by = c("Row.names","Taxa",trait), all = TRUE)}, predall_list)
+                    formula_stackall <- as.formula(paste(trait, "~", paste(colnames(pred_all)[-c(1:3)], collapse = " + ")))
+                    fit_stack  <- lm(formula_stackall, data = pred_all)
+                    pred_stack <- as.data.frame(predict(fit_stack, newdata = pred_all))
+                    row.names(pred_stack) <- pred_all$Taxa; colnames(pred_stack)[1] <-  "stacked"
+                    pred_stack <- merge(Y.raw, pred_stack, by = "row.names")
+                    pred_stack_cor <- cor(pred_stack[,trait], pred_stack[,"stacked"])
+                  }
+                }
               }
-
-              # ------------------------
-              # Final stacking across all base models and Bayes
-              # ------------------------
-              pred_all <- Reduce(function(x, y) full_join(x, y, by = c("Taxa", trait)),
-                                 c(stacked_preds_list, stacked_bayes_list))
-
-              final_stack_result <- cv_ridge_stack(pred_all, trait, fold_id)
-              pred_stack <- final_stack_result$pred
-              pred_stack_cor <- final_stack_result$cor
-
               pred_all$rep <- rep
             }
 
-            # ------------------------
-            # Store correlations for this replication
-            # ------------------------
+            #Calculate correlation and store them
+            r.GBLUP <- pred_gblup_cor
+            storage.GBLUP[rep,1]=r.GBLUP
 
-            # Base models correlations
-            storage.GBLUP[rep, 1] <- if("GBLUP" %in% names(stacked_preds_cor)) stacked_preds_cor[["GBLUP"]] else NA
-            storage.rrBLUP[rep, 1] <- if("rrBLUP" %in% names(stacked_preds_cor)) stacked_preds_cor[["rrBLUP"]] else NA
-            storage.RKHS[rep, 1]  <- if("RKHS" %in% names(stacked_preds_cor))  stacked_preds_cor[["RKHS"]]  else NA
+            if (!is.null(Additional_models)){
+              r.rrBLUP <- pred_rrblup_cor
+              storage.rrBLUP[rep,1]=r.rrBLUP
 
-            # Bayes models correlations
-            if (!is.null(Additional_models) && any(grepl("Bayes", unlist(Additional_models)))) {
-              storage.BRR[rep, 1]     <- if("BRR" %in% names(stacked_bayes_cor)) stacked_bayes_cor["BRR"] else NA
-              storage.BayesA[rep, 1]  <- if("BayesA" %in% names(stacked_bayes_cor)) stacked_bayes_cor["BayesA"] else NA
-              storage.BayesB[rep, 1]  <- if("BayesB" %in% names(stacked_bayes_cor)) stacked_bayes_cor["BayesB"] else NA
-              storage.BayesC[rep, 1]  <- if("BayesC" %in% names(stacked_bayes_cor)) stacked_bayes_cor["BayesC"] else NA
-              storage.BayesL[rep, 1]  <- if("BL" %in% names(stacked_bayes_cor)) stacked_bayes_cor["BL"] else NA
+              r.RKHS <- pred_rkhs_cor
+              storage.RKHS[rep,1]=r.RKHS
+
+              if(any(grepl("Bayes",unlist(Additional_models)))){
+                r.BRR <- pred_brr_cor
+                r.BayesA <- pred_bayesA_cor
+                r.BayesB <- pred_bayesB_cor
+                r.BayesC <- pred_bayesC_cor
+                r.BayesL <- pred_bl_cor
+                r.mStacked <- pred_stack_cor
+                storage.BRR[rep,1]=r.BRR
+                storage.BayesA[rep,1]=r.BayesA
+                storage.BayesB[rep,1]=r.BayesB
+                storage.BayesC[rep,1]=r.BayesC
+                storage.BayesL[rep,1]=r.BayesL
+                storage.mStacked[rep,1]=r.mStacked
+              } else {
+                r.BRR <- NA
+                r.BayesA <- NA
+                r.BayesB <- NA
+                r.BayesC <- NA
+                r.BayesL <- NA
+                r.mStacked <- NA
+                r.mStacked <- cor(stack_allmodels$y, stack_allmodels$StackedPrediction)
+                storage.BRR[rep,1]=NA
+                storage.BayesA[rep,1]=NA
+                storage.BayesB[rep,1]=NA
+                storage.BayesC[rep,1]=NA
+                storage.BayesL[rep,1]=NA
+                storage.mStacked[rep,1]=r.mStacked
+              }
             } else {
-              storage.BRR[rep, 1]     <- NA
-              storage.BayesA[rep, 1]  <- NA
-              storage.BayesB[rep, 1]  <- NA
-              storage.BayesC[rep, 1]  <- NA
-              storage.BayesL[rep, 1]  <- NA
+              r.BRR <- NA
+              r.BayesA <- NA
+              r.BayesB <- NA
+              r.BayesC <- NA
+              r.BayesL <- NA
+              r.mStacked <- NA
+              storage.rrBLUP[rep,1]=NA
+              storage.RKHS[rep,1]=NA
+              storage.BRR[rep,1]=NA
+              storage.BayesA[rep,1]=NA
+              storage.BayesB[rep,1]=NA
+              storage.BayesC[rep,1]=NA
+              storage.BayesL[rep,1]=NA
+              storage.mStacked[rep,1]=NA
             }
-
-            # Final stacked model correlation
-            storage.mStacked[rep, 1] <- if (exists("pred_stack_cor")) pred_stack_cor else NA
-
-
 
             if(!exists("pop_data")){pop_data <- data.frame(matrix(nrow = 2, ncol = 0))}
             if (gwas_Gpred == TRUE) {
