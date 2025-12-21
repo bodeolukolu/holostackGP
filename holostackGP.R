@@ -1,4 +1,7 @@
 #!/usr/bin/env Rscript
+# Pipeline: Ensemble Stacking of Multi-omic and Full-interaction implemented with stacked statistical and machine learning models
+# Author: [Bode Olukolu]
+# Date: 2025-12-21
 
 holostackGP <- function(
     wdir = "./",
