@@ -3679,37 +3679,40 @@ holostackGP <- function(
               print("run MTME a false to generate predictions, which you can use for stacking in a separate R script")
             } else {
               # -----------------------------------------
-              # CV-aware Ridge Stacking (NA-safe, GP-ready)
+              # CV-aware Ridge Stacking (fully robust)
               # -----------------------------------------
               cv_ridge_stack <- function(pred_df, trait_col, fold_id) {
+
+                # Ensure numeric phenotype
+                y_all <- as.numeric(pred_df[[trait_col]])
 
                 pred_stack <- rep(NA_real_, nrow(pred_df))
 
                 for (k in unique(fold_id)) {
 
-                  train_idx <- which(fold_id != k & !is.na(pred_df[[trait_col]]))
+                  train_idx <- which(fold_id != k & !is.na(y_all))
                   test_idx  <- which(fold_id == k)
 
-                  # If no training data, skip fold
                   if (length(train_idx) < 2) next
 
                   X_train <- as.matrix(
                     pred_df[train_idx, !(colnames(pred_df) %in% c("Taxa", trait_col)), drop = FALSE]
                   )
-                  y_train <- pred_df[[trait_col]][train_idx]
+                  y_train <- y_all[train_idx]
 
                   X_test <- as.matrix(
                     pred_df[test_idx, !(colnames(pred_df) %in% c("Taxa", trait_col)), drop = FALSE]
                   )
 
-                  # If no predictors, skip
                   if (ncol(X_train) == 0) next
 
-                  # ---- Single predictor fallback ----
+                  # ---- single predictor fallback ----
                   if (ncol(X_train) == 1) {
                     fit <- lm(y_train ~ X_train[,1])
-                    pred_stack[test_idx] <- predict(fit, newdata = data.frame(X_train = X_test[,1]))
-
+                    pred_stack[test_idx] <- predict(
+                      fit,
+                      newdata = data.frame(X_train = X_test[,1])
+                    )
                   } else {
                     fit <- glmnet::cv.glmnet(
                       x = X_train,
@@ -3723,7 +3726,7 @@ holostackGP <- function(
                   }
                 }
 
-                cor_val <- cor(pred_df[[trait_col]], pred_stack, use = "complete.obs")
+                cor_val <- cor(y_all, pred_stack, use = "complete.obs")
                 pred_df$stacked <- pred_stack
 
                 return(list(pred = pred_df, cor = cor_val))
