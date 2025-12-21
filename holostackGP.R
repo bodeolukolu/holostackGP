@@ -80,7 +80,10 @@ holostackGP <- function(
   if (tolower(gene_model) %in% c("metagenome", "microbiome")) {kernel <- "gBLUP"}
   if(kernel == "GBLUP"){metagenomefile <- NULL}
   myY <- read.table(phenofile, head = TRUE, sep="\t", check.names=FALSE)
-  myG <- read.table(genofile, head = FALSE, sep="\t", check.names=FALSE)
+  myG <- NULL
+  if (!is.null(genofile) && !is.na(genofile) && nzchar(genofile) && tolower(genofile) != "null") {
+    myG <- read.table(genofile, header = FALSE, sep = "\t", check.names = FALSE)
+  }
   metagenome_data <- metagenomefile
   gp_model <- kernel
   gwas_Gpred <- gwas_pred
@@ -177,9 +180,10 @@ holostackGP <- function(
         dY <- na.omit(dY)
         dY <- aggregate(dY[,2],by=list(name=dY$Taxa),data=dY,FUN=mean)
         colnames(dY)[1] <- "Taxa"; colnames(dY)[2] <- trait
-        dG <- myG; colnames(dG) <- dG[1,]; dG <- dG[-1,]
-        if("pvalue" %in% colnames(dG)){dG <- subset(dG, select=-c(pvalue))}
-
+        if (!is.null(myG)){
+          dG <- myG; colnames(dG) <- dG[1,]; dG <- dG[-1,]
+          if("pvalue" %in% colnames(dG)){dG <- subset(dG, select=-c(pvalue))}
+        }
         if (!is.null(metagenome_data)) {
           metagenome_data <- sub("\\..*", "", metagenome_data)
           metag <- read.table(paste(metagenome_data,".txt",sep=""), header=F, sep="\t", check.names=FALSE,stringsAsFactors=FALSE)
@@ -1262,13 +1266,13 @@ holostackGP <- function(
                           gebv_list <- list()
                           if (length(covTraits) > 0) {
                             for (covt in covTraits) {
-                            y <- Y.covmasked[[covt]]
-                            ok <- !is.na(y)
-                            fm <- BGLR(y = y[ok], ETA = list(list(X = geno.A_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
-                            b <- fm$ETA[[1]]$b
-                            gebv_full <- rep(NA, length(y))
-                            gebv_full[ok] <- as.numeric(geno.A_scaled[ok, , drop = FALSE] %*% b)
-                            gebv_list[[covt]] <- gebv_full
+                              y <- Y.covmasked[[covt]]
+                              ok <- !is.na(y)
+                              fm <- BGLR(y = y[ok], ETA = list(list(X = geno.A_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                              b <- fm$ETA[[1]]$b
+                              gebv_full <- rep(NA, length(y))
+                              gebv_full[ok] <- as.numeric(geno.A_scaled[ok, , drop = FALSE] %*% b)
+                              gebv_list[[covt]] <- gebv_full
                             }
                           }
                           Y.tmasked <- as.data.frame(Y.masked)
@@ -1380,14 +1384,14 @@ holostackGP <- function(
                       gebv_list <- list()
                       if (length(covTraits) > 0) {
                         for (covt in covTraits){
-                        y <- Y.covmasked[[covt]]
-                        # remove NA individuals (mixed.solve handles but safer)
-                        ok <- !is.na(y)
-                        sol <- mixed.solve(y = y[ok], K = myKIx[ok, ok, drop = FALSE])
-                        # sol$u is GEBV vector for individuals with y; bring back into full n vector
-                        u_full <- rep(NA, nrow(Y.covmasked))
-                        u_full[which(ok)] <- sol$u[rownames(myKIx)[ok]]   # name-align
-                        gebv_list[[covt]] <- u_full
+                          y <- Y.covmasked[[covt]]
+                          # remove NA individuals (mixed.solve handles but safer)
+                          ok <- !is.na(y)
+                          sol <- mixed.solve(y = y[ok], K = myKIx[ok, ok, drop = FALSE])
+                          # sol$u is GEBV vector for individuals with y; bring back into full n vector
+                          u_full <- rep(NA, nrow(Y.covmasked))
+                          u_full[which(ok)] <- sol$u[rownames(myKIx)[ok]]   # name-align
+                          gebv_list[[covt]] <- u_full
                         }
                       }
                       Y.tmasked <- as.data.frame(Y.masked)
@@ -1524,14 +1528,14 @@ holostackGP <- function(
                           gebv_list <- list()
                           if (length(covTraits) > 0) {
                             for (covt in covTraits) {
-                            y <- Y.covmasked[[covt]]
-                            ok <- !is.na(y)
-                            fm <- BGLR(y = y[ok], ETA = list(list(X = geno_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
-                            b <- fm$ETA[[1]]$b
-                            gebv_full <- rep(NA, length(y))
-                            gebv_full[ok] <- as.numeric(geno_scaled[ok, , drop = FALSE] %*% b)
-                            gebv_list[[covt]] <- gebv_full
-                          }
+                              y <- Y.covmasked[[covt]]
+                              ok <- !is.na(y)
+                              fm <- BGLR(y = y[ok], ETA = list(list(X = geno_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                              b <- fm$ETA[[1]]$b
+                              gebv_full <- rep(NA, length(y))
+                              gebv_full[ok] <- as.numeric(geno_scaled[ok, , drop = FALSE] %*% b)
+                              gebv_list[[covt]] <- gebv_full
+                            }
                           }
                           Y.tmasked <- as.data.frame(Y.masked)
                           if (length(covTraits) > 0) {
@@ -1604,15 +1608,15 @@ holostackGP <- function(
                       gebv_list <- list()
                       if (length(covTraits) > 0) {
                         for (covt in covTraits){
-                        y <- Y.covmasked[[covt]]
-                        # remove NA individuals (mixed.solve handles but safer)
-                        ok <- !is.na(y)
-                        sol <- mixed.solve(y = y[ok], K = K[ok, ok, drop = FALSE])
-                        # sol$u is GEBV vector for individuals with y; bring back into full n vector
-                        u_full <- rep(NA, nrow(Y.covmasked))
-                        u_full[which(ok)] <- sol$u[rownames(K)[ok]]   # name-align
-                        gebv_list[[covt]] <- u_full
-                      }
+                          y <- Y.covmasked[[covt]]
+                          # remove NA individuals (mixed.solve handles but safer)
+                          ok <- !is.na(y)
+                          sol <- mixed.solve(y = y[ok], K = K[ok, ok, drop = FALSE])
+                          # sol$u is GEBV vector for individuals with y; bring back into full n vector
+                          u_full <- rep(NA, nrow(Y.covmasked))
+                          u_full[which(ok)] <- sol$u[rownames(K)[ok]]   # name-align
+                          gebv_list[[covt]] <- u_full
+                        }
                       }
                       Y.tmasked <- as.data.frame(Y.masked)
                       if (length(covTraits) > 0) {
@@ -1756,14 +1760,14 @@ holostackGP <- function(
                           gebv_list <- list()
                           if (length(covTraits) > 0) {
                             for (covt in covTraits) {
-                            y <- Y.covmasked[[covt]]
-                            ok <- !is.na(y)
-                            fm <- BGLR(y = y[ok], ETA = list(list(X = mgeno_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
-                            b <- fm$ETA[[1]]$b
-                            gebv_full <- rep(NA, length(y))
-                            gebv_full[ok] <- as.numeric(mgeno_scaled[ok, , drop = FALSE] %*% b)
-                            gebv_list[[covt]] <- gebv_full
-                          }
+                              y <- Y.covmasked[[covt]]
+                              ok <- !is.na(y)
+                              fm <- BGLR(y = y[ok], ETA = list(list(X = mgeno_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                              b <- fm$ETA[[1]]$b
+                              gebv_full <- rep(NA, length(y))
+                              gebv_full[ok] <- as.numeric(mgeno_scaled[ok, , drop = FALSE] %*% b)
+                              gebv_list[[covt]] <- gebv_full
+                            }
                           }
                           Y.tmasked <- as.data.frame(Y.masked)
                           if (length(covTraits) > 0) {
@@ -1832,16 +1836,16 @@ holostackGP <- function(
                       if (!is.null(Y.covmasked) && ncol(Y.covmasked) > 0) {covTraits <- colnames(Y.covmasked)}
                       gebv_list <- list()
                       if (length(covTraits) > 0) {
-                       for (covt in covTraits){
-                        y <- Y.covmasked[[covt]]
-                        # remove NA individuals (mixed.solve handles but safer)
-                        ok <- !is.na(y)
-                        sol <- mixed.solve(y = y[ok], K = metagKIx[ok, ok, drop = FALSE])
-                        # sol$u is GEBV vector for individuals with y; bring back into full n vector
-                        u_full <- rep(NA, nrow(Y.covmasked))
-                        u_full[which(ok)] <- sol$u[rownames(metagKIx)[ok]]   # name-align
-                        gebv_list[[covt]] <- u_full
-                      }
+                        for (covt in covTraits){
+                          y <- Y.covmasked[[covt]]
+                          # remove NA individuals (mixed.solve handles but safer)
+                          ok <- !is.na(y)
+                          sol <- mixed.solve(y = y[ok], K = metagKIx[ok, ok, drop = FALSE])
+                          # sol$u is GEBV vector for individuals with y; bring back into full n vector
+                          u_full <- rep(NA, nrow(Y.covmasked))
+                          u_full[which(ok)] <- sol$u[rownames(metagKIx)[ok]]   # name-align
+                          gebv_list[[covt]] <- u_full
+                        }
                       }
                       Y.tmasked <- as.data.frame(Y.masked)
                       if (length(covTraits) > 0) {
@@ -1977,14 +1981,14 @@ holostackGP <- function(
                           gebv_list <- list()
                           if (length(covTraits) > 0) {
                             for (covt in covTraits) {
-                            y <- Y.covmasked[[covt]]
-                            ok <- !is.na(y)
-                            fm <- BGLR(y = y[ok], ETA = list(list(X = mgeno_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
-                            b <- fm$ETA[[1]]$b
-                            gebv_full <- rep(NA, length(y))
-                            gebv_full[ok] <- as.numeric(mgeno_scaled[ok, , drop = FALSE] %*% b)
-                            gebv_list[[covt]] <- gebv_full
-                          }
+                              y <- Y.covmasked[[covt]]
+                              ok <- !is.na(y)
+                              fm <- BGLR(y = y[ok], ETA = list(list(X = mgeno_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                              b <- fm$ETA[[1]]$b
+                              gebv_full <- rep(NA, length(y))
+                              gebv_full[ok] <- as.numeric(mgeno_scaled[ok, , drop = FALSE] %*% b)
+                              gebv_list[[covt]] <- gebv_full
+                            }
                           }
                           Y.tmasked <- as.data.frame(Y.masked)
                           if (length(covTraits) > 0) {
@@ -2056,15 +2060,15 @@ holostackGP <- function(
                         gebv_list <- list()
                         if (length(covTraits) > 0) {
                           for (covt in covTraits){
-                          y <- Y.covmasked[[covt]]
-                          # remove NA individuals (mixed.solve handles but safer)
-                          ok <- !is.na(y)
-                          sol <- mixed.solve(y = y[ok], K = K[ok, ok, drop = FALSE])
-                          # sol$u is GEBV vector for individuals with y; bring back into full n vector
-                          u_full <- rep(NA, nrow(Y.covmasked))
-                          u_full[which(ok)] <- sol$u[rownames(K)[ok]]   # name-align
-                          gebv_list[[covt]] <- u_full
-                        }
+                            y <- Y.covmasked[[covt]]
+                            # remove NA individuals (mixed.solve handles but safer)
+                            ok <- !is.na(y)
+                            sol <- mixed.solve(y = y[ok], K = K[ok, ok, drop = FALSE])
+                            # sol$u is GEBV vector for individuals with y; bring back into full n vector
+                            u_full <- rep(NA, nrow(Y.covmasked))
+                            u_full[which(ok)] <- sol$u[rownames(K)[ok]]   # name-align
+                            gebv_list[[covt]] <- u_full
+                          }
                         }
                         Y.tmasked <- as.data.frame(Y.masked)
                         if (length(covTraits) > 0) {
@@ -2281,13 +2285,13 @@ holostackGP <- function(
                             gebv_list <- list()
                             if (length(covTraits) > 0) {
                               for (covt in covTraits) {
-                              y <- Y.covmasked[[covt]]
-                              ok <- !is.na(y)
-                              fm <- BGLR(y = y[ok], ETA = list(list(X = geno.A_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
-                              b <- fm$ETA[[1]]$b
-                              gebv_full <- rep(NA, length(y))
-                              gebv_full[ok] <- as.numeric(geno.A_scaled[ok, , drop = FALSE] %*% b)
-                              gebv_list[[covt]] <- gebv_full
+                                y <- Y.covmasked[[covt]]
+                                ok <- !is.na(y)
+                                fm <- BGLR(y = y[ok], ETA = list(list(X = geno.A_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                                b <- fm$ETA[[1]]$b
+                                gebv_full <- rep(NA, length(y))
+                                gebv_full[ok] <- as.numeric(geno.A_scaled[ok, , drop = FALSE] %*% b)
+                                gebv_list[[covt]] <- gebv_full
                               }
                             }
                             Y.tmasked <- as.data.frame(Y.masked)
@@ -2322,15 +2326,15 @@ holostackGP <- function(
                             gebv_list <- list()
                             if (length(covTraits) > 0) {
                               for (covt in covTraits) {
-                              y <- Y.covmasked[[covt]]
-                              ok <- !is.na(y)
-                              library(BGLR)
-                              fm <- BGLR(y = y[ok], ETA = list(list(X = geno.D_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
-                              b <- fm$ETA[[1]]$b
-                              gebv_full <- rep(NA, length(y))
-                              gebv_full[ok] <- as.numeric(geno.D_scaled[ok, , drop = FALSE] %*% b)
-                              gebv_list[[covt]] <- gebv_full
-                            }
+                                y <- Y.covmasked[[covt]]
+                                ok <- !is.na(y)
+                                library(BGLR)
+                                fm <- BGLR(y = y[ok], ETA = list(list(X = geno.D_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                                b <- fm$ETA[[1]]$b
+                                gebv_full <- rep(NA, length(y))
+                                gebv_full[ok] <- as.numeric(geno.D_scaled[ok, , drop = FALSE] %*% b)
+                                gebv_list[[covt]] <- gebv_full
+                              }
                             }
                             Y.tmasked <- as.data.frame(Y.masked)
                             if (length(covTraits) > 0) {
@@ -2364,15 +2368,15 @@ holostackGP <- function(
                             gebv_list <- list()
                             if (length(covTraits) > 0) {
                               for (covt in covTraits) {
-                              y <- Y.covmasked[[covt]]
-                              ok <- !is.na(y)
-                              library(BGLR)
-                              fm <- BGLR(y = y[ok], ETA = list(list(X = mgeno_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
-                              b <- fm$ETA[[1]]$b
-                              gebv_full <- rep(NA, length(y))
-                              gebv_full[ok] <- as.numeric(mgeno_scaled[ok, , drop = FALSE] %*% b)
-                              gebv_list[[covt]] <- gebv_full
-                            }
+                                y <- Y.covmasked[[covt]]
+                                ok <- !is.na(y)
+                                library(BGLR)
+                                fm <- BGLR(y = y[ok], ETA = list(list(X = mgeno_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                                b <- fm$ETA[[1]]$b
+                                gebv_full <- rep(NA, length(y))
+                                gebv_full[ok] <- as.numeric(mgeno_scaled[ok, , drop = FALSE] %*% b)
+                                gebv_list[[covt]] <- gebv_full
+                              }
                             }
                             Y.tmasked <- as.data.frame(Y.masked)
                             if (length(covTraits) > 0) {
@@ -2491,14 +2495,14 @@ holostackGP <- function(
                       gebv_list <- list()
                       if (length(covTraits) > 0) {
                         for (covt in covTraits){
-                        y <- Y.covmasked[[covt]]
-                        # remove NA individuals (mixed.solve handles but safer)
-                        ok <- !is.na(y)
-                        sol <- mixed.solve(y = y[ok], K = myKIx[ok, ok, drop = FALSE])
-                        # sol$u is GEBV vector for individuals with y; bring back into full n vector
-                        u_full <- rep(NA, nrow(Y.covmasked))
-                        u_full[which(ok)] <- sol$u[rownames(myKIx)[ok]]   # name-align
-                        gebv_list[[covt]] <- u_full
+                          y <- Y.covmasked[[covt]]
+                          # remove NA individuals (mixed.solve handles but safer)
+                          ok <- !is.na(y)
+                          sol <- mixed.solve(y = y[ok], K = myKIx[ok, ok, drop = FALSE])
+                          # sol$u is GEBV vector for individuals with y; bring back into full n vector
+                          u_full <- rep(NA, nrow(Y.covmasked))
+                          u_full[which(ok)] <- sol$u[rownames(myKIx)[ok]]   # name-align
+                          gebv_list[[covt]] <- u_full
                         }
                       }
                       Y.tmasked <- as.data.frame(Y.masked)
@@ -2511,14 +2515,14 @@ holostackGP <- function(
                       gebv_list <- list()
                       if (length(covTraits) > 0) {
                         for (covt in covTraits){
-                        y <- Y.covmasked[[covt]]
-                        # remove NA individuals (mixed.solve handles but safer)
-                        ok <- !is.na(y)
-                        sol <- mixed.solve(y = y[ok], K =metagKIx[ok, ok, drop = FALSE])
-                        # sol$u is GEBV vector for individuals with y; bring back into full n vector
-                        u_full <- rep(NA, nrow(Y.covmasked))
-                        u_full[which(ok)] <- sol$u[rownames(metagKIx)[ok]]   # name-align
-                        gebv_list[[covt]] <- u_full
+                          y <- Y.covmasked[[covt]]
+                          # remove NA individuals (mixed.solve handles but safer)
+                          ok <- !is.na(y)
+                          sol <- mixed.solve(y = y[ok], K =metagKIx[ok, ok, drop = FALSE])
+                          # sol$u is GEBV vector for individuals with y; bring back into full n vector
+                          u_full <- rep(NA, nrow(Y.covmasked))
+                          u_full[which(ok)] <- sol$u[rownames(metagKIx)[ok]]   # name-align
+                          gebv_list[[covt]] <- u_full
                         }
                       }
                       Y.tmasked <- as.data.frame(Y.masked)
@@ -2763,14 +2767,14 @@ holostackGP <- function(
                             gebv_list <- list()
                             if (length(covTraits) > 0) {
                               for (covt in covTraits) {
-                              y <- Y.covmasked[[covt]]
-                              ok <- !is.na(y)
-                              fm <- BGLR(y = y[ok], ETA = list(list(X = geno_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
-                              b <- fm$ETA[[1]]$b
-                              gebv_full <- rep(NA, length(y))
-                              gebv_full[ok] <- as.numeric(geno_scaled[ok, , drop = FALSE] %*% b)
-                              gebv_list[[covt]] <- gebv_full
-                            }
+                                y <- Y.covmasked[[covt]]
+                                ok <- !is.na(y)
+                                fm <- BGLR(y = y[ok], ETA = list(list(X = geno_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                                b <- fm$ETA[[1]]$b
+                                gebv_full <- rep(NA, length(y))
+                                gebv_full[ok] <- as.numeric(geno_scaled[ok, , drop = FALSE] %*% b)
+                                gebv_list[[covt]] <- gebv_full
+                              }
                             }
                             Y.tmasked <- as.data.frame(Y.masked)
                             if (length(covTraits) > 0) {
@@ -2803,15 +2807,15 @@ holostackGP <- function(
                             gebv_list <- list()
                             if (length(covTraits) > 0) {
                               for (covt in covTraits) {
-                              y <- Y.covmasked[[covt]]
-                              ok <- !is.na(y)
-                              library(BGLR)
-                              fm <- BGLR(y = y[ok], ETA = list(list(X = mgeno_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
-                              b <- fm$ETA[[1]]$b
-                              gebv_full <- rep(NA, length(y))
-                              gebv_full[ok] <- as.numeric(mgeno_scaled[ok, , drop = FALSE] %*% b)
-                              gebv_list[[covt]] <- gebv_full
-                            }
+                                y <- Y.covmasked[[covt]]
+                                ok <- !is.na(y)
+                                library(BGLR)
+                                fm <- BGLR(y = y[ok], ETA = list(list(X = mgeno_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                                b <- fm$ETA[[1]]$b
+                                gebv_full <- rep(NA, length(y))
+                                gebv_full[ok] <- as.numeric(mgeno_scaled[ok, , drop = FALSE] %*% b)
+                                gebv_list[[covt]] <- gebv_full
+                              }
                             }
                             Y.tmasked <- as.data.frame(Y.masked)
                             if (length(covTraits) > 0) {
@@ -2935,15 +2939,15 @@ holostackGP <- function(
                       gebv_list <- list()
                       if (length(covTraits) > 0) {
                         for (covt in covTraits){
-                        y <- Y.covmasked[[covt]]
-                        # remove NA individuals (mixed.solve handles but safer)
-                        ok <- !is.na(y)
-                        sol <- mixed.solve(y = y[ok], K = K[ok, ok, drop = FALSE])
-                        # sol$u is GEBV vector for individuals with y; bring back into full n vector
-                        u_full <- rep(NA, nrow(Y.covmasked))
-                        u_full[which(ok)] <- sol$u[rownames(K)[ok]]   # name-align
-                        gebv_list[[covt]] <- u_full
-                      }
+                          y <- Y.covmasked[[covt]]
+                          # remove NA individuals (mixed.solve handles but safer)
+                          ok <- !is.na(y)
+                          sol <- mixed.solve(y = y[ok], K = K[ok, ok, drop = FALSE])
+                          # sol$u is GEBV vector for individuals with y; bring back into full n vector
+                          u_full <- rep(NA, nrow(Y.covmasked))
+                          u_full[which(ok)] <- sol$u[rownames(K)[ok]]   # name-align
+                          gebv_list[[covt]] <- u_full
+                        }
                       }
                       Y.tmasked <- as.data.frame(Y.masked)
                       if (length(covTraits) > 0) {
@@ -3156,14 +3160,14 @@ holostackGP <- function(
                           gebv_list <- list()
                           if (length(covTraits) > 0) {
                             for (covt in covTraits) {
-                            y <- Y.covmasked[[covt]]
-                            ok <- !is.na(y)
-                            fm <- BGLR(y = y[ok], ETA = list(list(X = geno.A_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
-                            b <- fm$ETA[[1]]$b
-                            gebv_full <- rep(NA, length(y))
-                            gebv_full[ok] <- as.numeric(geno.A_scaled[ok, , drop = FALSE] %*% b)
-                            gebv_list[[covt]] <- gebv_full
-                          }
+                              y <- Y.covmasked[[covt]]
+                              ok <- !is.na(y)
+                              fm <- BGLR(y = y[ok], ETA = list(list(X = geno.A_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                              b <- fm$ETA[[1]]$b
+                              gebv_full <- rep(NA, length(y))
+                              gebv_full[ok] <- as.numeric(geno.A_scaled[ok, , drop = FALSE] %*% b)
+                              gebv_list[[covt]] <- gebv_full
+                            }
                           }
                           Y.tmasked <- as.data.frame(Y.masked)
                           if (length(covTraits) > 0) {
@@ -3197,15 +3201,15 @@ holostackGP <- function(
                           gebv_list <- list()
                           if (length(covTraits) > 0) {
                             for (covt in covTraits) {
-                            y <- Y.covmasked[[covt]]
-                            ok <- !is.na(y)
-                            library(BGLR)
-                            fm <- BGLR(y = y[ok], ETA = list(list(X = geno.D_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
-                            b <- fm$ETA[[1]]$b
-                            gebv_full <- rep(NA, length(y))
-                            gebv_full[ok] <- as.numeric(geno.D_scaled[ok, , drop = FALSE] %*% b)
-                            gebv_list[[covt]] <- gebv_full
-                          }
+                              y <- Y.covmasked[[covt]]
+                              ok <- !is.na(y)
+                              library(BGLR)
+                              fm <- BGLR(y = y[ok], ETA = list(list(X = geno.D_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                              b <- fm$ETA[[1]]$b
+                              gebv_full <- rep(NA, length(y))
+                              gebv_full[ok] <- as.numeric(geno.D_scaled[ok, , drop = FALSE] %*% b)
+                              gebv_list[[covt]] <- gebv_full
+                            }
                           }
                           Y.tmasked <- as.data.frame(Y.masked)
                           if (length(covTraits) > 0) {
@@ -3239,15 +3243,15 @@ holostackGP <- function(
                           gebv_list <- list()
                           if (length(covTraits) > 0) {
                             for (covt in covTraits) {
-                            y <- Y.covmasked[[covt]]
-                            ok <- !is.na(y)
-                            library(BGLR)
-                            fm <- BGLR(y = y[ok], ETA = list(list(X = mgeno_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
-                            b <- fm$ETA[[1]]$b
-                            gebv_full <- rep(NA, length(y))
-                            gebv_full[ok] <- as.numeric(mgeno_scaled[ok, , drop = FALSE] %*% b)
-                            gebv_list[[covt]] <- gebv_full
-                          }
+                              y <- Y.covmasked[[covt]]
+                              ok <- !is.na(y)
+                              library(BGLR)
+                              fm <- BGLR(y = y[ok], ETA = list(list(X = mgeno_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                              b <- fm$ETA[[1]]$b
+                              gebv_full <- rep(NA, length(y))
+                              gebv_full[ok] <- as.numeric(mgeno_scaled[ok, , drop = FALSE] %*% b)
+                              gebv_list[[covt]] <- gebv_full
+                            }
                           }
                           Y.tmasked <- as.data.frame(Y.masked)
                           if (length(covTraits) > 0) {
@@ -3317,15 +3321,15 @@ holostackGP <- function(
                       gebv_list <- list()
                       if (length(covTraits) > 0) {
                         for (covt in covTraits){
-                        y <- Y.covmasked[[covt]]
-                        # remove NA individuals (mixed.solve handles but safer)
-                        ok <- !is.na(y)
-                        sol <- mixed.solve(y = y[ok], K = myKIx[ok, ok, drop = FALSE])
-                        # sol$u is GEBV vector for individuals with y; bring back into full n vector
-                        u_full <- rep(NA, nrow(Y.covmasked))
-                        u_full[which(ok)] <- sol$u[rownames(myKIx)[ok]]   # name-align
-                        gebv_list[[covt]] <- u_full
-                      }
+                          y <- Y.covmasked[[covt]]
+                          # remove NA individuals (mixed.solve handles but safer)
+                          ok <- !is.na(y)
+                          sol <- mixed.solve(y = y[ok], K = myKIx[ok, ok, drop = FALSE])
+                          # sol$u is GEBV vector for individuals with y; bring back into full n vector
+                          u_full <- rep(NA, nrow(Y.covmasked))
+                          u_full[which(ok)] <- sol$u[rownames(myKIx)[ok]]   # name-align
+                          gebv_list[[covt]] <- u_full
+                        }
                       }
                       Y.tmasked <- as.data.frame(Y.masked)
                       if (length(covTraits) > 0) {
@@ -3337,15 +3341,15 @@ holostackGP <- function(
                       gebv_list <- list()
                       if (length(covTraits) > 0) {
                         for (covt in covTraits){
-                        y <- Y.covmasked[[covt]]
-                        # remove NA individuals (mixed.solve handles but safer)
-                        ok <- !is.na(y)
-                        sol <- mixed.solve(y = y[ok], K =metagKIx[ok, ok, drop = FALSE])
-                        # sol$u is GEBV vector for individuals with y; bring back into full n vector
-                        u_full <- rep(NA, nrow(Y.covmasked))
-                        u_full[which(ok)] <- sol$u[rownames(metagKIx)[ok]]   # name-align
-                        gebv_list[[covt]] <- u_full
-                      }
+                          y <- Y.covmasked[[covt]]
+                          # remove NA individuals (mixed.solve handles but safer)
+                          ok <- !is.na(y)
+                          sol <- mixed.solve(y = y[ok], K =metagKIx[ok, ok, drop = FALSE])
+                          # sol$u is GEBV vector for individuals with y; bring back into full n vector
+                          u_full <- rep(NA, nrow(Y.covmasked))
+                          u_full[which(ok)] <- sol$u[rownames(metagKIx)[ok]]   # name-align
+                          gebv_list[[covt]] <- u_full
+                        }
                       }
                       Y.tmasked <- as.data.frame(Y.masked)
                       if (length(covTraits) > 0) {
@@ -3552,14 +3556,14 @@ holostackGP <- function(
                           gebv_list <- list()
                           if (length(covTraits) > 0) {
                             for (covt in covTraits) {
-                            y <- Y.covmasked[[covt]]
-                            ok <- !is.na(y)
-                            fm <- BGLR(y = y[ok], ETA = list(list(X = geno_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
-                            b <- fm$ETA[[1]]$b
-                            gebv_full <- rep(NA, length(y))
-                            gebv_full[ok] <- as.numeric(geno_scaled[ok, , drop = FALSE] %*% b)
-                            gebv_list[[covt]] <- gebv_full
-                          }
+                              y <- Y.covmasked[[covt]]
+                              ok <- !is.na(y)
+                              fm <- BGLR(y = y[ok], ETA = list(list(X = geno_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                              b <- fm$ETA[[1]]$b
+                              gebv_full <- rep(NA, length(y))
+                              gebv_full[ok] <- as.numeric(geno_scaled[ok, , drop = FALSE] %*% b)
+                              gebv_list[[covt]] <- gebv_full
+                            }
                           }
                           Y.tmasked <- as.data.frame(Y.masked)
                           if (length(covTraits) > 0) {
@@ -3592,15 +3596,15 @@ holostackGP <- function(
                           gebv_list <- list()
                           if (length(covTraits) > 0) {
                             for (covt in covTraits) {
-                            y <- Y.covmasked[[covt]]
-                            ok <- !is.na(y)
-                            library(BGLR)
-                            fm <- BGLR(y = y[ok], ETA = list(list(X = mgeno_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
-                            b <- fm$ETA[[1]]$b
-                            gebv_full <- rep(NA, length(y))
-                            gebv_full[ok] <- as.numeric(mgeno_scaled[ok, , drop = FALSE] %*% b)
-                            gebv_list[[covt]] <- gebv_full
-                          }
+                              y <- Y.covmasked[[covt]]
+                              ok <- !is.na(y)
+                              library(BGLR)
+                              fm <- BGLR(y = y[ok], ETA = list(list(X = mgeno_scaled[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
+                              b <- fm$ETA[[1]]$b
+                              gebv_full <- rep(NA, length(y))
+                              gebv_full[ok] <- as.numeric(mgeno_scaled[ok, , drop = FALSE] %*% b)
+                              gebv_list[[covt]] <- gebv_full
+                            }
                           }
                           Y.tmasked <- as.data.frame(Y.masked)
                           if (length(covTraits) > 0) {
