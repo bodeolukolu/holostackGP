@@ -3772,33 +3772,54 @@ holostackGP <- function(
               }
             }
 
+            # -----------------------------------------
+            # Run stacking workflow safely
+            # -----------------------------------------
+            stack_result <- stack_predictions(
+              trait         = trait,
+              gp_model      = gp_model,
+              fold_id       = fold_id,
+              Y.raw         = Y.raw,
+              pred_bayes_OOF = pred_bayes_OOF,
+              Additional_models = TRUE
+            )
+
+            # Extract results
+            pred_all      <- stack_result$pred_all
+            pred_stack    <- stack_result$pred_stack
+            pred_stack_cor <- stack_result$pred_stack_cor
+            base_cor      <- stack_result$base_cor
+            bayes_cor     <- stack_result$bayes_cor
+
             # ------------------------
-            # Store correlations for this replication
+            # Example: storing correlations
             # ------------------------
+            r.GBLUP <- if ("GBLUP" %in% names(base_cor)) base_cor[["GBLUP"]] else NA
+            r.rrBLUP <- if ("rrBLUP" %in% names(base_cor)) base_cor[["rrBLUP"]] else NA
+            r.RKHS  <- if ("RKHS" %in% names(base_cor)) base_cor[["RKHS"]] else NA
 
-            # Base models correlations
-            storage.GBLUP[rep, 1] <- if("GBLUP" %in% names(stacked_preds_cor)) stacked_preds_cor[["GBLUP"]] else NA
-            storage.rrBLUP[rep, 1] <- if("rrBLUP" %in% names(stacked_preds_cor)) stacked_preds_cor[["rrBLUP"]] else NA
-            storage.RKHS[rep, 1]  <- if("RKHS" %in% names(stacked_preds_cor))  stacked_preds_cor[["RKHS"]]  else NA
+            # Bayes correlations
+            r.BRR    <- if (!is.null(bayes_cor) && "BRR" %in% names(bayes_cor)) bayes_cor["BRR"] else NA
+            r.BayesA <- if (!is.null(bayes_cor) && "BayesA" %in% names(bayes_cor)) bayes_cor["BayesA"] else NA
+            r.BayesB <- if (!is.null(bayes_cor) && "BayesB" %in% names(bayes_cor)) bayes_cor["BayesB"] else NA
+            r.BayesC <- if (!is.null(bayes_cor) && "BayesC" %in% names(bayes_cor)) bayes_cor["BayesC"] else NA
+            r.BayesL <- if (!is.null(bayes_cor) && "BL" %in% names(bayes_cor)) bayes_cor["BL"] else NA
 
-            # Bayes models correlations
-            if (!is.null(Additional_models) && any(grepl("Bayes", unlist(Additional_models)))) {
-              storage.BRR[rep, 1]     <- if("BRR" %in% names(stacked_bayes_cor)) stacked_bayes_cor["BRR"] else NA
-              storage.BayesA[rep, 1]  <- if("BayesA" %in% names(stacked_bayes_cor)) stacked_bayes_cor["BayesA"] else NA
-              storage.BayesB[rep, 1]  <- if("BayesB" %in% names(stacked_bayes_cor)) stacked_bayes_cor["BayesB"] else NA
-              storage.BayesC[rep, 1]  <- if("BayesC" %in% names(stacked_bayes_cor)) stacked_bayes_cor["BayesC"] else NA
-              storage.BayesL[rep, 1]  <- if("BL" %in% names(stacked_bayes_cor)) stacked_bayes_cor["BL"] else NA
-            } else {
-              storage.BRR[rep, 1]     <- NA
-              storage.BayesA[rep, 1]  <- NA
-              storage.BayesB[rep, 1]  <- NA
-              storage.BayesC[rep, 1]  <- NA
-              storage.BayesL[rep, 1]  <- NA
-            }
+            # Final stacked correlation
+            r.mStacked <- pred_stack_cor
 
-            # Final stacked model correlation
-            storage.mStacked[rep, 1] <- if (exists("pred_stack_cor")) pred_stack_cor else NA
-
+            # ------------------------
+            # Example: store in replication matrices
+            # ------------------------
+            storage.GBLUP[rep, 1] <- r.GBLUP
+            storage.rrBLUP[rep, 1] <- r.rrBLUP
+            storage.RKHS[rep, 1] <- r.RKHS
+            storage.BRR[rep, 1] <- r.BRR
+            storage.BayesA[rep, 1] <- r.BayesA
+            storage.BayesB[rep, 1] <- r.BayesB
+            storage.BayesC[rep, 1] <- r.BayesC
+            storage.BayesL[rep, 1] <- r.BayesL
+            storage.mStacked[rep, 1] <- r.mStacked
 
 
             if(!exists("pop_data")){pop_data <- data.frame(matrix(nrow = 2, ncol = 0))}
