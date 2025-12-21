@@ -3806,8 +3806,15 @@ holostackGP <- function(
               # ------------------------
               # Final stacking across all base models and Bayes
               # ------------------------
-              pred_all <- Reduce(function(x, y) merge(x, y, by = c("Taxa", trait), all = TRUE),
-                                 c(stacked_preds_list, stacked_bayes_list))
+              # Ensure trait column exists in all prediction data frames
+              all_preds <- c(stacked_preds_list, stacked_bayes_list)
+              for (i in seq_along(all_preds)) {
+                if (!trait %in% colnames(all_preds[[i]])) {
+                  all_preds[[i]][[trait]] <- Y.raw[[trait]][match(all_preds[[i]]$Taxa, Y.raw$Taxa)]
+                }
+              }
+              # Merge all predictions safely by Taxa
+              pred_all <- Reduce(function(x, y) merge(x, y, by = "Taxa", all = TRUE), all_preds)
 
               final_stack_result <- cv_ridge_stack(pred_all, trait, fold_id)
               pred_stack <- final_stack_result$pred
