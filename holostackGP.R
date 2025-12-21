@@ -3679,44 +3679,81 @@ holostackGP <- function(
               print("run MTME a false to generate predictions, which you can use for stacking in a separate R script")
             } else {
               # -----------------------------------------
-              # Function: CV-aware Ridge Stacking with NA Imputation
+              # Function: CV-aware Ridge Stacking with NA Imputation and Safety Checks
               # -----------------------------------------
               cv_ridge_stack <- function(pred_df, trait_col, fold_id) {
+
+                # Check trait column exists
+                if (!trait_col %in% colnames(pred_df)) {
+                  stop(paste("Trait column", trait_col, "not found in pred_df"))
+                }
+
+                # Check fold_id length
+                if (length(fold_id) != nrow(pred_df)) {
+                  stop("fold_id length does not match number of rows in pred_df")
+                }
+
                 pred_stack <- numeric(nrow(pred_df))
+                pred_stack[] <- NA  # initialize with NAs
+
+                # Function to impute missing values by column mean
                 impute_na <- function(X) {
                   for (j in seq_len(ncol(X))) {
-                    if (any(is.na(X[, j]))) X[is.na(X[, j]), j] <- mean(X[, j], na.rm = TRUE)
+                    if (any(is.na(X[, j]))) {
+                      X[is.na(X[, j]), j] <- mean(X[, j], na.rm = TRUE)
+                    }
                   }
                   return(X)
                 }
 
+                # Loop over folds
                 for (k in unique(fold_id)) {
                   train_idx <- which(fold_id != k)
                   test_idx  <- which(fold_id == k)
 
-                  X_train <- as.matrix(pred_df[train_idx, !(colnames(pred_df) %in% c("Taxa", trait_col))])
+                  X_train <- as.matrix(pred_df[train_idx, !(colnames(pred_df) %in% c("Taxa", trait_col)), drop = FALSE])
                   y_train <- pred_df[[trait_col]][train_idx]
-                  X_test  <- as.matrix(pred_df[test_idx, !(colnames(pred_df) %in% c("Taxa", trait_col))])
+                  X_test  <- as.matrix(pred_df[test_idx, !(colnames(pred_df) %in% c("Taxa", trait_col)), drop = FALSE])
 
+                  # Skip fold if y_train is empty or all NA
+                  if (length(y_train) == 0 || all(is.na(y_train))) {
+                    warning(paste0("Skipping fold ", k, ": no valid y_train values"))
+                    pred_stack[test_idx] <- NA
+                    next
+                  }
+
+                  # Impute missing values
                   X_train <- impute_na(X_train)
                   X_test  <- impute_na(X_test)
 
+                  # Fallback to lm if only one predictor
                   if (ncol(X_train) < 2) {
                     fit <- lm(y_train ~ ., data = as.data.frame(X_train))
                     pred_stack[test_idx] <- as.numeric(predict(fit, newdata = as.data.frame(X_test)))
                   } else {
+                    # Fit ridge regression using glmnet
                     fit <- glmnet::cv.glmnet(X_train, y_train, alpha = 0, standardize = TRUE)
                     pred_stack[test_idx] <- as.numeric(predict(fit, newx = X_test, s = "lambda.min"))
                   }
                 }
 
+                # Ensure numeric correlation
                 y_all <- as.numeric(pred_df[[trait_col]])
                 pred_stack <- as.numeric(pred_stack)
-                cor_val <- cor(y_all, pred_stack, use = "complete.obs")
+
+                # Compute correlation only if there are complete cases
+                if (all(is.na(pred_stack))) {
+                  warning("No valid predictions to compute correlation")
+                  cor_val <- NA
+                } else {
+                  cor_val <- suppressWarnings(cor(y_all, pred_stack, use = "complete.obs"))
+                }
+
                 pred_df$stacked <- pred_stack
 
                 return(list(pred = pred_df, cor = cor_val))
               }
+
 
               # -----------------------------------------
               # Helper to prepare base predictions
