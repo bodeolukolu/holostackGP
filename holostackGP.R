@@ -3679,14 +3679,14 @@ holostackGP <- function(
               print("run MTME a false to generate predictions, which you can use for stacking in a separate R script")
             } else {
               # -----------------------------------------
-              # CV-aware Ridge Stacking (fully robust)
+              # CV-aware Ridge Stacking (dimension-safe)
               # -----------------------------------------
               cv_ridge_stack <- function(pred_df, trait_col, fold_id) {
 
-                # Ensure numeric phenotype
-                y_all <- as.numeric(pred_df[[trait_col]])
+                # Force phenotype to be a pure numeric vector
+                y_all <- as.numeric(drop(pred_df[[trait_col]]))
 
-                pred_stack <- rep(NA_real_, nrow(pred_df))
+                pred_stack <- rep(NA_real_, length(y_all))
 
                 for (k in unique(fold_id)) {
 
@@ -3706,7 +3706,6 @@ holostackGP <- function(
 
                   if (ncol(X_train) == 0) next
 
-                  # ---- single predictor fallback ----
                   if (ncol(X_train) == 1) {
                     fit <- lm(y_train ~ X_train[,1])
                     pred_stack[test_idx] <- predict(
@@ -3731,6 +3730,7 @@ holostackGP <- function(
 
                 return(list(pred = pred_df, cor = cor_val))
               }
+
 
               # -----------------------------------------
               # Helper to prepare base predictions
