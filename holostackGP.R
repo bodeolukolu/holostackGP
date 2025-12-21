@@ -3682,6 +3682,7 @@ holostackGP <- function(
               # Function: CV-aware Ridge Stacking
               # -----------------------------------------
               cv_ridge_stack <- function(pred_df, trait_col, fold_id) {
+
                 pred_stack <- numeric(nrow(pred_df))
 
                 for (k in unique(fold_id)) {
@@ -3692,8 +3693,20 @@ holostackGP <- function(
                   y_train <- pred_df[[trait_col]][train_idx]
                   X_test  <- as.matrix(pred_df[test_idx, !(colnames(pred_df) %in% c("Taxa", trait_col))])
 
-                  fit <- glmnet::cv.glmnet(X_train, y_train, alpha = 0, standardize = TRUE)
-                  pred_stack[test_idx] <- as.numeric(predict(fit, newx = X_test, s = "lambda.min"))
+                  if (ncol(X_train) < 2) {
+                    # fallback to simple linear regression when only 1 predictor
+                    warning("Only 1 predictor in training set; using linear regression instead of glmnet ridge")
+                    df_train <- data.frame(y = y_train, X_train)
+                    colnames(df_train)[2] <- "X1"
+                    fit <- lm(y ~ X1, data = df_train)
+
+                    df_test <- data.frame(X1 = X_test)
+                    pred_stack[test_idx] <- predict(fit, newdata = df_test)
+                  } else {
+                    # regular ridge regression via glmnet
+                    fit <- glmnet::cv.glmnet(X_train, y_train, alpha = 0, standardize = TRUE)
+                    pred_stack[test_idx] <- as.numeric(glmnet::predict.cv.glmnet(fit, newx = X_test, s = "lambda.min"))
+                  }
                 }
 
                 cor_val <- cor(pred_df[[trait_col]], pred_stack, use = "complete.obs")
