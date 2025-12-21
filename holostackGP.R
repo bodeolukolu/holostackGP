@@ -3678,19 +3678,16 @@ holostackGP <- function(
             if (MTME == TRUE){
               print("run MTME a false to generate predictions, which you can use for stacking in a separate R script")
             } else {
-              # CV-aware Ridge Stacking with NA Imputation
+              # -----------------------------------------
+              # Function: CV-aware Ridge Stacking with NA Imputation
+              # -----------------------------------------
               cv_ridge_stack <- function(pred_df, trait_col, fold_id) {
                 pred_stack <- numeric(nrow(pred_df))
-
-                # Impute NA by column mean
                 impute_na <- function(X) {
                   for (j in seq_len(ncol(X))) {
-                    if (any(is.na(X[, j]))) {
-                      X[is.na(X[, j]), j] <- mean(X[, j], na.rm = TRUE)
-                      if (is.nan(X[1,j])) X[,j] <- 0
-                    }
+                    if (any(is.na(X[, j]))) X[is.na(X[, j]), j] <- mean(X[, j], na.rm = TRUE)
                   }
-                  X
+                  return(X)
                 }
 
                 for (k in unique(fold_id)) {
@@ -3720,10 +3717,34 @@ holostackGP <- function(
 
                 return(list(pred = pred_df, cor = cor_val))
               }
-              # Full stacking workflow
+
+              # -----------------------------------------
+              # Helper to prepare base predictions
+              # -----------------------------------------
+              prepare_base_preds <- function(pred_OOF, base_name, trait) {
+                if (!"Taxa" %in% colnames(pred_OOF)) pred_OOF$Taxa <- rownames(pred_OOF)
+                colnames(pred_OOF)[!(colnames(pred_OOF) %in% c("Taxa", trait))] <-
+                  paste0(base_name, "_", colnames(pred_OOF)[!(colnames(pred_OOF) %in% c("Taxa", trait))])
+                return(pred_OOF)
+              }
+
+              # -----------------------------------------
+              # Determine base models based on gp_model
+              # -----------------------------------------
+              get_base_models <- function(gp_model) {
+                if (gp_model %in% c("GBLUP", "gBLUP", "gGBLUP")) {
+                  return(c("GBLUP", "rrBLUP", "RKHS"))
+                }
+                stop("Unknown gp_model")
+              }
+
+              # -----------------------------------------
+              # Stack predictions
+              # -----------------------------------------
               stack_predictions <- function(trait, gp_model, fold_id, Y.raw, pred_bayes_OOF = NULL, Additional_models = TRUE) {
                 stacked_preds_list <- list()
                 stacked_preds_cor <- list()
+
                 base_models <- get_base_models(gp_model)
 
                 for (bm in base_models) {
@@ -3759,16 +3780,17 @@ holostackGP <- function(
                     all_preds[[i]][[trait]] <- Y.raw[[trait]][match(all_preds[[i]]$Taxa, Y.raw$Taxa)]
                   }
                 }
+
                 pred_all <- Reduce(function(x, y) merge(x, y, by = "Taxa", all = TRUE), all_preds)
                 final_stack_result <- cv_ridge_stack(pred_all, trait, fold_id)
 
-                list(
+                return(list(
                   pred_all = pred_all,
                   pred_stack = final_stack_result$pred,
                   pred_stack_cor = final_stack_result$cor,
                   base_cor = stacked_preds_cor,
                   bayes_cor = stacked_bayes_cor
-                )
+                ))
               }
             }
 
