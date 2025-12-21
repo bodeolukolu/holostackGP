@@ -1127,7 +1127,7 @@ holostackGP <- function(
                         stopifnot(nrow(Xcov_mat) == nrow(Y.tmasked))
                       }
 
-                      model_gblup <- rrBLUPP::mixed.solve(y = Y.tmasked[,1], K = K, X=Xcov_mat)
+                      model_gblup <- rrBLUP::mixed.solve(y = Y.tmasked[,1], K = K, X=Xcov_mat)
                       pred_gblup <- model_gblup$u[test_ids]
                       pred_list[[kernel_name]] <- pred_gblup
                     }
@@ -1162,7 +1162,7 @@ holostackGP <- function(
                         Xcov_mat <- NULL
                       }
                       # --- rrBLUP model ---
-                      model_rrblup <- rrBLUPP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
+                      model_rrblup <- rrBLUP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
                       # --- Prediction ---
                       kept_snps <- colnames(Z_train)
                       Z_test <- geno.A_scaled[test_ids, kept_snps, drop = FALSE]
@@ -1195,7 +1195,7 @@ holostackGP <- function(
                         Xcov_mat <- NULL
                       }
                       # --- rrBLUP model ---
-                      model_rrblup <- rrBLUPP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
+                      model_rrblup <- rrBLUP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
                       # --- Prediction ---
                       kept_snps <- colnames(Z_train)
                       Z_test <- geno.D_scaled[test_ids, kept_snps, drop = FALSE]
@@ -1430,7 +1430,7 @@ holostackGP <- function(
 
                         stopifnot(nrow(Xcov_mat) == nrow(Y.tmasked))
                       }}
-                    model_gblup <- rrBLUPP::mixed.solve(y = Y.tmasked[,1], K = myKIx, X=Xcov_mat)
+                    model_gblup <- rrBLUP::mixed.solve(y = Y.tmasked[,1], K = myKIx, X=Xcov_mat)
                     pred_gblup <- as.data.frame(model_gblup$u[test_ids])  # genomic breeding values
                     pred_gblup_OOF <- rbind(pred_gblup_OOF,pred_gblup)
 
@@ -1462,7 +1462,7 @@ holostackGP <- function(
                         Xcov_mat <- NULL
                       }
                       # --- rrBLUP model ---
-                      model_rrblup <- rrBLUPP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
+                      model_rrblup <- rrBLUP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
                       # --- Prediction ---
                       kept_snps <- colnames(Z_train)
                       # Align test set to training SNPs (safe check)
@@ -1655,7 +1655,7 @@ holostackGP <- function(
                         stopifnot(nrow(Xcov_mat) == nrow(Y.tmasked))
                       }
 
-                      model_gblup <- rrBLUPP::mixed.solve(y = Y.tmasked[,1], K = K, X=Xcov_mat)
+                      model_gblup <- rrBLUP::mixed.solve(y = Y.tmasked[,1], K = K, X=Xcov_mat)
                       pred_gblup <- model_gblup$u[test_ids]
                       pred_list[[kernel_name]] <- pred_gblup
                     }
@@ -1690,7 +1690,7 @@ holostackGP <- function(
                         Xcov_mat <- NULL
                       }
                       # --- rrBLUP model ---
-                      model_rrblup <- rrBLUPP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
+                      model_rrblup <- rrBLUP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
                       # --- Prediction ---
                       kept_snps <- colnames(Z_train)
                       Z_test <- mgeno_scaled[test_ids, kept_snps, drop = FALSE]
@@ -1884,7 +1884,7 @@ holostackGP <- function(
                         stopifnot(nrow(Xcov_mat) == nrow(Y.tmasked))
                       }
                     }
-                    model_gblup <- rrBLUPP::mixed.solve(y = Y.tmasked[,1], K = metagKIx, X=Xcov_mat)
+                    model_gblup <- rrBLUP::mixed.solve(y = Y.tmasked[,1], K = metagKIx, X=Xcov_mat)
                     pred_gblup <- as.data.frame(model_gblup$u[test_ids])  # genomic breeding values
                     pred_gblup_OOF <- rbind(pred_gblup_OOF,pred_gblup)
 
@@ -1916,7 +1916,7 @@ holostackGP <- function(
                         Xcov_mat <- NULL
                       }
                       # --- rrBLUP model ---
-                      model_rrblup <- rrBLUPP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
+                      model_rrblup <- rrBLUP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
                       # --- Prediction ---
                       kept_snps <- colnames(Z_train)
                       Z_test <- mgeno_scaled[test_ids, kept_snps, drop = FALSE]
@@ -2107,7 +2107,7 @@ holostackGP <- function(
                           stopifnot(nrow(Xcov_mat) == nrow(Y.tmasked))
                         }
 
-                        model_gblup <- rrBLUPP::mixed.solve(y = Y.tmasked[,1], K = K, X=Xcov_mat)
+                        model_gblup <- rrBLUP::mixed.solve(y = Y.tmasked[,1], K = K, X=Xcov_mat)
                         pred_gblup <- model_gblup$u[test_ids]
                         pred_list[[kernel_name]] <- pred_gblup
                       }
@@ -2142,7 +2142,7 @@ holostackGP <- function(
                           Xcov_mat <- NULL
                         }
                         # --- rrBLUP model ---
-                        model_rrblup <- rrBLUPP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
+                        model_rrblup <- rrBLUP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
                         # --- Prediction ---
                         kept_snps <- colnames(Z_train)
                         Z_test <- geno.A_scaled[test_ids, kept_snps, drop = FALSE]
@@ -2176,7 +2176,7 @@ holostackGP <- function(
                           Xcov_mat <- NULL
                         }
                         # --- rrBLUP model ---
-                        model_rrblup <- rrBLUPP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
+                        model_rrblup <- rrBLUP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
                         # --- Prediction ---
                         kept_snps <- colnames(Z_train)
                         Z_test <- geno.D_scaled[test_ids, kept_snps, drop = FALSE]
@@ -2209,7 +2209,7 @@ holostackGP <- function(
                           Xcov_mat <- NULL
                         }
                         # --- rrBLUP model ---
-                        model_rrblup <- rrBLUPP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
+                        model_rrblup <- rrBLUP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
                         # --- Prediction ---
                         kept_snps <- colnames(Z_train)
                         Z_test <- mgeno_scaled[test_ids, kept_snps, drop = FALSE]
@@ -2510,7 +2510,7 @@ holostackGP <- function(
                         for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
                       }
                       Xcov <- Y.tmasked[,-1]
-                      model_gblup_g <- rrBLUPP::mixed.solve(y = Y.tmasked[,1], K = myKIx, X=Xcov)
+                      model_gblup_g <- rrBLUP::mixed.solve(y = Y.tmasked[,1], K = myKIx, X=Xcov)
                       pred_gblup_g <- model_gblup_g$u[test_ids]  # genomic breeding values
                       gebv_list <- list()
                       if (length(covTraits) > 0) {
@@ -2562,7 +2562,7 @@ holostackGP <- function(
                         stopifnot(nrow(Xcov_mat) == nrow(Y.tmasked))
                       }
 
-                      model_gblup_m <- rrBLUPP::mixed.solve(y = Y.tmasked[,1], K = metagKIx, X=Xcov_mat)
+                      model_gblup_m <- rrBLUP::mixed.solve(y = Y.tmasked[,1], K = metagKIx, X=Xcov_mat)
                       pred_gblup_m <- model_gblup_m$u[test_ids]  # genomic breeding values
 
                       #--- Define stacking function for two GBLUP models ---
@@ -2682,7 +2682,7 @@ holostackGP <- function(
                           Xcov_df <- as.data.frame(Xcov)
                         }
                         Xcov_mat <- model.matrix(~ ., data = Xcov_df)
-                        model_rrblup <- rrBLUPP::mixed.solve(y = y_train, Z = Z_train, X=Xcov_mat)
+                        model_rrblup <- rrBLUP::mixed.solve(y = y_train, Z = Z_train, X=Xcov_mat)
                         kept_snps <- colnames(Z_train)
                         Z_test <- mgeno_scaled[test_ids, kept_snps, drop = FALSE]
                         Z_test <- scale(Z_test, center = colMeans(mgeno_scaled[train_ids, kept_snps]), scale = FALSE)
@@ -2713,7 +2713,7 @@ holostackGP <- function(
                           Xcov_mat <- NULL
                         }
                         # --- rrBLUP model ---
-                        model_rrblup <- rrBLUPP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
+                        model_rrblup <- rrBLUP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
                         # --- Prediction ---
                         kept_snps <- colnames(Z_train)
                         Z_test <- geno_scaled[test_ids, kept_snps, drop = FALSE]
@@ -2746,7 +2746,7 @@ holostackGP <- function(
                           Xcov_mat <- NULL
                         }
                         # --- rrBLUP model ---
-                        model_rrblup <- rrBLUPP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
+                        model_rrblup <- rrBLUP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
                         # --- Prediction ---
                         kept_snps <- colnames(Z_train)
                         Z_test <- mgeno_scaled[test_ids, kept_snps, drop = FALSE]
@@ -2986,7 +2986,7 @@ holostackGP <- function(
                         stopifnot(nrow(Xcov_mat) == nrow(Y.tmasked))
                       }
 
-                      model_gblup <- rrBLUPP::mixed.solve(y = Y.tmasked[,1], K = K, X=Xcov_mat)
+                      model_gblup <- rrBLUP::mixed.solve(y = Y.tmasked[,1], K = K, X=Xcov_mat)
                       pred_gblup <- model_gblup$u[test_ids]
                       pred_list[[kernel_name]] <- pred_gblup
                     }
@@ -3021,7 +3021,7 @@ holostackGP <- function(
                         Xcov_mat <- NULL
                       }
                       # --- rrBLUP model ---
-                      model_rrblup <- rrBLUPP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
+                      model_rrblup <- rrBLUP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
                       # --- Prediction ---
                       kept_snps <- colnames(Z_train)
                       Z_test <- geno.A_scaled[test_ids, kept_snps, drop = FALSE]
@@ -3054,7 +3054,7 @@ holostackGP <- function(
                         Xcov_mat <- NULL
                       }
                       # --- rrBLUP model ---
-                      model_rrblup <- rrBLUPP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
+                      model_rrblup <- rrBLUP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
                       # --- Prediction ---
                       kept_snps <- colnames(Z_train)
                       Z_test <- geno.D_scaled[test_ids, kept_snps, drop = FALSE]
@@ -3087,7 +3087,7 @@ holostackGP <- function(
                         Xcov_mat <- NULL
                       }
                       # --- rrBLUP model ---
-                      model_rrblup <- rrBLUPP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
+                      model_rrblup <- rrBLUP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
                       # --- Prediction ---
                       kept_snps <- colnames(Z_train)
                       Z_test <- mgeno_scaled[test_ids, kept_snps, drop = FALSE]
@@ -3336,7 +3336,7 @@ holostackGP <- function(
                         for (covt in covTraits) { Y.tmasked[[paste0("gebv_", covt)]] <- as.vector(gebv_list[[covt]]) }
                       }
                       Xcov <- Y.tmasked[,-1]
-                      model_gblup_g <- rrBLUPP::mixed.solve(y = Y.tmasked[,1], K = myKIx, X=Xcov)
+                      model_gblup_g <- rrBLUP::mixed.solve(y = Y.tmasked[,1], K = myKIx, X=Xcov)
                       pred_gblup_g <- model_gblup_g$u[test_ids]  # genomic breeding values
                       gebv_list <- list()
                       if (length(covTraits) > 0) {
@@ -3387,7 +3387,7 @@ holostackGP <- function(
 
                         stopifnot(nrow(Xcov_mat) == nrow(Y.tmasked))
                       }
-                      model_gblup_m <- rrBLUPP::mixed.solve(y = Y.tmasked[,1], K = metagKIx, X=Xcov_mat)
+                      model_gblup_m <- rrBLUP::mixed.solve(y = Y.tmasked[,1], K = metagKIx, X=Xcov_mat)
                       pred_gblup_m <- model_gblup_m$u[test_ids]  # genomic breeding values
                     }
                     pred_gblup_all <- data.frame(G  = pred_gblup_g, M  = pred_gblup_m)
@@ -3500,7 +3500,7 @@ holostackGP <- function(
                         Xcov_df <- as.data.frame(Xcov)
                       }
                       Xcov_mat <- model.matrix(~ ., data = Xcov_df)
-                      model_rrblup <- rrBLUPP::mixed.solve(y = y_train, Z = Z_train, X=Xcov_mat)
+                      model_rrblup <- rrBLUP::mixed.solve(y = y_train, Z = Z_train, X=Xcov_mat)
                       kept_snps <- colnames(Z_train)
                       Z_test <- mgeno_scaled[test_ids, kept_snps, drop = FALSE]
                       Z_test <- scale(Z_test, center = colMeans(mgeno_scaled[train_ids, kept_snps]), scale = FALSE)
@@ -3532,7 +3532,7 @@ holostackGP <- function(
                         Xcov_mat <- NULL
                       }
                       # --- rrBLUP model ---
-                      model_rrblup <- rrBLUPP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
+                      model_rrblup <- rrBLUP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
                       # --- Prediction ---
                       kept_snps <- colnames(Z_train)
                       Z_test <- geno_scaled[test_ids, kept_snps, drop = FALSE]
