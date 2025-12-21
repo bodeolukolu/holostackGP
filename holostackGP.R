@@ -3692,7 +3692,7 @@ holostackGP <- function(
                   y_train <- pred_df[[trait_col]][train_idx]
                   X_test  <- as.matrix(pred_df[test_idx, !(colnames(pred_df) %in% c("Taxa", trait_col))])
 
-                  fit <- cv.glmnet(X_train, y_train, alpha = 0, standardize = TRUE)
+                  fit <- glmnet::cv.glmnet(X_train, y_train, alpha = 0, standardize = TRUE)
                   pred_stack[test_idx] <- as.numeric(predict(fit, newx = X_test, s = "lambda.min"))
                 }
 
