@@ -656,7 +656,7 @@ holostackGP <- function(
           if (!is.null(covariate)){
             Y.cov <- myY[,c("Taxa",covariate)]
             Y.cov <- merge(Y.raw, Y.cov, by="Taxa")
-            imp <- mice(Y.cov, m = 5, method = "pmm", seed = 123)
+            imp <- mice::mice(Y.cov, m = 5, method = "pmm", seed = 123)
             Y.cov <- complete(imp, 1)   # first imputed dataset
             Y.cov <- Y.cov[,c("Taxa",covariate)]
           }
