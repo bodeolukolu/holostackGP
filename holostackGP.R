@@ -183,7 +183,7 @@ holostackGP <- function(
         if (!is.null(myG)){
           dG <- myG; colnames(dG) <- dG[1,]; dG <- dG[-1,]
           if("pvalue" %in% colnames(dG)){dG <- subset(dG, select=-c(pvalue))}
-        }
+        } else {dG <- NULL}
         if (!is.null(metagenome_data)) {
           metagenome_data <- sub("\\..*", "", metagenome_data)
           metag <- read.table(paste(metagenome_data,".txt",sep=""), header=F, sep="\t", check.names=FALSE,stringsAsFactors=FALSE)
