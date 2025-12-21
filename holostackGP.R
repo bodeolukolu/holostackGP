@@ -3717,7 +3717,7 @@ holostackGP <- function(
                 if (gp_model == "GBLUP") {
                   return(c("GBLUP", "rrBLUP", "RKHS"))
                 } else if (gp_model == "gBLUP") {
-                  return(c("MBLUP", "rrBLUP", "RKHS"))
+                  return(c("GBLUP", "rrBLUP", "RKHS"))
                 } else if (gp_model == "gGBLUP") {
                   return(c("GBLUP", "rrBLUP", "RKHS"))
                 } else {
