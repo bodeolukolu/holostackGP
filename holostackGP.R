@@ -3686,7 +3686,7 @@ holostackGP <- function(
                 # ------------------------
                 # Helper: prepare OOF for stacking
                 # ------------------------
-                prepare_base_preds <- function(pred_OOF, base_name) {
+                prepare_base_preds <- function(pred_OOF) {
                   if (!"Taxa" %in% colnames(pred_OOF)) pred_OOF$Taxa <- rownames(pred_OOF)
                   pred_OOF[[trait]] <- Y.raw[[trait]][match(pred_OOF$Taxa, Y.raw$Taxa)]
                   return(pred_OOF)
@@ -3706,7 +3706,7 @@ holostackGP <- function(
 
                 for (bm in base_models) {
                   pred_OOF <- get(paste0("pred_", tolower(bm), "_OOF"))
-                  pred_OOF <- prepare_base_preds(pred_OOF, bm)
+                  pred_OOF <- prepare_base_preds(pred_OOF)
 
                   stacked_res <- cv_ridge_stack(pred_OOF, trait, fold_id)
                   stacked_preds_list[[bm]] <- stacked_res$pred
