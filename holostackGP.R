@@ -3815,7 +3815,7 @@ holostackGP <- function(
             # -----------------------------------------
             # Run stacking workflow safely
             # -----------------------------------------
-            stack_result <- stack_predictions(
+            stack_result <- stack_predictions_cv(
               trait         = trait,
               gp_model      = gp_model,
               fold_id       = fold_id,
