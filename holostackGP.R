@@ -3728,7 +3728,7 @@ holostackGP <- function(
               # -----------------------------------------
               # Full CV-aware Stacking Function
               # -----------------------------------------
-              stack_predictions <- function(trait, gp_model, fold_id, Y.raw, pred_bayes_OOF = NULL, Additional_models = TRUE) {
+              stack_predictions_cv <- function(trait, gp_model, fold_id, Y.raw, pred_bayes_OOF = NULL, Additional_models = TRUE) {
 
                 stacked_preds_list <- list()
                 stacked_preds_cor  <- list()
@@ -3769,12 +3769,14 @@ holostackGP <- function(
                   for (m in bayes_methods) {
                     predA <- paste0(m, ".pred_A")
                     predD <- paste0(m, ".pred_D")
-                    predM <- paste0(m, ".pred_M")  # optional multi-omic kernel
+                    predM <- paste0(m, ".pred_M")  # optional
 
-                    # Keep only existing columns
-                    cols_exist <- c("Taxa", trait, intersect(c(predA, predD, predM), colnames(pred_bayes_OOF)))
+                    # Select only existing columns
+                    cols_exist <- intersect(c("Taxa", trait, predA, predD, predM), colnames(pred_bayes_OOF))
                     df_tmp <- pred_bayes_OOF[, cols_exist, drop = FALSE]
-                    if (ncol(df_tmp) <= 2) next  # nothing to stack
+
+                    # Skip if no predictors
+                    if (ncol(df_tmp) <= 2) next
 
                     res <- cv_stack_foldwise(df_tmp, trait, fold_id)
                     stacked_bayes_list[[m]] <- res$pred_df
@@ -3806,13 +3808,12 @@ holostackGP <- function(
                   bayes_cor      = stacked_bayes_cor
                 ))
               }
-
             }
 
             # -----------------------------------------
             # Run stacking workflow safely
             # -----------------------------------------
-            stack_result <- stack_predictions(
+            stack_result <- stack_predictions_cv(
               trait         = trait,
               gp_model      = gp_model,
               fold_id       = fold_id,
