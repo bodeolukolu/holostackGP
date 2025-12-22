@@ -3678,119 +3678,105 @@ holostackGP <- function(
             if (MTME == TRUE){
               print("run MTME a false to generate predictions, which you can use for stacking in a separate R script")
             } else {
-              # -----------------------------------------
-              # CV-aware stacking for existing OOF predictions
-              # -----------------------------------------
-              stack_predictions_cv <- function(trait, gp_model, fold_id, Y.raw, pred_bayes_OOF = NULL) {
+              # -------------------- CV-aware stacking --------------------
+              # Assumes Y.raw has a column fold_id with values 1..5
+              for(gp_model_iter in c("GBLUP","gBLUP","gGBLUP")){
+                if(gp_model == gp_model_iter){
+                  # Prepare storage for stacked predictions across folds
+                  pred_stack_list <- list()
 
-                # ------------------------
-                # Helper: prepare OOF for stacking
-                # ------------------------
-                prepare_base_preds <- function(pred_OOF) {
-                  if (!"Taxa" %in% colnames(pred_OOF)) pred_OOF$Taxa <- rownames(pred_OOF)
-                  pred_OOF[[trait]] <- Y.raw[[trait]][match(pred_OOF$Taxa, Y.raw$Taxa)]
-                  return(pred_OOF)
-                }
+                  for(f in unique(Y.raw$fold_id)){
 
-                stacked_preds_list <- list()
-                stacked_preds_cor <- list()
+                    # Split into training (all except fold f) and test (fold f)
+                    Y_train <- Y.raw[Y.raw$fold_id != f, , drop = FALSE]
+                    Y_test  <- Y.raw[Y.raw$fold_id == f, , drop = FALSE]
 
-                # ------------------------
-                # Base models
-                # ------------------------
-                base_models <- switch(gp_model,
-                                      "GBLUP"  = c("GBLUP", "rrBLUP", "RKHS"),
-                                      "gBLUP"  = c("GBLUP", "rrBLUP", "RKHS"),
-                                      "gGBLUP" = c("GBLUP", "rrBLUP", "RKHS"),
-                                      stop("Unknown gp_model"))
+                    # ---------------- stack GBLUP ----------------
+                    pred_gblup_fold <- merge(Y_train, pred_gblup_OOF, by = "row.names")
+                    formula_gblup <- as.formula(paste(trait, "~", paste(colnames(pred_gblup_fold)[-c(1:3)], collapse = " + ")))
+                    fit_stack <- lm(formula_gblup, data = pred_gblup_fold)
+                    pred_gblup_test <- predict(fit_stack, newdata = merge(Y_test, pred_gblup_OOF, by = "row.names"))
 
-                for (bm in base_models) {
-                  pred_OOF <- get(paste0("pred_", tolower(bm), "_OOF"))
-                  pred_OOF <- prepare_base_preds(pred_OOF)
+                    # ---------------- stack RRBLUP ----------------
+                    pred_rrblup_fold <- merge(Y_train, pred_rrblup_OOF, by = "row.names")
+                    formula_rrblup <- as.formula(paste(trait, "~", paste(colnames(pred_rrblup_fold)[-c(1:3)], collapse = " + ")))
+                    fit_stack <- lm(formula_rrblup, data = pred_rrblup_fold)
+                    pred_rrblup_test <- predict(fit_stack, newdata = merge(Y_test, pred_rrblup_OOF, by = "row.names"))
 
-                  stacked_res <- cv_ridge_stack(pred_OOF, trait, fold_id)
-                  stacked_preds_list[[bm]] <- stacked_res$pred
-                  stacked_preds_cor[[bm]] <- stacked_res$cor
-                }
+                    # ---------------- stack RKHS ----------------
+                    pred_rkhs_fold <- merge(Y_train, pred_rkhs_OOF, by = "row.names")
+                    formula_rkhs <- as.formula(paste(trait, "~", paste(colnames(pred_rkhs_fold)[-c(1:3)], collapse = " + ")))
+                    fit_stack <- lm(formula_rkhs, data = pred_rkhs_fold)
+                    pred_rkhs_test <- predict(fit_stack, newdata = merge(Y_test, pred_rkhs_OOF, by = "row.names"))
 
-                # ------------------------
-                # Bayes models
-                # ------------------------
-                stacked_bayes_list <- list()
-                stacked_bayes_cor <- NULL
-                if (!is.null(pred_bayes_OOF)) {
-                  bayes_methods <- c("BRR", "BayesA", "BayesB", "BayesC", "BL")
-                  stacked_bayes_cor <- numeric(length(bayes_methods))
-                  names(stacked_bayes_cor) <- bayes_methods
+                    # ---------------- stack Bayes models ----------------
+                    pred_bayes_fold <- merge(Y_train, pred_bayes_OOF, by = "row.names")
+                    methods <- c("BRR","BayesA","BayesB","BayesC","BL")
+                    pred_bayes_test <- data.frame(Row.names = Y_test$Row.names, Taxa = Y_test$Taxa)
 
-                  if (!"Taxa" %in% colnames(pred_bayes_OOF)) pred_bayes_OOF$Taxa <- rownames(pred_bayes_OOF)
+                    for(m in methods){
+                      predA <- paste0(m, ".pred_A"); predD <- paste0(m, ".pred_D")
+                      formula_m <- as.formula(paste(trait, "~", predA, "+", predD))
+                      fit_stack <- lm(formula_m, data = pred_bayes_fold)
+                      pred_bayes_test[[paste0("pred_", m)]] <- predict(fit_stack, newdata = merge(Y_test, pred_bayes_OOF, by = "row.names"))
+                    }
 
-                  for (m in bayes_methods) {
-                    predA <- paste0(m, ".pred_A")
-                    predD <- paste0(m, ".pred_D")
-                    if (!all(c(predA, predD) %in% colnames(pred_bayes_OOF))) next
-                    df_tmp <- pred_bayes_OOF[, c("Taxa", trait, predA, predD), drop = FALSE]
-                    stacked_res <- cv_ridge_stack(df_tmp, trait, fold_id)
-                    stacked_bayes_list[[m]] <- stacked_res$pred
-                    stacked_bayes_cor[m] <- stacked_res$cor
+                    # ---------------- Combine all GP methods for fold ----------------
+                    predall_test <- data.frame(
+                      Row.names = Y_test$Row.names,
+                      Taxa = Y_test$Taxa,
+                      GBLUP = pred_gblup_test,
+                      rrBLUP = pred_rrblup_test,
+                      RKHS = pred_rkhs_test,
+                      BRR = pred_bayes_test$pred_BRR,
+                      BayesA = pred_bayes_test$pred_BayesA,
+                      BayesB = pred_bayes_test$pred_BayesB,
+                      BayesC = pred_bayes_test$pred_BayesC,
+                      BL = pred_bayes_test$pred_BL
+                    )
+
+                    pred_stack_list[[f]] <- predall_test
                   }
+
+                  # ---------------- Merge folds ----------------
+                  pred_all <- do.call(rbind, pred_stack_list)
+
+                  # ---------------- Stack all GP methods across folds ----------------
+                  formula_stackall <- as.formula(paste(trait, "~", paste(colnames(pred_all)[-c(1:2)], collapse = " + ")))
+                  fit_stack <- lm(formula_stackall, data = pred_all)
+                  pred_all$stacked <- predict(fit_stack, newdata = pred_all)
+
+                  # ---------------- Compute CV-aware correlation ----------------
+                  pred_stack_cor <- cor(pred_all[[trait]], pred_all$stacked)
                 }
-
-                # ------------------------
-                # Merge all stacked predictions
-                # ------------------------
-                all_preds <- c(stacked_preds_list, stacked_bayes_list)
-                for (i in seq_along(all_preds)) {
-                  if (!trait %in% colnames(all_preds[[i]])) {
-                    all_preds[[i]][[trait]] <- Y.raw[[trait]][match(all_preds[[i]]$Taxa, Y.raw$Taxa)]
-                  }
-                }
-
-                pred_all <- Reduce(function(x, y) merge(x, y, by = "Taxa", all = TRUE), all_preds)
-
-                # ------------------------
-                # Final stacked model across all predictions
-                # ------------------------
-                final_stack_result <- cv_ridge_stack(pred_all, trait, fold_id)
-
-                # ------------------------
-                # Return results
-                # ------------------------
-                return(list(
-                  pred_all = pred_all,                    # can write to disk
-                  pred_stack = final_stack_result$pred,   # CV-aware stacked predictions
-                  pred_stack_cor = final_stack_result$cor,
-                  base_cor = stacked_preds_cor,
-                  bayes_cor = stacked_bayes_cor
-                ))
               }
+
             }
 
             # -----------------------------------------
-            # Run stacking workflow safely
+            # Run CV-aware stacking workflow safely
             # -----------------------------------------
             stack_result <- stack_predictions_cv(
-              trait         = trait,
-              gp_model      = gp_model,
-              fold_id       = fold_id,
-              Y.raw         = Y.raw,
-              pred_bayes_OOF = pred_bayes_OOF,
-              Additional_models = TRUE
+              trait          = trait,
+              gp_model       = gp_model,
+              fold_id        = fold_id,
+              Y.raw          = Y.raw,
+              pred_bayes_OOF = pred_bayes_OOF
             )
 
             # Extract results
-            pred_all      <- stack_result$pred_all
-            pred_stack    <- stack_result$pred_stack
-            pred_stack_cor <- stack_result$pred_stack_cor
-            base_cor      <- stack_result$base_cor
-            bayes_cor     <- stack_result$bayes_cor
+            pred_all       <- stack_result$pred_all        # CV-aware predictions for all GP methods
+            pred_stack     <- stack_result$pred_stack      # Final stacked predictions
+            pred_stack_cor <- stack_result$pred_stack_cor  # Correlation of stacked predictions with observed trait
+            base_cor       <- stack_result$base_cor        # Correlations for GBLUP, rrBLUP, RKHS
+            bayes_cor      <- stack_result$bayes_cor       # Correlations for Bayes models
 
             # ------------------------
             # Example: storing correlations
             # ------------------------
-            r.GBLUP <- if ("GBLUP" %in% names(base_cor)) base_cor[["GBLUP"]] else NA
+            r.GBLUP  <- if ("GBLUP" %in% names(base_cor)) base_cor[["GBLUP"]] else NA
             r.rrBLUP <- if ("rrBLUP" %in% names(base_cor)) base_cor[["rrBLUP"]] else NA
-            r.RKHS  <- if ("RKHS" %in% names(base_cor)) base_cor[["RKHS"]] else NA
+            r.RKHS   <- if ("RKHS" %in% names(base_cor)) base_cor[["RKHS"]] else NA
 
             # Bayes correlations
             r.BRR    <- if (!is.null(bayes_cor) && "BRR" %in% names(bayes_cor)) bayes_cor["BRR"] else NA
@@ -3803,18 +3789,17 @@ holostackGP <- function(
             r.mStacked <- pred_stack_cor
 
             # ------------------------
-            # Example: store in replication matrices
+            # Store in replication matrices
             # ------------------------
-            storage.GBLUP[rep, 1] <- r.GBLUP
+            storage.GBLUP[rep, 1]  <- r.GBLUP
             storage.rrBLUP[rep, 1] <- r.rrBLUP
-            storage.RKHS[rep, 1] <- r.RKHS
-            storage.BRR[rep, 1] <- r.BRR
+            storage.RKHS[rep, 1]   <- r.RKHS
+            storage.BRR[rep, 1]    <- r.BRR
             storage.BayesA[rep, 1] <- r.BayesA
             storage.BayesB[rep, 1] <- r.BayesB
             storage.BayesC[rep, 1] <- r.BayesC
             storage.BayesL[rep, 1] <- r.BayesL
             storage.mStacked[rep, 1] <- r.mStacked
-
 
             if(!exists("pop_data")){pop_data <- data.frame(matrix(nrow = 2, ncol = 0))}
             if (gwas_Gpred == TRUE) {
