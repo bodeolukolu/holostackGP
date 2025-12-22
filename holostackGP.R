@@ -3696,7 +3696,7 @@ holostackGP <- function(
                   y_train <- pred_df[[trait_col]][train_idx]
                   X_test  <- as.matrix(pred_df[test_idx, X_cols, drop = FALSE])
 
-                  # Skip if no valid predictors
+                  # Skip fold if no valid predictors
                   if (ncol(X_train) == 0 || length(y_train) == 0 || all(is.na(y_train))) next
 
                   # Impute missing values by column mean
@@ -3719,7 +3719,6 @@ holostackGP <- function(
                   }
                 }
 
-                # Attach predictions and compute correlation
                 pred_df$stacked <- pred_stack
                 cor_val <- cor(pred_df[[trait_col]], pred_df$stacked, use = "complete.obs")
 
@@ -3727,9 +3726,9 @@ holostackGP <- function(
               }
 
               # -----------------------------------------
-              # Minimal Wrapper for Full Stacking Workflow
+              # Full CV-aware Stacking Function
               # -----------------------------------------
-              stack_predictions_cv <- function(trait, gp_model, fold_id, Y.raw, pred_bayes_OOF = NULL) {
+              stack_predictions <- function(trait, gp_model, fold_id, Y.raw, pred_bayes_OOF = NULL, Additional_models = TRUE) {
 
                 stacked_preds_list <- list()
                 stacked_preds_cor  <- list()
@@ -3741,30 +3740,26 @@ holostackGP <- function(
 
                 for (bm in base_models) {
                   pred_OOF <- get(paste0("pred_", tolower(bm), "_OOF"))
-
-                  # Ensure Taxa column exists
                   if (!"Taxa" %in% colnames(pred_OOF)) pred_OOF$Taxa <- rownames(pred_OOF)
 
-                  # Rename prediction columns
                   pred_cols <- setdiff(colnames(pred_OOF), c("Taxa", trait))
                   colnames(pred_OOF)[colnames(pred_OOF) %in% pred_cols] <- paste0(bm, "_", pred_cols)
 
-                  # Align trait values
+                  # Align trait
                   idx_match <- match(pred_OOF$Taxa, Y.raw$Taxa)
                   pred_OOF[[trait]] <- Y.raw[[trait]][idx_match]
 
-                  # CV-aware stacking for this base model
                   res <- cv_stack_foldwise(pred_OOF, trait, fold_id)
                   stacked_preds_list[[bm]] <- res$pred_df
                   stacked_preds_cor[[bm]] <- res$cor_val
                 }
 
                 # ------------------------
-                # Bayes models
+                # Bayes models (optional)
                 # ------------------------
                 stacked_bayes_list <- list()
                 stacked_bayes_cor  <- NULL
-                if (!is.null(pred_bayes_OOF)) {
+                if (!is.null(pred_bayes_OOF) && Additional_models) {
                   bayes_methods <- c("BRR", "BayesA", "BayesB", "BayesC", "BL")
                   stacked_bayes_cor <- numeric(length(bayes_methods))
                   names(stacked_bayes_cor) <- bayes_methods
@@ -3774,9 +3769,12 @@ holostackGP <- function(
                   for (m in bayes_methods) {
                     predA <- paste0(m, ".pred_A")
                     predD <- paste0(m, ".pred_D")
-                    if (!all(c(predA, predD) %in% colnames(pred_bayes_OOF))) next
+                    predM <- paste0(m, ".pred_M")  # optional multi-omic kernel
 
-                    df_tmp <- pred_bayes_OOF[, c("Taxa", trait, predA, predD), drop = FALSE]
+                    # Keep only existing columns
+                    cols_exist <- c("Taxa", trait, intersect(c(predA, predD, predM), colnames(pred_bayes_OOF)))
+                    df_tmp <- pred_bayes_OOF[, cols_exist, drop = FALSE]
+                    if (ncol(df_tmp) <= 2) next  # nothing to stack
 
                     res <- cv_stack_foldwise(df_tmp, trait, fold_id)
                     stacked_bayes_list[[m]] <- res$pred_df
@@ -3785,7 +3783,7 @@ holostackGP <- function(
                 }
 
                 # ------------------------
-                # Merge all predictions safely
+                # Merge all predictions
                 # ------------------------
                 all_preds <- c(stacked_preds_list, stacked_bayes_list)
                 for (i in seq_along(all_preds)) {
@@ -3793,7 +3791,6 @@ holostackGP <- function(
                     all_preds[[i]][[trait]] <- Y.raw[[trait]][match(all_preds[[i]]$Taxa, Y.raw$Taxa)]
                   }
                 }
-
                 pred_all <- Reduce(function(x, y) merge(x, y, by = "Taxa", all = TRUE), all_preds)
 
                 # ------------------------
@@ -3802,19 +3799,20 @@ holostackGP <- function(
                 final_stack_result <- cv_stack_foldwise(pred_all, trait, fold_id)
 
                 return(list(
-                  pred_all      = pred_all,
-                  pred_stack    = final_stack_result$pred_df,
-                  pred_stack_cor= final_stack_result$cor_val,
-                  base_cor      = stacked_preds_cor,
-                  bayes_cor     = stacked_bayes_cor
+                  pred_all       = pred_all,
+                  pred_stack     = final_stack_result$pred_df,
+                  pred_stack_cor = final_stack_result$cor_val,
+                  base_cor       = stacked_preds_cor,
+                  bayes_cor      = stacked_bayes_cor
                 ))
               }
+
             }
 
             # -----------------------------------------
             # Run stacking workflow safely
             # -----------------------------------------
-            stack_result <- stack_predictions_cv(
+            stack_result <- stack_predictions(
               trait         = trait,
               gp_model      = gp_model,
               fold_id       = fold_id,
