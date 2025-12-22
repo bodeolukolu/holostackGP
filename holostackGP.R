@@ -3679,87 +3679,46 @@ holostackGP <- function(
               print("run MTME a false to generate predictions, which you can use for stacking in a separate R script")
             } else {
               # -----------------------------------------
-              # CV-aware Ridge / LM Stacking (Fold-wise)
+              # CV-aware stacking for existing OOF predictions
               # -----------------------------------------
-              cv_stack_foldwise <- function(pred_df, trait_col, fold_id) {
-                pred_stack <- rep(NA, nrow(pred_df))
+              stack_predictions_cv <- function(trait, gp_model, fold_id, Y.raw, pred_bayes_OOF = NULL) {
 
-                # Identify predictors
-                X_cols <- setdiff(colnames(pred_df), c("Row.names", "Taxa", trait_col))
-
-                # Loop over folds
-                for (k in unique(fold_id)) {
-                  train_idx <- which(fold_id != k)
-                  test_idx  <- which(fold_id == k)
-
-                  X_train <- as.matrix(pred_df[train_idx, X_cols, drop = FALSE])
-                  y_train <- pred_df[[trait_col]][train_idx]
-                  X_test  <- as.matrix(pred_df[test_idx, X_cols, drop = FALSE])
-
-                  # Skip fold if no valid predictors
-                  if (ncol(X_train) == 0 || length(y_train) == 0 || all(is.na(y_train))) next
-
-                  # Impute missing values by column mean
-                  impute_na <- function(X) {
-                    apply(X, 2, function(col) {
-                      col[is.na(col)] <- mean(col, na.rm = TRUE)
-                      col
-                    })
-                  }
-                  X_train <- impute_na(X_train)
-                  X_test  <- impute_na(X_test)
-
-                  # Fit model
-                  if (ncol(X_train) < 2) {
-                    fit <- lm(y_train ~ ., data = as.data.frame(X_train))
-                    pred_stack[test_idx] <- predict(fit, newdata = as.data.frame(X_test))
-                  } else {
-                    fit <- glmnet::cv.glmnet(X_train, y_train, alpha = 0, standardize = TRUE)
-                    pred_stack[test_idx] <- as.numeric(predict(fit, newx = X_test, s = "lambda.min"))
-                  }
+                # ------------------------
+                # Helper: prepare OOF for stacking
+                # ------------------------
+                prepare_base_preds <- function(pred_OOF, base_name) {
+                  if (!"Taxa" %in% colnames(pred_OOF)) pred_OOF$Taxa <- rownames(pred_OOF)
+                  pred_OOF[[trait]] <- Y.raw[[trait]][match(pred_OOF$Taxa, Y.raw$Taxa)]
+                  return(pred_OOF)
                 }
 
-                pred_df$stacked <- pred_stack
-                cor_val <- cor(pred_df[[trait_col]], pred_df$stacked, use = "complete.obs")
-
-                return(list(pred_df = pred_df, cor_val = cor_val))
-              }
-
-              # -----------------------------------------
-              # Full CV-aware Stacking Function
-              # -----------------------------------------
-              stack_predictions_cv <- function(trait, gp_model, fold_id, Y.raw, pred_bayes_OOF = NULL, Additional_models = TRUE) {
-
                 stacked_preds_list <- list()
-                stacked_preds_cor  <- list()
+                stacked_preds_cor <- list()
 
                 # ------------------------
                 # Base models
                 # ------------------------
-                base_models <- if (gp_model %in% c("GBLUP", "gBLUP", "gGBLUP")) c("GBLUP","rrBLUP","RKHS") else stop("Unknown gp_model")
+                base_models <- switch(gp_model,
+                                      "GBLUP"  = c("GBLUP", "rrBLUP", "RKHS"),
+                                      "gBLUP"  = c("GBLUP", "rrBLUP", "RKHS"),
+                                      "gGBLUP" = c("GBLUP", "rrBLUP", "RKHS"),
+                                      stop("Unknown gp_model"))
 
                 for (bm in base_models) {
                   pred_OOF <- get(paste0("pred_", tolower(bm), "_OOF"))
-                  if (!"Taxa" %in% colnames(pred_OOF)) pred_OOF$Taxa <- rownames(pred_OOF)
+                  pred_OOF <- prepare_base_preds(pred_OOF, bm)
 
-                  pred_cols <- setdiff(colnames(pred_OOF), c("Taxa", trait))
-                  colnames(pred_OOF)[colnames(pred_OOF) %in% pred_cols] <- paste0(bm, "_", pred_cols)
-
-                  # Align trait
-                  idx_match <- match(pred_OOF$Taxa, Y.raw$Taxa)
-                  pred_OOF[[trait]] <- Y.raw[[trait]][idx_match]
-
-                  res <- cv_stack_foldwise(pred_OOF, trait, fold_id)
-                  stacked_preds_list[[bm]] <- res$pred_df
-                  stacked_preds_cor[[bm]] <- res$cor_val
+                  stacked_res <- cv_ridge_stack(pred_OOF, trait, fold_id)
+                  stacked_preds_list[[bm]] <- stacked_res$pred
+                  stacked_preds_cor[[bm]] <- stacked_res$cor
                 }
 
                 # ------------------------
-                # Bayes models (optional)
+                # Bayes models
                 # ------------------------
                 stacked_bayes_list <- list()
-                stacked_bayes_cor  <- NULL
-                if (!is.null(pred_bayes_OOF) && Additional_models) {
+                stacked_bayes_cor <- NULL
+                if (!is.null(pred_bayes_OOF)) {
                   bayes_methods <- c("BRR", "BayesA", "BayesB", "BayesC", "BL")
                   stacked_bayes_cor <- numeric(length(bayes_methods))
                   names(stacked_bayes_cor) <- bayes_methods
@@ -3769,23 +3728,16 @@ holostackGP <- function(
                   for (m in bayes_methods) {
                     predA <- paste0(m, ".pred_A")
                     predD <- paste0(m, ".pred_D")
-                    predM <- paste0(m, ".pred_M")  # optional
-
-                    # Select only existing columns
-                    cols_exist <- intersect(c("Taxa", trait, predA, predD, predM), colnames(pred_bayes_OOF))
-                    df_tmp <- pred_bayes_OOF[, cols_exist, drop = FALSE]
-
-                    # Skip if no predictors
-                    if (ncol(df_tmp) <= 2) next
-
-                    res <- cv_stack_foldwise(df_tmp, trait, fold_id)
-                    stacked_bayes_list[[m]] <- res$pred_df
-                    stacked_bayes_cor[m] <- res$cor_val
+                    if (!all(c(predA, predD) %in% colnames(pred_bayes_OOF))) next
+                    df_tmp <- pred_bayes_OOF[, c("Taxa", trait, predA, predD), drop = FALSE]
+                    stacked_res <- cv_ridge_stack(df_tmp, trait, fold_id)
+                    stacked_bayes_list[[m]] <- stacked_res$pred
+                    stacked_bayes_cor[m] <- stacked_res$cor
                   }
                 }
 
                 # ------------------------
-                # Merge all predictions
+                # Merge all stacked predictions
                 # ------------------------
                 all_preds <- c(stacked_preds_list, stacked_bayes_list)
                 for (i in seq_along(all_preds)) {
@@ -3793,19 +3745,23 @@ holostackGP <- function(
                     all_preds[[i]][[trait]] <- Y.raw[[trait]][match(all_preds[[i]]$Taxa, Y.raw$Taxa)]
                   }
                 }
+
                 pred_all <- Reduce(function(x, y) merge(x, y, by = "Taxa", all = TRUE), all_preds)
 
                 # ------------------------
-                # Final CV-aware stacked model
+                # Final stacked model across all predictions
                 # ------------------------
-                final_stack_result <- cv_stack_foldwise(pred_all, trait, fold_id)
+                final_stack_result <- cv_ridge_stack(pred_all, trait, fold_id)
 
+                # ------------------------
+                # Return results
+                # ------------------------
                 return(list(
-                  pred_all       = pred_all,
-                  pred_stack     = final_stack_result$pred_df,
-                  pred_stack_cor = final_stack_result$cor_val,
-                  base_cor       = stacked_preds_cor,
-                  bayes_cor      = stacked_bayes_cor
+                  pred_all = pred_all,                    # can write to disk
+                  pred_stack = final_stack_result$pred,   # CV-aware stacked predictions
+                  pred_stack_cor = final_stack_result$cor,
+                  base_cor = stacked_preds_cor,
+                  bayes_cor = stacked_bayes_cor
                 ))
               }
             }
