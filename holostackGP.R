@@ -3679,26 +3679,23 @@ holostackGP <- function(
               print("run MTME a false to generate predictions, which you can use for stacking in a separate R script")
             } else {
               # -----------------------------------------
-              # CV-aware Ridge Stacking with NA Imputation
+              # Function: CV-aware Ridge Stacking (robust)
               # -----------------------------------------
               cv_ridge_stack <- function(pred_df, trait_col, fold_id) {
 
-                if (!trait_col %in% colnames(pred_df)) {
-                  stop(paste("Trait column", trait_col, "not found in pred_df"))
-                }
+                # Check trait column exists
+                if (!trait_col %in% colnames(pred_df)) stop(paste("Trait column", trait_col, "not found"))
+                if (length(fold_id) != nrow(pred_df)) stop("fold_id length does not match number of rows")
 
-                if (length(fold_id) != nrow(pred_df)) {
-                  stop("fold_id length does not match number of rows in pred_df")
-                }
+                pred_stack <- rep(NA, nrow(pred_df))
 
-                pred_stack <- rep(NA_real_, nrow(pred_df))
-
-                # Impute missing values by column mean
+                # Function to impute missing values by column mean
                 impute_na <- function(X) {
-                  for (j in seq_len(ncol(X))) {
-                    if (any(is.na(X[, j]))) X[is.na(X[, j]), j] <- mean(X[, j], na.rm = TRUE)
-                  }
-                  X
+                  apply(X, 2, function(col) {
+                    if (all(is.na(col))) return(rep(0, length(col))) # fallback if entire column NA
+                    col[is.na(col)] <- mean(col, na.rm = TRUE)
+                    return(col)
+                  })
                 }
 
                 for (k in unique(fold_id)) {
@@ -3709,16 +3706,22 @@ holostackGP <- function(
                   y_train <- pred_df[[trait_col]][train_idx]
                   X_test  <- as.matrix(pred_df[test_idx, !(colnames(pred_df) %in% c("Taxa", trait_col)), drop = FALSE])
 
-                  # Skip fold if y_train is empty or all NA
-                  if (length(y_train) == 0 || all(is.na(y_train))) {
-                    warning(paste0("Skipping fold ", k, ": no valid y_train"))
-                    pred_stack[test_idx] <- NA
+                  # Only keep predictors with variance > 0
+                  var_idx <- apply(X_train, 2, var, na.rm = TRUE) > 0
+                  X_train <- X_train[, var_idx, drop = FALSE]
+                  X_test <- X_test[, colnames(X_train), drop = FALSE]
+
+                  # Skip fold if y_train empty or no valid predictors
+                  if (length(y_train) == 0 || all(is.na(y_train)) || ncol(X_train) == 0) {
+                    warning(paste("Skipping fold", k, ": no valid data"))
                     next
                   }
 
+                  # Impute missing values
                   X_train <- impute_na(X_train)
-                  X_test  <- impute_na(X_test)
+                  X_test <- impute_na(X_test)
 
+                  # Fallback to lm if only 1 predictor
                   if (ncol(X_train) < 2) {
                     fit <- lm(y_train ~ ., data = as.data.frame(X_train))
                     pred_stack[test_idx] <- as.numeric(predict(fit, newdata = as.data.frame(X_test)))
@@ -3728,8 +3731,14 @@ holostackGP <- function(
                   }
                 }
 
-                y_all <- as.numeric(pred_df[[trait_col]])
-                cor_val <- if (all(is.na(pred_stack))) NA else suppressWarnings(cor(y_all, pred_stack, use = "complete.obs"))
+                # Only compute correlation on rows with non-NA predictions
+                valid_idx <- !is.na(pred_stack)
+                if (sum(valid_idx) == 0) {
+                  cor_val <- NA
+                  warning("No valid predictions to compute correlation")
+                } else {
+                  cor_val <- cor(pred_df[[trait_col]][valid_idx], pred_stack[valid_idx], use = "complete.obs")
+                }
 
                 pred_df$stacked <- pred_stack
                 return(list(pred = pred_df, cor = cor_val))
@@ -3740,13 +3749,13 @@ holostackGP <- function(
               # -----------------------------------------
               prepare_base_preds <- function(pred_OOF, base_name, trait) {
                 if (!"Taxa" %in% colnames(pred_OOF)) pred_OOF$Taxa <- rownames(pred_OOF)
-                colnames(pred_OOF)[!(colnames(pred_OOF) %in% c("Taxa", trait))] <-
-                  paste0(base_name, "_", colnames(pred_OOF)[!(colnames(pred_OOF) %in% c("Taxa", trait))])
-                pred_OOF
+                pred_cols <- setdiff(colnames(pred_OOF), c("Taxa", trait))
+                colnames(pred_OOF)[colnames(pred_OOF) %in% pred_cols] <- paste0(base_name, "_", pred_cols)
+                return(pred_OOF)
               }
 
               # -----------------------------------------
-              # Base models
+              # Base models by gp_model
               # -----------------------------------------
               get_base_models <- function(gp_model) {
                 if (gp_model %in% c("GBLUP", "gBLUP", "gGBLUP")) return(c("GBLUP", "rrBLUP", "RKHS"))
@@ -3759,34 +3768,41 @@ holostackGP <- function(
               stack_predictions <- function(trait, gp_model, fold_id, Y.raw, pred_bayes_OOF = NULL, Additional_models = TRUE) {
 
                 stacked_preds_list <- list()
-                stacked_preds_cor  <- list()
+                stacked_preds_cor <- list()
 
-                # --- Base models ---
-                for (bm in get_base_models(gp_model)) {
+                # ------------------------
+                # Base models
+                # ------------------------
+                base_models <- get_base_models(gp_model)
+                for (bm in base_models) {
                   pred_OOF <- get(paste0("pred_", tolower(bm), "_OOF"))
                   pred_OOF <- prepare_base_preds(pred_OOF, bm, trait)
-                  pred_OOF[[trait]] <- Y.raw[[trait]][match(pred_OOF$Taxa, Y.raw$Taxa)]
+
+                  # Align trait values
+                  idx_match <- match(pred_OOF$Taxa, Y.raw$Taxa)
+                  pred_OOF[[trait]] <- Y.raw[[trait]][idx_match]
 
                   stacked_result <- cv_ridge_stack(pred_OOF, trait, fold_id)
                   stacked_preds_list[[bm]] <- stacked_result$pred
                   stacked_preds_cor[[bm]] <- stacked_result$cor
                 }
 
-                # --- Bayes models ---
+                # ------------------------
+                # Bayes models
+                # ------------------------
                 stacked_bayes_list <- list()
                 stacked_bayes_cor <- NULL
-
                 if (!is.null(Additional_models) && !is.null(pred_bayes_OOF)) {
                   bayes_methods <- c("BRR", "BayesA", "BayesB", "BayesC", "BL")
                   stacked_bayes_cor <- numeric(length(bayes_methods))
                   names(stacked_bayes_cor) <- bayes_methods
+
                   if (!"Taxa" %in% colnames(pred_bayes_OOF)) pred_bayes_OOF$Taxa <- rownames(pred_bayes_OOF)
 
                   for (m in bayes_methods) {
                     predA <- paste0(m, ".pred_A")
                     predD <- paste0(m, ".pred_D")
                     if (!all(c(predA, predD) %in% colnames(pred_bayes_OOF))) next
-
                     df_tmp <- pred_bayes_OOF[, c("Taxa", trait, predA, predD), drop = FALSE]
                     stacked_result <- cv_ridge_stack(df_tmp, trait, fold_id)
                     stacked_bayes_list[[m]] <- stacked_result$pred
@@ -3794,7 +3810,9 @@ holostackGP <- function(
                   }
                 }
 
-                # --- Merge all predictions safely ---
+                # ------------------------
+                # Merge all predictions safely
+                # ------------------------
                 all_preds <- c(stacked_preds_list, stacked_bayes_list)
                 for (i in seq_along(all_preds)) {
                   if (!trait %in% colnames(all_preds[[i]])) {
@@ -3802,21 +3820,21 @@ holostackGP <- function(
                   }
                 }
 
-                # --- Create pred_all for inspection ---
                 pred_all <- Reduce(function(x, y) merge(x, y, by = "Taxa", all = TRUE), all_preds)
 
-                # --- Final stacked model ---
+                # ------------------------
+                # Final stacked model
+                # ------------------------
                 final_stack_result <- cv_ridge_stack(pred_all, trait, fold_id)
 
                 return(list(
-                  pred_all       = pred_all,                # merged predictions
-                  pred_stack     = final_stack_result$pred, # final stacked OOF predictions
-                  pred_stack_cor = final_stack_result$cor,  # correlation of stacked predictions
-                  base_cor       = stacked_preds_cor,       # correlations for base models
-                  bayes_cor      = stacked_bayes_cor       # correlations for Bayes models
+                  pred_all = pred_all,
+                  pred_stack = final_stack_result$pred,
+                  pred_stack_cor = final_stack_result$cor,
+                  base_cor = stacked_preds_cor,
+                  bayes_cor = stacked_bayes_cor
                 ))
               }
-
             }
 
             # -----------------------------------------
