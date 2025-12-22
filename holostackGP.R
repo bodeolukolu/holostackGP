@@ -3784,53 +3784,52 @@ holostackGP <- function(
               }
             }
 
-            # -----------------------------------------
-            # Run CV-aware stacking workflow safely
-            # -----------------------------------------
+            # Assign row names in Y.raw from Taxa column
+            row.names(Y.raw) <- Y.raw$Taxa
+
+            # Run stacking workflow safely
             stack_result <- stack_predictions_cv(
               trait          = trait,
               gp_model       = gp_model,
-              fold_id        = fold_id,
               Y.raw          = Y.raw,
               pred_bayes_OOF = pred_bayes_OOF
             )
 
             # Extract results
-            pred_all       <- stack_result$pred_all        # CV-aware predictions for all GP methods
-            pred_stack     <- stack_result$pred_stack      # Final stacked predictions
-            pred_stack_cor <- stack_result$pred_stack_cor  # Correlation of stacked predictions with observed trait
-            base_cor       <- stack_result$base_cor        # Correlations for GBLUP, rrBLUP, RKHS
-            bayes_cor      <- stack_result$bayes_cor       # Correlations for Bayes models
+            pred_all       <- stack_result$pred_all      # all individual GP method predictions merged
+            pred_stack     <- stack_result$pred_stack    # final stacked prediction
+            pred_stack_cor <- stack_result$pred_stack_cor
+            base_cor       <- stack_result$base_cor      # correlations for base models (GBLUP, rrBLUP, RKHS)
+            bayes_cor      <- stack_result$bayes_cor     # correlations for Bayesian models (BRR, BayesA/B/C, BL)
 
             # ------------------------
-            # Example: storing correlations
+            # Store correlations in replication matrices
             # ------------------------
-            r.GBLUP  <- if ("GBLUP" %in% names(base_cor)) base_cor[["GBLUP"]] else NA
+            r.GBLUP <- if ("GBLUP" %in% names(base_cor)) base_cor[["GBLUP"]] else NA
             r.rrBLUP <- if ("rrBLUP" %in% names(base_cor)) base_cor[["rrBLUP"]] else NA
-            r.RKHS   <- if ("RKHS" %in% names(base_cor)) base_cor[["RKHS"]] else NA
+            r.RKHS  <- if ("RKHS" %in% names(base_cor)) base_cor[["RKHS"]] else NA
 
-            # Bayes correlations
             r.BRR    <- if (!is.null(bayes_cor) && "BRR" %in% names(bayes_cor)) bayes_cor["BRR"] else NA
             r.BayesA <- if (!is.null(bayes_cor) && "BayesA" %in% names(bayes_cor)) bayes_cor["BayesA"] else NA
             r.BayesB <- if (!is.null(bayes_cor) && "BayesB" %in% names(bayes_cor)) bayes_cor["BayesB"] else NA
             r.BayesC <- if (!is.null(bayes_cor) && "BayesC" %in% names(bayes_cor)) bayes_cor["BayesC"] else NA
             r.BayesL <- if (!is.null(bayes_cor) && "BL" %in% names(bayes_cor)) bayes_cor["BL"] else NA
 
-            # Final stacked correlation
             r.mStacked <- pred_stack_cor
 
             # ------------------------
-            # Store in replication matrices
+            # Store correlations in replication matrices
             # ------------------------
-            storage.GBLUP[rep, 1]  <- r.GBLUP
+            storage.GBLUP[rep, 1] <- r.GBLUP
             storage.rrBLUP[rep, 1] <- r.rrBLUP
-            storage.RKHS[rep, 1]   <- r.RKHS
-            storage.BRR[rep, 1]    <- r.BRR
+            storage.RKHS[rep, 1] <- r.RKHS
+            storage.BRR[rep, 1] <- r.BRR
             storage.BayesA[rep, 1] <- r.BayesA
             storage.BayesB[rep, 1] <- r.BayesB
             storage.BayesC[rep, 1] <- r.BayesC
             storage.BayesL[rep, 1] <- r.BayesL
             storage.mStacked[rep, 1] <- r.mStacked
+
 
             if(!exists("pop_data")){pop_data <- data.frame(matrix(nrow = 2, ncol = 0))}
             if (gwas_Gpred == TRUE) {
