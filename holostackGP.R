@@ -3809,7 +3809,6 @@ holostackGP <- function(
                   bayes_cor     = stacked_bayes_cor
                 ))
               }
-
             }
 
             # -----------------------------------------
