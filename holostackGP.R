@@ -3787,6 +3787,8 @@ holostackGP <- function(
                 for (bm in base_models) {
                   pred_OOF <- get(paste0("pred_", tolower(bm), "_OOF"))
                   pred_OOF <- prepare_base_preds(pred_OOF, bm, trait)
+                  pred_OOF[[trait]] <- Y.raw[[trait]][match(pred_OOF$Taxa, Y.raw$Taxa)]
+
                   stacked_result <- cv_ridge_stack(pred_OOF, trait, fold_id)
                   stacked_preds_list[[bm]] <- stacked_result$pred
                   stacked_preds_cor[[bm]] <- stacked_result$cor
