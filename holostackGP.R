@@ -3760,8 +3760,14 @@ holostackGP <- function(
                 ## 5. Safe correlation helper
                 ## -----------------------------
                 cor_safe <- function(a, b) {
-                  if (length(a) < 3) return(NA_real_)
-                  if (sd(a, na.rm = TRUE) == 0 || sd(b, na.rm = TRUE) == 0) return(NA_real_)
+                  if (length(a) < 3 || length(b) < 3) return(NA_real_)
+
+                  sa <- sd(a, na.rm = TRUE)
+                  sb <- sd(b, na.rm = TRUE)
+
+                  if (is.na(sa) || is.na(sb)) return(NA_real_)
+                  if (sa == 0 || sb == 0) return(NA_real_)
+
                   suppressWarnings(cor(a, b, use = "complete.obs"))
                 }
 
