@@ -3690,24 +3690,16 @@ holostackGP <- function(
                 pred_rrblup_OOF = NULL,
                 pred_rkhs_OOF  = NULL,
                 pred_bayes_OOF = NULL,
+                id_col = "Taxa",
                 alpha = 1
               ) {
                 gp_model <- match.arg(gp_model)
 
-                # ---------------------------------------------
-                # 1. Validate phenotype input
-                # ---------------------------------------------
-                if (!"Taxa" %in% colnames(Y.raw) && !"PlantID" %in% colnames(Y.raw)) {
-                  stop("Y.raw must contain a 'Taxa' or 'PlantID' column to set row.names")
-                }
-
-                # Create row.names from Taxa/PlantID if not set
-                if (is.null(row.names(Y.raw))) {
-                  if ("Taxa" %in% colnames(Y.raw)) {
-                    row.names(Y.raw) <- Y.raw$Taxa
-                  } else {
-                    row.names(Y.raw) <- Y.raw$PlantID
-                  }
+                ## -----------------------------
+                ## 0. Set row.names in Y.raw from Taxa / PlantID
+                ## -----------------------------
+                if (is.null(row.names(Y.raw)) && id_col %in% colnames(Y.raw)) {
+                  row.names(Y.raw) <- Y.raw[[id_col]]
                 }
 
                 if (!trait %in% colnames(Y.raw)) {
@@ -3717,9 +3709,9 @@ holostackGP <- function(
                 y_all <- Y.raw[[trait]]
                 names(y_all) <- row.names(Y.raw)
 
-                # ---------------------------------------------
-                # 2. Safe correlation helper
-                # ---------------------------------------------
+                ## -----------------------------
+                ## Helper: safe correlation
+                ## -----------------------------
                 cor_safe <- function(a, b) {
                   if (length(a) < 3 || length(b) < 3) return(NA_real_)
                   sa <- sd(a, na.rm = TRUE)
@@ -3728,9 +3720,9 @@ holostackGP <- function(
                   suppressWarnings(cor(a, b, use = "complete.obs"))
                 }
 
-                # ---------------------------------------------
-                # 3. Ridge stacking helper
-                # ---------------------------------------------
+                ## -----------------------------
+                ## Helper: ridge stacking
+                ## -----------------------------
                 ridge_stack <- function(X, y, alpha = 1) {
                   if (is.null(ncol(X))) X <- as.matrix(X)
                   keep <- apply(X, 2, function(z) sd(z, na.rm = TRUE) > 0)
@@ -3748,36 +3740,28 @@ holostackGP <- function(
                   as.numeric(mean(y, na.rm = TRUE) + Xc %*% beta)
                 }
 
-                # ---------------------------------------------
-                # 4. Collect OOF predictions for this replication
-                # ---------------------------------------------
+                ## -----------------------------
+                ## 1. Collect OOF predictions
+                ## -----------------------------
                 oof_list <- list(
                   GBLUP  = pred_gblup_OOF,
                   rrBLUP = pred_rrblup_OOF,
                   RKHS   = pred_rkhs_OOF,
                   Bayes  = pred_bayes_OOF
                 )
-                oof_list <- Filter(Negate(is.null), oof_list)
-                if (length(oof_list) == 0) {
-                  warning("No valid OOF predictions provided")
-                  return(list(
-                    pred_all       = NULL,
-                    pred_stack     = rep(NA_real_, length(y_all)),
-                    pred_stack_cor = NA_real_,
-                    base_cor       = NA,
-                    bayes_cor      = NA,
-                    lambda         = NA_real_
-                  ))
-                }
 
-                # Align IDs with phenotype
+                oof_list <- Filter(Negate(is.null), oof_list)
+
+                ## -----------------------------
+                ## 2. Align IDs
+                ## -----------------------------
                 common_ids <- Reduce(intersect, c(lapply(oof_list, row.names), list(names(y_all))))
                 if (length(common_ids) == 0) stop("No overlapping IDs between Y.raw and OOF predictions")
                 y <- y_all[common_ids]
 
-                # ---------------------------------------------
-                # 5. Step 1: stack across kernels within each GP method
-                # ---------------------------------------------
+                ## -----------------------------
+                ## 3. Step 1: stack across kernels within each GP method
+                ## -----------------------------
                 method_preds <- list()
                 for (m in names(oof_list)) {
                   df <- oof_list[[m]][common_ids, , drop = FALSE]
@@ -3788,9 +3772,9 @@ holostackGP <- function(
                   }
                 }
 
-                # ---------------------------------------------
-                # 6. Compute base correlations (kernel-aware)
-                # ---------------------------------------------
+                ## -----------------------------
+                ## 4. Base correlations per GP method
+                ## -----------------------------
                 base_cor <- sapply(c("GBLUP","rrBLUP","RKHS"), function(x) {
                   if (x %in% names(method_preds)) cor_safe(y, method_preds[[x]]) else NA_real_
                 })
@@ -3800,19 +3784,21 @@ holostackGP <- function(
                          function(x) cor_safe(y, method_preds[[x]]))
                 } else NULL
 
-                # ---------------------------------------------
-                # 7. Step 2: stack across GP methods
-                # ---------------------------------------------
+                ## -----------------------------
+                ## 5. Step 2: stack across GP methods
+                ## -----------------------------
                 X2 <- do.call(cbind, method_preds)
                 pred_stack <- ridge_stack(X2, y, alpha)
                 pred_stack_cor <- cor_safe(y, pred_stack)
 
-                # Combine all OOF predictions (raw) for reference
+                ## -----------------------------
+                ## 6. All raw OOF predictions (for reference)
+                ## -----------------------------
                 pred_all <- do.call(cbind, oof_list)
 
-                # ---------------------------------------------
-                # 8. Return results for this replication
-                # ---------------------------------------------
+                ## -----------------------------
+                ## 7. Return
+                ## -----------------------------
                 return(list(
                   pred_all       = pred_all,
                   pred_stack     = pred_stack,
@@ -3822,7 +3808,6 @@ holostackGP <- function(
                   lambda         = alpha * var(y, na.rm = TRUE)
                 ))
               }
-
 
             # Assign row names in Y.raw from Taxa column
             row.names(Y.raw) <- Y.raw$Taxa
