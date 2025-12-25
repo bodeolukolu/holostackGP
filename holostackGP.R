@@ -3681,13 +3681,17 @@ holostackGP <- function(
               # ---------------------------------------------
               stack_predictions_cv <- function(
                 trait,
-                gp_model,
+                gp_model = c("gBLUP", "GBLUP", "gGBLUP"),
                 Y.raw,
                 pred_gblup_OOF = NULL,
                 pred_rrblup_OOF = NULL,
                 pred_rkhs_OOF  = NULL,
-                pred_bayes_OOF = NULL
+                pred_bayes_OOF = NULL,
+                option = c(1, 2),
+                alpha = 1
               ) {
+
+                option <- match.arg(option)
 
                 ## -----------------------------
                 ## 1. Validate phenotype input
@@ -3701,6 +3705,7 @@ holostackGP <- function(
                 }
 
                 y_all <- Y.raw[[trait]]
+                names(y_all) <- row.names(Y.raw)
 
                 ## -----------------------------
                 ## 2. Collect OOF predictions
@@ -3719,20 +3724,34 @@ holostackGP <- function(
 
                 if (length(pred_list) == 0) {
                   warning("No valid OOF predictions provided")
-
                   return(list(
                     pred_all       = NULL,
                     pred_stack     = rep(NA_real_, length(y_all)),
                     pred_stack_cor = NA_real_,
-                    base_cor       = setNames(rep(NA_real_, 3), c("GBLUP","rrBLUP","RKHS")),
-                    bayes_cor      = setNames(rep(NA_real_, 5), c("BRR","BayesA","BayesB","BayesC","BL"))
+                    base_cor       = NA,
+                    bayes_cor      = NA
                   ))
                 }
 
                 ## -----------------------------
-                ## 3. Merge OOF predictions
+                ## 3. Build stacking matrix
                 ## -----------------------------
-                pred_all <- do.call(cbind, pred_list)
+                if (option == "1") {
+
+                  ## Use all OOF columns directly
+                  pred_all <- do.call(cbind, pred_list)
+
+                } else {
+
+                  ## Collapse each method to its row mean
+                  pred_all <- do.call(
+                    cbind,
+                    lapply(pred_list, function(p) {
+                      rowMeans(p, na.rm = TRUE)
+                    })
+                  )
+                  colnames(pred_all) <- names(pred_list)
+                }
 
                 if (is.null(row.names(pred_all))) {
                   stop("OOF prediction tables must have row.names")
@@ -3741,34 +3760,34 @@ holostackGP <- function(
                 ## -----------------------------
                 ## 4. Align with phenotypes
                 ## -----------------------------
-                common_ids <- intersect(row.names(pred_all), row.names(Y.raw))
+                common_ids <- intersect(row.names(pred_all), names(y_all))
 
                 if (length(common_ids) == 0) {
                   stop("No overlapping IDs between Y.raw and OOF predictions")
                 }
 
                 y <- y_all[common_ids]
-                X <- pred_all[common_ids, , drop = FALSE]
+                X <- as.matrix(pred_all[common_ids, , drop = FALSE])
 
                 ## -----------------------------
-                ## 5. Compute base correlations
+                ## 5. Base correlations
                 ## -----------------------------
                 cor_safe <- function(a, b) {
-                  if (all(is.na(a)) || all(is.na(b))) return(NA_real_)
+                  if (length(a) < 3 || sd(a, na.rm = TRUE) == 0) return(NA_real_)
                   suppressWarnings(cor(a, b, use = "complete.obs"))
                 }
 
                 base_cor <- c(
-                  GBLUP = if ("GBLUP" %in% names(pred_list))
+                  GBLUP = if (!is.null(pred_gblup_OOF))
                     cor_safe(y, rowMeans(pred_gblup_OOF[common_ids, , drop = FALSE], na.rm = TRUE)) else NA,
-                  rrBLUP = if ("rrBLUP" %in% names(pred_list))
+                  rrBLUP = if (!is.null(pred_rrblup_OOF))
                     cor_safe(y, rowMeans(pred_rrblup_OOF[common_ids, , drop = FALSE], na.rm = TRUE)) else NA,
-                  RKHS  = if ("RKHS" %in% names(pred_list))
+                  RKHS = if (!is.null(pred_rkhs_OOF))
                     cor_safe(y, rowMeans(pred_rkhs_OOF[common_ids, , drop = FALSE], na.rm = TRUE)) else NA
                 )
 
                 bayes_cor <- NULL
-                if ("Bayes" %in% names(pred_list)) {
+                if (!is.null(pred_bayes_OOF)) {
                   bayes_cor <- sapply(
                     pred_bayes_OOF,
                     function(p) cor_safe(y, p[common_ids])
@@ -3776,19 +3795,16 @@ holostackGP <- function(
                 }
 
                 ## -----------------------------
-                ## 6. Prepare stacking matrix
+                ## 6. Clean predictors
                 ## -----------------------------
-                keep_cols <- vapply(
-                  X,
-                  function(z) !all(is.na(z)) && sd(z, na.rm = TRUE) > 0,
-                  logical(1)
-                )
+                keep <- apply(X, 2, function(z) {
+                  !all(is.na(z)) && sd(z, na.rm = TRUE) > 0
+                })
 
-                X <- X[, keep_cols, drop = FALSE]
+                X <- X[, keep, drop = FALSE]
 
                 if (ncol(X) == 0) {
                   warning("No valid predictors for stacking")
-
                   return(list(
                     pred_all       = pred_all,
                     pred_stack     = rep(NA_real_, length(y)),
@@ -3799,18 +3815,23 @@ holostackGP <- function(
                 }
 
                 ## -----------------------------
-                ## 7. Fit stacking model
+                ## 7. Ridge stacking (closed form)
                 ## -----------------------------
-                df_stack <- data.frame(y = y, X)
+                y_centered <- y - mean(y, na.rm = TRUE)
+                X_centered <- scale(X, center = TRUE, scale = FALSE)
 
-                fit <- tryCatch(
-                  lm(y ~ . , data = df_stack),
+                lambda <- alpha * var(y, na.rm = TRUE)
+
+                XtX <- crossprod(X_centered)
+                p <- ncol(X_centered)
+
+                beta <- tryCatch(
+                  solve(XtX + diag(lambda, p), crossprod(X_centered, y_centered)),
                   error = function(e) NULL
                 )
 
-                if (is.null(fit)) {
-                  warning("Stacking model failed")
-
+                if (is.null(beta)) {
+                  warning("Ridge stacking failed")
                   return(list(
                     pred_all       = pred_all,
                     pred_stack     = rep(NA_real_, length(y)),
@@ -3820,7 +3841,10 @@ holostackGP <- function(
                   ))
                 }
 
-                pred_stack <- as.numeric(predict(fit, newdata = df_stack))
+                intercept <- mean(y, na.rm = TRUE)
+                pred_stack <- as.numeric(intercept + X_centered %*% beta)
+                names(pred_stack) <- common_ids
+
                 pred_stack_cor <- cor_safe(y, pred_stack)
 
                 ## -----------------------------
@@ -3831,9 +3855,12 @@ holostackGP <- function(
                   pred_stack     = pred_stack,
                   pred_stack_cor = pred_stack_cor,
                   base_cor       = base_cor,
-                  bayes_cor      = bayes_cor
+                  bayes_cor      = bayes_cor,
+                  lambda         = lambda,
+                  option         = option
                 ))
               }
+
             }
 
             # Assign row names in Y.raw from Taxa column
