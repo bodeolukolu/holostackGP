@@ -3679,101 +3679,153 @@ holostackGP <- function(
               print("run MTME a false to generate predictions, which you can use for stacking in a separate R script")
             } else {
               # ---------------------------------------------
-              # Reusable CV-aware stacking function
-              # ---------------------------------------------
-              stack_predictions_cv <- function(trait, gp_model, Y.raw,
-                                               pred_gblup_OOF = NULL, pred_rrblup_OOF = NULL,
-                                               pred_rkhs_OOF  = NULL,pred_bayes_OOF = NULL) {
-                # Make sure Y.raw has proper rownames
-                if (!"IID" %in% colnames(Y.raw)) {
-                  Y.raw$IID <- paste(Y.raw$Taxa, Y.raw$PlantID, sep = "_")
-                  rownames(Y.raw) <- Y.raw$IID
+              stack_predictions_cv <- function(
+                trait,
+                gp_model,
+                Y.raw,
+                pred_gblup_OOF = NULL,
+                pred_rrblup_OOF = NULL,
+                pred_rkhs_OOF  = NULL,
+                pred_bayes_OOF = NULL
+              ) {
+
+                ## -----------------------------
+                ## 1. Validate phenotype input
+                ## -----------------------------
+                if (is.null(row.names(Y.raw))) {
+                  stop("Y.raw must have row.names set to Taxa / PlantID")
                 }
 
-                # Helper: merge phenotype with OOF safely
-                safe_merge <- function(OOF) {
-                  if (is.null(OOF) || ncol(OOF) == 0) return(NULL)
-                  merge(Y.raw, OOF, by.x = "IID", by.y = "row.names", all.y = TRUE)
+                if (!trait %in% colnames(Y.raw)) {
+                  stop(paste("Trait", trait, "not found in Y.raw"))
                 }
 
-                # Helper: fit stacking lm for given columns
-                fit_stack <- function(df, pred_cols, resp) {
-                  if (length(pred_cols) == 0) return(rep(NA_real_, nrow(df)))
-                  formula <- as.formula(paste(resp, "~", paste(pred_cols, collapse = " + ")))
-                  predict(lm(formula, data = df), newdata = df)
+                y_all <- Y.raw[[trait]]
+
+                ## -----------------------------
+                ## 2. Collect OOF predictions
+                ## -----------------------------
+                pred_list <- list(
+                  GBLUP = pred_gblup_OOF,
+                  rrBLUP = pred_rrblup_OOF,
+                  RKHS  = pred_rkhs_OOF,
+                  Bayes = pred_bayes_OOF
+                )
+
+                pred_list <- Filter(
+                  function(x) is.data.frame(x) && nrow(x) > 0 && ncol(x) > 0,
+                  pred_list
+                )
+
+                if (length(pred_list) == 0) {
+                  warning("No valid OOF predictions provided")
+
+                  return(list(
+                    pred_all       = NULL,
+                    pred_stack     = rep(NA_real_, length(y_all)),
+                    pred_stack_cor = NA_real_,
+                    base_cor       = setNames(rep(NA_real_, 3), c("GBLUP","rrBLUP","RKHS")),
+                    bayes_cor      = setNames(rep(NA_real_, 5), c("BRR","BayesA","BayesB","BayesC","BL"))
+                  ))
                 }
 
-                # -------------------------------
-                # Stack within each GP method
-                # -------------------------------
-                # GBLUP
-                pred_gblup_df <- safe_merge(pred_gblup_OOF)
-                gblup_cols <- setdiff(colnames(pred_gblup_df), c("IID","Taxa","PlantID",trait))
-                pred_gblup <- fit_stack(pred_gblup_df, gblup_cols, trait)
-                pred_gblup_df$GBLUP <- pred_gblup
-                pred_gblup_cor <- if (!is.null(pred_gblup_df)) cor(pred_gblup_df[[trait]], pred_gblup_df$GBLUP, use = "complete.obs") else NA
+                ## -----------------------------
+                ## 3. Merge OOF predictions
+                ## -----------------------------
+                pred_all <- do.call(cbind, pred_list)
 
-                # rrBLUP
-                pred_rrblup_df <- safe_merge(pred_rrblup_OOF)
-                rrblup_cols <- setdiff(colnames(pred_rrblup_df), c("IID","Taxa","PlantID",trait))
-                pred_rrblup <- fit_stack(pred_rrblup_df, rrblup_cols, trait)
-                pred_rrblup_df$rrBLUP <- pred_rrblup
-                pred_rrblup_cor <- if (!is.null(pred_rrblup_df)) cor(pred_rrblup_df[[trait]], pred_rrblup_df$rrBLUP, use = "complete.obs") else NA
-
-                # RKHS
-                pred_rkhs_df <- safe_merge(pred_rkhs_OOF)
-                rkhs_cols <- setdiff(colnames(pred_rkhs_df), c("IID","Taxa","PlantID",trait))
-                pred_rkhs <- fit_stack(pred_rkhs_df, rkhs_cols, trait)
-                pred_rkhs_df$RKHS <- pred_rkhs
-                pred_rkhs_cor <- if (!is.null(pred_rkhs_df)) cor(pred_rkhs_df[[trait]], pred_rkhs_df$RKHS, use = "complete.obs") else NA
-
-                # Bayes models
-                pred_bayes_df <- safe_merge(pred_bayes_OOF)
-                bayes_methods <- c("BRR","BayesA","BayesB","BayesC","BL")
-                bayes_cor <- setNames(rep(NA_real_, length(bayes_methods)), bayes_methods)
-                stack_pred_list <- list()
-                if (!is.null(pred_bayes_df)) {
-                  for (m in bayes_methods) {
-                    predA <- paste0(m, ".pred_A")
-                    predD <- paste0(m, ".pred_D")
-                    predM <- paste0(m, ".pred_M")
-                    cols_m <- c(predA, predD, intersect(predM, colnames(pred_bayes_df)))
-                    cols_m <- cols_m[cols_m %in% colnames(pred_bayes_df)]
-                    pred_stack <- fit_stack(pred_bayes_df, cols_m, trait)
-                    colname_out <- paste0("pred_", m)
-                    pred_bayes_df[[colname_out]] <- pred_stack
-                    if (length(cols_m) > 0) {
-                      bayes_cor[m] <- cor(pred_bayes_df[[trait]], pred_stack, use = "complete.obs")
-                    }
-                    stack_pred_list[[m]] <- pred_bayes_df[,c("IID","Taxa",trait,colname_out)]
-                  }
+                if (is.null(row.names(pred_all))) {
+                  stop("OOF prediction tables must have row.names")
                 }
 
-                # -------------------------------
-                # Stack across all GP methods
-                # -------------------------------
-                predall_list <- list(pred_gblup_df[,c("IID","Taxa",trait,"GBLUP")],
-                                     pred_rrblup_df[,c("IID","Taxa",trait,"rrBLUP")],
-                                     pred_rkhs_df[,c("IID","Taxa",trait,"RKHS")])
+                ## -----------------------------
+                ## 4. Align with phenotypes
+                ## -----------------------------
+                common_ids <- intersect(row.names(pred_all), row.names(Y.raw))
 
-                for (m in bayes_methods) {
-                  if (!is.null(stack_pred_list[[m]])) predall_list[[length(predall_list)+1]] <- stack_pred_list[[m]]
+                if (length(common_ids) == 0) {
+                  stop("No overlapping IDs between Y.raw and OOF predictions")
                 }
 
-                pred_all <- Reduce(function(x,y) merge(x,y,by=c("IID","Taxa",trait),all=TRUE), predall_list)
-                stack_cols <- setdiff(colnames(pred_all), c("IID","Taxa",trait))
-                pred_stack <- fit_stack(pred_all, stack_cols, trait)
-                pred_all$stacked <- pred_stack
-                pred_stack_cor <- if (!is.null(pred_all)) cor(pred_all[[trait]], pred_all$stacked, use = "complete.obs") else NA
+                y <- y_all[common_ids]
+                X <- pred_all[common_ids, , drop = FALSE]
 
-                # -------------------------------
-                # Base GP correlations
-                # -------------------------------
-                base_cor <- c(GBLUP=pred_gblup_cor, rrBLUP=pred_rrblup_cor, RKHS=pred_rkhs_cor)
+                ## -----------------------------
+                ## 5. Compute base correlations
+                ## -----------------------------
+                cor_safe <- function(a, b) {
+                  if (all(is.na(a)) || all(is.na(b))) return(NA_real_)
+                  suppressWarnings(cor(a, b, use = "complete.obs"))
+                }
 
-                # -------------------------------
-                # Return all results
-                # -------------------------------
+                base_cor <- c(
+                  GBLUP = if ("GBLUP" %in% names(pred_list))
+                    cor_safe(y, rowMeans(pred_gblup_OOF[common_ids, , drop = FALSE], na.rm = TRUE)) else NA,
+                  rrBLUP = if ("rrBLUP" %in% names(pred_list))
+                    cor_safe(y, rowMeans(pred_rrblup_OOF[common_ids, , drop = FALSE], na.rm = TRUE)) else NA,
+                  RKHS  = if ("RKHS" %in% names(pred_list))
+                    cor_safe(y, rowMeans(pred_rkhs_OOF[common_ids, , drop = FALSE], na.rm = TRUE)) else NA
+                )
+
+                bayes_cor <- NULL
+                if ("Bayes" %in% names(pred_list)) {
+                  bayes_cor <- sapply(
+                    pred_bayes_OOF,
+                    function(p) cor_safe(y, p[common_ids])
+                  )
+                }
+
+                ## -----------------------------
+                ## 6. Prepare stacking matrix
+                ## -----------------------------
+                keep_cols <- vapply(
+                  X,
+                  function(z) !all(is.na(z)) && sd(z, na.rm = TRUE) > 0,
+                  logical(1)
+                )
+
+                X <- X[, keep_cols, drop = FALSE]
+
+                if (ncol(X) == 0) {
+                  warning("No valid predictors for stacking")
+
+                  return(list(
+                    pred_all       = pred_all,
+                    pred_stack     = rep(NA_real_, length(y)),
+                    pred_stack_cor = NA_real_,
+                    base_cor       = base_cor,
+                    bayes_cor      = bayes_cor
+                  ))
+                }
+
+                ## -----------------------------
+                ## 7. Fit stacking model
+                ## -----------------------------
+                df_stack <- data.frame(y = y, X)
+
+                fit <- tryCatch(
+                  lm(y ~ . , data = df_stack),
+                  error = function(e) NULL
+                )
+
+                if (is.null(fit)) {
+                  warning("Stacking model failed")
+
+                  return(list(
+                    pred_all       = pred_all,
+                    pred_stack     = rep(NA_real_, length(y)),
+                    pred_stack_cor = NA_real_,
+                    base_cor       = base_cor,
+                    bayes_cor      = bayes_cor
+                  ))
+                }
+
+                pred_stack <- as.numeric(predict(fit, newdata = df_stack))
+                pred_stack_cor <- cor_safe(y, pred_stack)
+
+                ## -----------------------------
+                ## 8. Return
+                ## -----------------------------
                 return(list(
                   pred_all       = pred_all,
                   pred_stack     = pred_stack,
