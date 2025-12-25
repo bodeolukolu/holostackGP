@@ -3774,14 +3774,38 @@ holostackGP <- function(
                 ## -----------------------------
                 ## 6. Base model correlations
                 ## -----------------------------
-                base_cor <- c(
-                  GBLUP = if (!is.null(pred_gblup_OOF))
-                    cor_safe(y, rowMeans(pred_gblup_OOF[common_ids, , drop = FALSE], na.rm = TRUE)) else NA,
-                  rrBLUP = if (!is.null(pred_rrblup_OOF))
-                    cor_safe(y, rowMeans(pred_rrblup_OOF[common_ids, , drop = FALSE], na.rm = TRUE)) else NA,
-                  RKHS = if (!is.null(pred_rkhs_OOF))
-                    cor_safe(y, rowMeans(pred_rkhs_OOF[common_ids, , drop = FALSE], na.rm = TRUE)) else NA
-                )
+                ## -----------------------------
+                ## 6. Base model correlations (kernel-aware)
+                ## -----------------------------
+                base_cor <- c(GBLUP = NA, rrBLUP = NA, RKHS = NA)
+
+                if (!is.null(pred_gblup_OOF)) {
+                  cor_vec <- apply(
+                    pred_gblup_OOF[common_ids, , drop = FALSE],
+                    2,
+                    function(p) cor_safe(y, p)
+                  )
+                  base_cor["GBLUP"] <- mean(cor_vec, na.rm = TRUE)
+                }
+
+                if (!is.null(pred_rrblup_OOF)) {
+                  cor_vec <- apply(
+                    pred_rrblup_OOF[common_ids, , drop = FALSE],
+                    2,
+                    function(p) cor_safe(y, p)
+                  )
+                  base_cor["rrBLUP"] <- mean(cor_vec, na.rm = TRUE)
+                }
+
+                if (!is.null(pred_rkhs_OOF)) {
+                  cor_vec <- apply(
+                    pred_rkhs_OOF[common_ids, , drop = FALSE],
+                    2,
+                    function(p) cor_safe(y, p)
+                  )
+                  base_cor["RKHS"] <- mean(cor_vec, na.rm = TRUE)
+                }
+
 
                 bayes_cor <- NULL
                 if (!is.null(pred_bayes_OOF)) {
