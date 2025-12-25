@@ -1,10 +1,10 @@
 
 # Introduction
-This repository provides a flexible and extensible R framework for genomic prediction, integrating multiple statistical and machine-learning models with multi-kernel (multi-omic) data. It is designed for research in quantitative genetics, plant and animal breeding, multi-omic modeling, and genomic-enabled predictions.
+This repository provides a flexible and extensible R framework for MTME-inspired genomic prediction, integrating multiple statistical and machine-learning models with multi-kernel (multi-omic, full epistatic interactions and GxExM) data. It is designed for research in quantitative genetics, plant and animal breeding, multi-omic modeling, and genomic-enabled predictions.
 
-The pipeline implements a broad suite of genomic prediction models (GBLUP, rrBLUP, RKHS, BayesA, BayesB, BayesC, BayesL, and BRR) and combines them using a stacked ensemble. By integrating models with distinct assumptions about marker effects (linear, nonlinear, shrinkage-based, or mixture priors), the stacking approach leverages complementary patterns across learners, producing more robust and often more accurate predictions. It also models additiv and non-additive effects, including dominance, epistatic, and genome-by-metagenome interacts to improve predictive ability.
+The pipeline implements a broad suite of genomic prediction models (GBLUP, rrBLUP, RKHS, BayesA, BayesB, BayesC, BayesL, and BRR) and combines them using a stacked ensemble. By integrating models with distinct assumptions about marker effects (linear, nonlinear, shrinkage-based, or mixture priors), the stacking approach leverages complementary patterns across learners, producing more robust and often more accurate predictions. It also models additive and non-additive effects, including dominance, epistatic, and genome-by-metagenome interacts to improve predictive ability. Multi-trait and multi-environment (MTME)-inspired genomic prediction is implemented by model stacking (bayesian, elastic net, lasso, linear and ridge stackigng methods)
 
-In addition, the framework supports multi-kernel integration, allowing users to incorporate genomic relationship matrices, microbiome/metagenome kernels, environmental similarity matrices, and other omic-based kernels. Any of the kernels can be run independently or in combination.
+In addition, the framework supports multi-kernel integration, allowing users to incorporate genomic relationship matrices, microbiome/metagenome kernels, and other omic-based kernels. Any of the kernels can be run independently or in combination.
 
 For questions, bugs, and suggestions, please contact bolukolu@gmail.com.
 
@@ -41,6 +41,7 @@ On unix/Linux, the analysis can also be submitted as a batch file using batch_ru
 - parallel
 - rrBLUP
 - BGLR
+
 
 
 ## Select Article Referencing holostackGP
