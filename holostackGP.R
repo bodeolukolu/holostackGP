@@ -3679,7 +3679,7 @@ holostackGP <- function(
               print("run MTME a false to generate predictions, which you can use for stacking in a separate R script")
             } else {
               # ---------------------------------------------
-              # Two-step ridge stacking for multi-kernel, multi-GP predictions
+              # Two-step Elastic Net stacking for multi-kernel, multi-GP predictions
               # ---------------------------------------------
               stack_predictions_cv <- function(
                 trait,
@@ -3690,66 +3690,49 @@ holostackGP <- function(
                 pred_rkhs_OOF  = NULL,
                 pred_bayes_OOF = NULL,
                 id_col = "Taxa",
-                alpha = 1,
+                alpha = 0.5,       # Elastic net mixing parameter
                 seed = 123
               ) {
-
                 set.seed(seed)
                 gp_model <- match.arg(gp_model)
 
                 ## -----------------------------
                 ## 1. Prepare phenotype
                 ## -----------------------------
-                if (!id_col %in% colnames(Y.raw))
-                  stop("Y.raw must contain ID column: ", id_col)
-
+                if (!id_col %in% colnames(Y.raw)) stop("Y.raw must contain ID column: ", id_col)
                 rownames(Y.raw) <- Y.raw[[id_col]]
-
-                if (!trait %in% colnames(Y.raw))
-                  stop("Trait not found in Y.raw: ", trait)
-
+                if (!trait %in% colnames(Y.raw)) stop("Trait not found in Y.raw: ", trait)
                 y_all <- Y.raw[[trait]]
                 names(y_all) <- rownames(Y.raw)
 
                 ## -----------------------------
-                ## 2. Utilities
+                ## 2. Safe correlation
                 ## -----------------------------
                 cor_safe <- function(a, b) {
                   ok <- complete.cases(a, b)
                   if (sum(ok) < 5) return(NA_real_)
-                  if (sd(a[ok], na.rm = TRUE) == 0 ||
-                      sd(b[ok], na.rm = TRUE) == 0) return(NA_real_)
+                  if (sd(a[ok], na.rm = TRUE) == 0 || sd(b[ok], na.rm = TRUE) == 0) return(NA_real_)
                   cor(a[ok], b[ok])
                 }
 
-                ridge_stack <- function(X, y) {
+                ## -----------------------------
+                ## 3. Elastic net stacking function
+                ## -----------------------------
+                enet_stack <- function(X, y, alpha = 0.5) {
                   X <- as.matrix(X)
-
-                  keep <- apply(X, 2, function(z) sd(z, na.rm = TRUE) > 0)
-                  if (!any(keep)) return(rep(NA_real_, length(y)))
-
-                  X <- X[, keep, drop = FALSE]
-
                   ok <- complete.cases(X, y)
                   if (sum(ok) < 5) return(rep(NA_real_, length(y)))
-
-                  Xc <- scale(X[ok, , drop = FALSE], center = TRUE, scale = FALSE)
-                  yc <- y[ok] - mean(y[ok])
-
-                  lambda <- alpha * var(y[ok], na.rm = TRUE)
-
-                  beta <- tryCatch(
-                    solve(crossprod(Xc) + diag(lambda, ncol(Xc)), crossprod(Xc, yc)),
-                    error = function(e) NULL
-                  )
-
+                  Xc <- scale(X[ok, , drop = FALSE])
+                  yc <- y[ok]
+                  fit <- glmnet::cv.glmnet(Xc, yc, alpha = alpha, standardize = FALSE, intercept = TRUE)
                   yhat <- rep(NA_real_, length(y))
-                  if (!is.null(beta))
-                    yhat[ok] <- mean(y[ok]) + Xc %*% beta
-
+                  yhat[ok] <- as.numeric(predict(fit, Xc, s = "lambda.min"))
                   yhat
                 }
 
+                ## -----------------------------
+                ## 4. Parse Bayes OOF columns
+                ## -----------------------------
                 parse_bayes_cols <- function(cols) {
                   do.call(
                     rbind,
@@ -3766,78 +3749,61 @@ holostackGP <- function(
                 }
 
                 ## -----------------------------
-                ## 3. Collect OOF inputs
+                ## 5. Collect OOF predictions
                 ## -----------------------------
-                oof_raw <- list(
+                oof_raw <- Filter(Negate(is.null), list(
                   GBLUP  = pred_gblup_OOF,
                   rrBLUP = pred_rrblup_OOF,
                   RKHS   = pred_rkhs_OOF
-                )
-
-                oof_raw <- Filter(Negate(is.null), oof_raw)
+                ))
 
                 if (!is.null(pred_bayes_OOF)) {
-
                   bayes_meta <- parse_bayes_cols(colnames(pred_bayes_OOF))
                   bayes_methods <- unique(bayes_meta$method)
-
                   for (m in bayes_methods) {
                     cols <- bayes_meta$col[bayes_meta$method == m]
                     oof_raw[[m]] <- pred_bayes_OOF[, cols, drop = FALSE]
                   }
                 }
 
-                if (length(oof_raw) == 0)
-                  stop("No OOF predictions supplied")
+                if (length(oof_raw) == 0) stop("No OOF predictions supplied")
 
                 ## -----------------------------
-                ## 4. Align IDs
+                ## 6. Align IDs
                 ## -----------------------------
-                common_ids <- Reduce(
-                  intersect,
-                  c(lapply(oof_raw, rownames), list(names(y_all)))
-                )
-
-                if (length(common_ids) < 5)
-                  stop("Insufficient overlap between phenotype and OOF IDs")
-
+                common_ids <- Reduce(intersect, c(lapply(oof_raw, rownames), list(names(y_all))))
+                if (length(common_ids) < 5) stop("Insufficient overlap between phenotype and OOF IDs")
                 y <- y_all[common_ids]
 
                 ## -----------------------------
-                ## 5. Stack-1: within each method
+                ## 7. Stage-1: stack within each method (kernel stacking)
                 ## -----------------------------
                 method_preds <- list()
-
                 for (m in names(oof_raw)) {
-
                   X <- oof_raw[[m]][common_ids, , drop = FALSE]
-
                   if (ncol(X) == 1) {
                     yhat <- as.numeric(X[, 1])
                   } else {
-                    yhat <- ridge_stack(X, y)
+                    yhat <- enet_stack(X, y, alpha = alpha)
                   }
-
                   names(yhat) <- common_ids
                   method_preds[[m]] <- yhat
                 }
 
                 ## -----------------------------
-                ## 6. Predictive ability (per method)
+                ## 8. Stage-1 PA per method
                 ## -----------------------------
-                method_cor <- sapply(method_preds, function(p)
-                  cor_safe(y, p)
-                )
+                method_cor <- sapply(method_preds, function(p) cor_safe(y, p))
 
                 ## -----------------------------
-                ## 7. Stack-2: across all methods
+                ## 9. Stage-2: stack across methods (GP-method stacking)
                 ## -----------------------------
                 X2 <- do.call(cbind, method_preds)
-                pred_stack <- ridge_stack(X2, y)
+                pred_stack <- enet_stack(X2, y, alpha = alpha)
                 pred_stack_cor <- cor_safe(y, pred_stack)
 
                 ## -----------------------------
-                ## 8. Return
+                ## 10. Return
                 ## -----------------------------
                 list(
                   pred_stack        = pred_stack,
@@ -3848,17 +3814,16 @@ holostackGP <- function(
                 )
               }
 
-
               stack_result <- stack_predictions_cv(
-                trait            = trait,
-                gp_model         = gp_model,
-                Y.raw            = Y.raw,
-                pred_gblup_OOF   = pred_gblup_OOF,
-                pred_rrblup_OOF  = pred_rrblup_OOF,
-                pred_rkhs_OOF    = pred_rkhs_OOF,
-                pred_bayes_OOF   = pred_bayes_OOF,
-                alpha = 1,
-                seed = 67
+                trait = trait,
+                gp_model = gp_model,
+                Y.raw = Y.raw,
+                pred_gblup_OOF = pred_gblup_OOF,
+                pred_rrblup_OOF = pred_rrblup_OOF,
+                pred_rkhs_OOF = pred_rkhs_OOF,
+                pred_bayes_OOF = pred_bayes_OOF,
+                alpha = 0.5,
+                seed = 123
               )
           }
 
