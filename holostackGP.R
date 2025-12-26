@@ -3833,6 +3833,18 @@ holostackGP <- function(
                   gp_model_used  = gblup_name
                 )
               }
+              # Assign row names in Y.raw from Taxa column
+              row.names(Y.raw) <- Y.raw$Taxa
+              res <- stack_predictions_cv(
+                trait            = trait,
+                gp_model         = gp_model,
+                Y.raw            = Y.raw,
+                pred_gblup_OOF   = pred_gblup_OOF,
+                pred_rrblup_OOF  = pred_rrblup_OOF,
+                pred_rkhs_OOF    = pred_rkhs_OOF,
+                pred_bayes_OOF   = pred_bayes_OOF
+              )
+
           }
 
 
