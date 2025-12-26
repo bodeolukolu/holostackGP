@@ -3682,27 +3682,23 @@ holostackGP <- function(
               # Two-step ridge stacking for multi-kernel, multi-GP predictions
               # ---------------------------------------------
               stack_predictions_cv <- function(
-    trait,
-    gp_model = c("gBLUP", "GBLUP", "gGBLUP"),
-    Y.raw,
-    pred_gblup_OOF = NULL,
-    pred_rrblup_OOF = NULL,
-    pred_rkhs_OOF  = NULL,
-    pred_bayes_OOF = NULL,
-    id_col = "Taxa",
-    alpha = 1
+                trait,
+                gp_model = c("gBLUP", "GBLUP", "gGBLUP"),
+                Y.raw,
+                pred_gblup_OOF = NULL,
+                pred_rrblup_OOF = NULL,
+                pred_rkhs_OOF  = NULL,
+                pred_bayes_OOF = NULL,
+                id_col = "Taxa",
+                alpha = 1
               ) {
 
                 gp_model <- match.arg(gp_model)
                 gblup_name <- "GBLUP"
 
-                if (!id_col %in% colnames(Y.raw))
-                  stop("Y.raw must contain ID column: ", id_col)
-
+                if (!id_col %in% colnames(Y.raw)) stop("Y.raw must contain ID column: ", id_col)
                 rownames(Y.raw) <- Y.raw[[id_col]]
-
-                if (!trait %in% colnames(Y.raw))
-                  stop("Trait ", trait, " not found in Y.raw")
+                if (!trait %in% colnames(Y.raw)) stop("Trait ", trait, " not found in Y.raw")
 
                 y_all <- Y.raw[[trait]]
                 names(y_all) <- rownames(Y.raw)
@@ -3724,16 +3720,14 @@ holostackGP <- function(
                   Xc <- scale(X[ok, , drop = FALSE], center = TRUE, scale = FALSE)
                   yc <- y[ok] - mean(y[ok])
                   lambda <- alpha * var(y[ok])
-                  beta <- tryCatch(
-                    solve(crossprod(Xc) + diag(lambda, ncol(Xc)), crossprod(Xc, yc)),
-                    error = function(e) NULL
-                  )
+                  beta <- tryCatch(solve(crossprod(Xc) + diag(lambda, ncol(Xc)), crossprod(Xc, yc)),
+                                   error = function(e) NULL)
                   yhat <- rep(NA_real_, length(y))
                   if (!is.null(beta)) yhat[ok] <- mean(y[ok]) + Xc %*% beta
                   yhat
                 }
 
-                # Collect all OOFs into named list
+                # Collect OOF predictions
                 oof_list <- list(
                   GBLUP  = pred_gblup_OOF,
                   rrBLUP = pred_rrblup_OOF,
@@ -3748,45 +3742,42 @@ holostackGP <- function(
                 if (length(common_ids) < 5) stop("Insufficient overlapping IDs")
                 y <- y_all[common_ids]
 
-                # Detect individual Bayes methods and their columns
                 method_preds <- list()
+
                 for (m in names(oof_list)) {
                   X <- oof_list[[m]][common_ids, , drop = FALSE]
 
                   if (m == "Bayes") {
-                    # Automatically detect distinct Bayes methods (prefix before ".pred_")
+                    # Identify all Bayes methods from column prefixes
                     col_prefix <- gsub("\\..*$", "", colnames(X))
                     bayes_methods <- unique(col_prefix)
                     for (bm in bayes_methods) {
                       cols_bm <- grep(paste0("^", bm), colnames(X), value = TRUE)
-                      if (length(cols_bm) == 1) {
-                        yhat <- X[, cols_bm]
+                      # If all columns are NA or constant, skip
+                      if (all(is.na(X[, cols_bm])) || all(apply(X[, cols_bm, drop=FALSE], 2, sd, na.rm=TRUE)==0)) {
+                        method_preds[[bm]] <- rep(NA_real_, length(y))
                       } else {
-                        yhat <- rowMeans(X[, cols_bm, drop = FALSE], na.rm = TRUE)
+                        # Average across kernels (A, D, etc.)
+                        method_preds[[bm]] <- rowMeans(X[, cols_bm, drop = FALSE], na.rm = TRUE)
                       }
-                      method_preds[[bm]] <- as.numeric(yhat)
                     }
                   } else {
                     # For GBLUP, rrBLUP, RKHS
                     if (ncol(X) > 1) {
-                      yhat <- ridge_stack(X, y)
+                      method_preds[[m]] <- ridge_stack(X, y)
                     } else {
-                      yhat <- as.numeric(X[, 1])
+                      method_preds[[m]] <- as.numeric(X[,1])
                     }
-                    method_preds[[m]] <- yhat
                   }
                 }
 
-                # Base correlation
-                base_cor <- sapply(c("GBLUP", "rrBLUP", "RKHS"), function(x) {
-                  if (x %in% names(method_preds)) cor_safe(y, method_preds[[x]]) else NA_real_
-                })
+                # Base correlations
+                base_cor <- sapply(c("GBLUP","rrBLUP","RKHS"), function(x) if(x %in% names(method_preds)) cor_safe(y, method_preds[[x]]) else NA_real_)
 
-                # Bayes correlation
-                bayes_cor <- sapply(grep("Bayes|BRR|BL", names(method_preds), value = TRUE),
-                                    function(x) cor_safe(y, method_preds[[x]]))
+                # Bayes correlations
+                bayes_cor <- sapply(grep("Bayes|BRR|BL", names(method_preds), value = TRUE), function(x) cor_safe(y, method_preds[[x]]))
 
-                # Stack-2: across all GP methods
+                # Stack-2 across all GP methods
                 X2 <- do.call(cbind, method_preds)
                 pred_stack <- ridge_stack(X2, y)
                 pred_stack_cor <- cor_safe(y, pred_stack)
