@@ -3681,7 +3681,6 @@ holostackGP <- function(
               # ---------------------------------------------
               # Two-step Elastic Net stacking for multi-kernel, multi-GP predictions
               # ---------------------------------------------
-              library(glmnet)
 
               stack_predictions_cv <- function(
                 trait,
@@ -3692,7 +3691,7 @@ holostackGP <- function(
                 pred_rkhs_OOF  = NULL,
                 pred_bayes_OOF = NULL,
                 id_col = "Taxa",
-                alpha = 1,       # ridge fallback (ignored if ENet succeeds)
+                alpha = 1,
                 seed = 123
               ) {
                 set.seed(seed)
@@ -3725,22 +3724,29 @@ holostackGP <- function(
                   if (ncol(X) == 0) return(rep(NA_real_, length(y)))
 
                   if (ncol(X) == 1) {
-                    # Only one kernel: use it directly
                     return(as.numeric(X[,1]))
                   }
 
                   ok <- complete.cases(X, y)
                   if (sum(ok) < 5) return(rep(NA_real_, length(y)))
 
-                  # OLS fallback
+                  # OLS attempt
                   fit <- tryCatch(
                     lm(y[ok] ~ X[ok, , drop = FALSE]),
                     error = function(e) NULL
                   )
+
                   yhat <- rep(NA_real_, length(y))
                   if (!is.null(fit)) {
                     yhat[ok] <- predict(fit, newdata = as.data.frame(X[ok, , drop = FALSE]))
+                    if (all(is.na(yhat[ok]))) fit <- NULL  # fallback to averaging if OLS fails
                   }
+
+                  # Fallback: simple averaging across kernels
+                  if (is.null(fit)) {
+                    yhat[ok] <- rowMeans(X[ok, , drop = FALSE], na.rm = TRUE)
+                  }
+
                   yhat
                 }
 
@@ -3759,33 +3765,46 @@ holostackGP <- function(
                   yhat
                 }
 
+                parse_bayes_cols <- function(cols) {
+                  do.call(
+                    rbind,
+                    lapply(cols, function(x) {
+                      sp <- strsplit(x, "\\.pred_")[[1]]
+                      data.frame(
+                        method = sp[1],
+                        kernel = sp[2],
+                        col    = x,
+                        stringsAsFactors = FALSE
+                      )
+                    })
+                  )
+                }
+
                 ## -----------------------------
-                ## 3. Collect OOF predictions
+                ## 3. Collect OOF inputs
                 ## -----------------------------
-                oof_list <- list(
+                oof_raw <- list(
                   GBLUP  = pred_gblup_OOF,
                   rrBLUP = pred_rrblup_OOF,
                   RKHS   = pred_rkhs_OOF
                 )
-                oof_list <- Filter(Negate(is.null), oof_list)
+                oof_raw <- Filter(Negate(is.null), oof_raw)
 
-                # Process Bayes predictions
                 if (!is.null(pred_bayes_OOF)) {
                   bayes_cols <- colnames(pred_bayes_OOF)
                   bayes_methods <- unique(sub("\\.pred_.*$", "", bayes_cols))
-
                   for (m in bayes_methods) {
                     cols <- grep(paste0("^", m, "\\.pred_"), bayes_cols, value = TRUE)
-                    if (length(cols) > 0) oof_list[[m]] <- pred_bayes_OOF[, cols, drop = FALSE]
+                    if (length(cols) > 0) oof_raw[[m]] <- pred_bayes_OOF[, cols, drop = FALSE]
                   }
                 }
 
-                if (length(oof_list) == 0) stop("No OOF predictions supplied")
+                if (length(oof_raw) == 0) stop("No OOF predictions supplied")
 
                 ## -----------------------------
                 ## 4. Align IDs
                 ## -----------------------------
-                common_ids <- Reduce(intersect, c(lapply(oof_list, rownames), list(names(y_all))))
+                common_ids <- Reduce(intersect, c(lapply(oof_raw, rownames), list(names(y_all))))
                 if (length(common_ids) < 5) stop("Insufficient overlap between phenotype and OOF IDs")
                 y <- y_all[common_ids]
 
@@ -3793,11 +3812,11 @@ holostackGP <- function(
                 ## 5. Stage-1: stack within each GP method
                 ## -----------------------------
                 method_preds <- list()
-                method_cor <- numeric(length(oof_list))
-                names(method_cor) <- names(oof_list)
+                method_cor <- numeric(length(oof_raw))
+                names(method_cor) <- names(oof_raw)
 
-                for (m in names(oof_list)) {
-                  X <- oof_list[[m]][common_ids, , drop = FALSE]
+                for (m in names(oof_raw)) {
+                  X <- oof_raw[[m]][common_ids, , drop = FALSE]
                   yhat <- stage1_stack(X, y)
                   method_preds[[m]] <- yhat
                   method_cor[m] <- cor_safe(y, yhat)
@@ -3822,6 +3841,7 @@ holostackGP <- function(
                   seed              = seed
                 )
               }
+
 
               stack_result <- stack_predictions_cv(
                 trait = trait,
