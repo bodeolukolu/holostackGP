@@ -3764,13 +3764,18 @@ holostackGP <- function(
                 ## 3. Split Bayes OOF by method
                 ## -----------------------------
                 if (!is.null(pred_bayes_OOF)) {
+                  bayes_map <- list(
+                    BRR    = "^BRR\\.pred_",
+                    BayesA = "^BayesA\\.pred_",
+                    BayesB = "^BayesB\\.pred_",
+                    BayesC = "^BayesC\\.pred_",
+                    BayesL = "^BL\\.pred_"   # IMPORTANT
+                  )
 
-                  bayes_methods <- c("BRR","BayesA","BayesB","BayesC","BayesL")
-
-                  for (bm in bayes_methods) {
-                    cols <- grep(paste0("^", bm), colnames(pred_bayes_OOF), value = TRUE)
+                  for (m in names(bayes_map)) {
+                    cols <- grep(bayes_map[[m]], colnames(pred_bayes_OOF), value = TRUE)
                     if (length(cols) > 0) {
-                      method_oof[[bm]] <- pred_bayes_OOF[, cols, drop = FALSE]
+                      method_oof[[m]] <- pred_bayes_OOF[, cols, drop = FALSE]
                     }
                   }
                 }
