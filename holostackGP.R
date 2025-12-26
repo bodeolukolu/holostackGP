@@ -3681,7 +3681,6 @@ holostackGP <- function(
               #-----------------------
               # ---------------------------------------------
               # Two-step ridge stacking for multi-kernel, multi-GP predictions
-              # ---------------------------------------------
               stack_predictions_cv <- function(
                 trait,
                 gp_model = c("gBLUP", "GBLUP", "gGBLUP"),
@@ -3693,55 +3692,66 @@ holostackGP <- function(
                 id_col = "Taxa",
                 alpha = 1
               ) {
+
+                ## -----------------------------
+                ## 0. Canonicalise GP model name
+                ## -----------------------------
                 gp_model <- match.arg(gp_model)
+                gblup_name <- "GBLUP"   # canonical internal name
 
                 ## -----------------------------
-                ## 0. Set row.names in Y.raw from Taxa / PlantID
+                ## 1. Prepare phenotype
                 ## -----------------------------
-                if (is.null(row.names(Y.raw)) && id_col %in% colnames(Y.raw)) {
-                  row.names(Y.raw) <- Y.raw[[id_col]]
-                }
+                if (!id_col %in% colnames(Y.raw))
+                  stop("Y.raw must contain ID column: ", id_col)
 
-                if (!trait %in% colnames(Y.raw)) {
-                  stop(paste("Trait", trait, "not found in Y.raw"))
-                }
+                rownames(Y.raw) <- Y.raw[[id_col]]
+
+                if (!trait %in% colnames(Y.raw))
+                  stop("Trait ", trait, " not found in Y.raw")
 
                 y_all <- Y.raw[[trait]]
-                names(y_all) <- row.names(Y.raw)
+                names(y_all) <- rownames(Y.raw)
 
                 ## -----------------------------
-                ## Helper: safe correlation
+                ## Helpers
                 ## -----------------------------
                 cor_safe <- function(a, b) {
-                  if (length(a) < 3 || length(b) < 3) return(NA_real_)
-                  sa <- sd(a, na.rm = TRUE)
-                  sb <- sd(b, na.rm = TRUE)
-                  if (is.na(sa) || is.na(sb) || sa == 0 || sb == 0) return(NA_real_)
-                  suppressWarnings(cor(a, b, use = "complete.obs"))
+                  keep <- complete.cases(a, b)
+                  if (sum(keep) < 5) return(NA_real_)
+                  if (sd(a[keep]) == 0 || sd(b[keep]) == 0) return(NA_real_)
+                  cor(a[keep], b[keep])
                 }
 
-                ## -----------------------------
-                ## Helper: ridge stacking
-                ## -----------------------------
-                ridge_stack <- function(X, y, alpha = 1) {
-                  if (is.null(ncol(X))) X <- as.matrix(X)
+                ridge_stack <- function(X, y) {
+                  X <- as.matrix(X)
                   keep <- apply(X, 2, function(z) sd(z, na.rm = TRUE) > 0)
                   if (!any(keep)) return(rep(NA_real_, length(y)))
+
                   X <- X[, keep, drop = FALSE]
-                  Xc <- scale(X, center = TRUE, scale = FALSE)
-                  yc <- y - mean(y, na.rm = TRUE)
-                  lambda <- alpha * var(y, na.rm = TRUE)
+                  ok <- complete.cases(X, y)
+                  if (sum(ok) < 5) return(rep(NA_real_, length(y)))
+
+                  Xc <- scale(X[ok, , drop = FALSE], center = TRUE, scale = FALSE)
+                  yc <- y[ok] - mean(y[ok])
+
+                  lambda <- alpha * var(y[ok])
+
                   beta <- tryCatch(
                     solve(crossprod(Xc) + diag(lambda, ncol(Xc)),
                           crossprod(Xc, yc)),
                     error = function(e) NULL
                   )
-                  if (is.null(beta)) return(rep(NA_real_, length(y)))
-                  as.numeric(mean(y, na.rm = TRUE) + Xc %*% beta)
+
+                  yhat <- rep(NA_real_, length(y))
+                  if (!is.null(beta)) {
+                    yhat[ok] <- mean(y[ok]) + Xc %*% beta
+                  }
+                  yhat
                 }
 
                 ## -----------------------------
-                ## 1. Collect OOF predictions
+                ## 2. Collect OOF predictions
                 ## -----------------------------
                 oof_list <- list(
                   GBLUP  = pred_gblup_OOF,
@@ -3752,73 +3762,77 @@ holostackGP <- function(
 
                 oof_list <- Filter(Negate(is.null), oof_list)
 
+                if (length(oof_list) == 0)
+                  stop("No OOF predictions provided")
+
                 ## -----------------------------
-                ## 2. Align IDs
+                ## 3. Align IDs
                 ## -----------------------------
-                common_ids <- Reduce(intersect, c(lapply(oof_list, row.names), list(names(y_all))))
-                if (length(common_ids) == 0) stop("No overlapping IDs between Y.raw and OOF predictions")
+                common_ids <- Reduce(
+                  intersect,
+                  c(lapply(oof_list, rownames), list(names(y_all)))
+                )
+
+                if (length(common_ids) < 5)
+                  stop("Insufficient overlapping IDs between Y.raw and OOF predictions")
+
                 y <- y_all[common_ids]
 
                 ## -----------------------------
-                ## 3. Step 1: stack across kernels within each GP method
+                ## 4. Stack-1: within GP method
                 ## -----------------------------
                 method_preds <- list()
+
                 for (m in names(oof_list)) {
-                  df <- oof_list[[m]][common_ids, , drop = FALSE]
-                  if (ncol(df) > 1) {
-                    method_preds[[m]] <- ridge_stack(df, y, alpha)
+
+                  X <- oof_list[[m]][common_ids, , drop = FALSE]
+
+                  if (ncol(X) > 1) {
+                    yhat <- ridge_stack(X, y)
                   } else {
-                    method_preds[[m]] <- as.numeric(df[,1])
+                    yhat <- as.numeric(X[, 1])
                   }
+
+                  names(yhat) <- common_ids
+                  method_preds[[m]] <- yhat
                 }
 
                 ## -----------------------------
-                ## 4. Base correlations per GP method
+                ## 5. Base GP PA
                 ## -----------------------------
-                base_cor <- sapply(c("GBLUP","rrBLUP","RKHS"), function(x) {
-                  if (x %in% names(method_preds)) cor_safe(y, method_preds[[x]]) else NA_real_
-                })
+                base_cor <- sapply(
+                  c("GBLUP", "rrBLUP", "RKHS"),
+                  function(m)
+                    if (m %in% names(method_preds))
+                      cor_safe(y, method_preds[[m]])
+                  else NA_real_
+                )
 
-                bayes_cor <- if (length(method_preds) > 3) {
-                  sapply(setdiff(names(method_preds), c("GBLUP","rrBLUP","RKHS")),
-                         function(x) cor_safe(y, method_preds[[x]]))
-                } else NULL
+                bayes_cor <- if ("Bayes" %in% names(method_preds))
+                  cor_safe(y, method_preds[["Bayes"]])
+                else NA_real_
 
                 ## -----------------------------
-                ## 5. Step 2: stack across GP methods
+                ## 6. Stack-2: across GP methods
                 ## -----------------------------
                 X2 <- do.call(cbind, method_preds)
-                pred_stack <- ridge_stack(X2, y, alpha)
+                pred_stack <- ridge_stack(X2, y)
                 pred_stack_cor <- cor_safe(y, pred_stack)
-
-                ## -----------------------------
-                ## 6. All raw OOF predictions (for reference)
-                ## -----------------------------
-                pred_all <- do.call(cbind, oof_list)
 
                 ## -----------------------------
                 ## 7. Return
                 ## -----------------------------
-                return(list(
-                  pred_all       = pred_all,
+                list(
+                  pred_all       = do.call(cbind, oof_list),
                   pred_stack     = pred_stack,
                   pred_stack_cor = pred_stack_cor,
                   base_cor       = base_cor,
                   bayes_cor      = bayes_cor,
-                  lambda         = alpha * var(y, na.rm = TRUE)
-                ))
+                  lambda         = alpha * var(y, na.rm = TRUE),
+                  gp_model_alias = gp_model,
+                  gp_model_used  = gblup_name
+                )
               }
-
-            # Assign row names in Y.raw from Taxa column
-            row.names(Y.raw) <- Y.raw$Taxa
-
-            # Run stacking workflow safely
-            stack_result <- stack_predictions_cv(
-              trait          = trait,
-              gp_model       = gp_model,
-              Y.raw          = Y.raw,
-              pred_bayes_OOF = pred_bayes_OOF
-            )
           }
 
 
