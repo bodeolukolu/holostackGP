@@ -3681,6 +3681,8 @@ holostackGP <- function(
               # ---------------------------------------------
               # Two-step Elastic Net stacking for multi-kernel, multi-GP predictions
               # ---------------------------------------------
+              library(glmnet)  # for elastic net stacking
+
               stack_predictions_cv <- function(
                 trait,
                 gp_model = c("gBLUP", "GBLUP", "gGBLUP"),
@@ -3690,123 +3692,126 @@ holostackGP <- function(
                 pred_rkhs_OOF  = NULL,
                 pred_bayes_OOF = NULL,
                 id_col = "Taxa",
-                alpha = 0.5,
+                alpha = 1,         # ridge parameter if fallback
+                stacking_method = c("elasticnet", "ols"),
                 seed = 123
               ) {
                 set.seed(seed)
+                stacking_method <- match.arg(stacking_method)
                 gp_model <- match.arg(gp_model)
 
+                # -----------------------------
+                # 1. Prepare phenotype
+                # -----------------------------
                 if (!id_col %in% colnames(Y.raw)) stop("Y.raw must contain ID column: ", id_col)
                 rownames(Y.raw) <- Y.raw[[id_col]]
-                if (!trait %in% colnames(Y.raw)) stop("Trait not found in Y.raw: ", trait)
 
+                if (!trait %in% colnames(Y.raw)) stop("Trait not found: ", trait)
                 y_all <- Y.raw[[trait]]
                 names(y_all) <- rownames(Y.raw)
 
-                cor_safe <- function(a,b){
-                  ok <- complete.cases(a,b)
-                  if(sum(ok) < 5) return(NA_real_)
-                  if(sd(a[ok], na.rm=TRUE) == 0 || sd(b[ok], na.rm=TRUE) == 0) return(NA_real_)
-                  cor(a[ok],b[ok])
+                # -----------------------------
+                # 2. Helpers
+                # -----------------------------
+                cor_safe <- function(a, b) {
+                  ok <- complete.cases(a, b)
+                  if (sum(ok) < 5) return(NA_real_)
+                  if (sd(a[ok]) == 0 || sd(b[ok]) == 0) return(NA_real_)
+                  cor(a[ok], b[ok])
                 }
 
-                stage1_stack <- function(X, y, alpha = 0.5){
+                elastic_stack <- function(X, y, method = "elasticnet") {
                   X <- as.matrix(X)
                   ok <- complete.cases(X, y)
-                  yhat <- rep(NA_real_, length(y))
-                  if(sum(ok) < 5){
-                    yhat <- rep(mean(y, na.rm=TRUE), length(y))
-                    return(yhat)
-                  }
+                  if (sum(ok) < 5) return(rep(NA_real_, length(y)))
 
-                  if(ncol(X) == 1){
-                    # single kernel: use it directly
-                    yhat <- as.numeric(X[,1])
-                    return(yhat)
-                  }
+                  Xc <- scale(X[ok, , drop = FALSE], center = TRUE, scale = FALSE)
+                  yc <- y[ok] - mean(y[ok])
 
-                  # multiple kernels: remove zero-variance columns
-                  keep <- apply(X[ok,,drop=FALSE], 2, function(z) sd(z, na.rm=TRUE) > 0)
-                  if(!any(keep)){
-                    yhat[ok] <- mean(y[ok])
-                    return(yhat)
-                  }
-                  X <- X[,keep,drop=FALSE]
-
-                  # impute missing values by column mean
-                  for(i in 1:ncol(X)){
-                    X[is.na(X[,i]),i] <- mean(X[ok,i], na.rm=TRUE)
-                  }
-
-                  # try elastic net
-                  fit <- tryCatch({
-                    glmnet::cv.glmnet(X[ok,,drop=FALSE], y[ok], alpha=alpha, standardize=TRUE)
-                  }, error=function(e) NULL)
-
-                  if(!is.null(fit)){
-                    yhat[ok] <- as.numeric(predict(fit, X[ok,,drop=FALSE], s="lambda.min"))
+                  if (method == "elasticnet") {
+                    fit <- cv.glmnet(Xc, yc, alpha = 0.5, standardize = FALSE, nfolds = 5)
+                    yhat <- rep(NA_real_, length(y))
+                    yhat[ok] <- mean(y[ok]) + as.numeric(predict(fit, Xc, s = "lambda.min"))
                   } else {
-                    # fallback to OLS
-                    lmfit <- stats::lm(y[ok] ~ X[ok,,drop=FALSE])
-                    yhat[ok] <- as.numeric(predict(lmfit))
+                    # fallback OLS
+                    fit <- lm(yc ~ Xc - 1)
+                    yhat <- rep(NA_real_, length(y))
+                    yhat[ok] <- mean(y[ok]) + as.numeric(Xc %*% coef(fit))
                   }
-
                   yhat
                 }
 
-                parse_bayes_cols <- function(cols){
-                  do.call(rbind, lapply(cols, function(x){
-                    sp <- strsplit(x,"\\.pred_")[[1]]
-                    data.frame(method=sp[1], kernel=sp[2], col=x, stringsAsFactors=FALSE)
-                  }))
-                }
-
-                # Collect OOF predictions
-                oof_raw <- list(
+                # -----------------------------
+                # 3. Collect OOF predictions
+                # -----------------------------
+                oof_list <- list(
                   GBLUP  = pred_gblup_OOF,
                   rrBLUP = pred_rrblup_OOF,
                   RKHS   = pred_rkhs_OOF
                 )
-                oof_raw <- Filter(Negate(is.null), oof_raw)
 
-                if(!is.null(pred_bayes_OOF)){
-                  bayes_meta <- parse_bayes_cols(colnames(pred_bayes_OOF))
-                  bayes_methods <- unique(bayes_meta$method)
-                  for(m in bayes_methods){
-                    cols <- bayes_meta$col[bayes_meta$method==m]
-                    oof_raw[[m]] <- pred_bayes_OOF[,cols,drop=FALSE]
+                oof_list <- Filter(Negate(is.null), oof_list)
+
+                # Process Bayes models if available
+                if (!is.null(pred_bayes_OOF)) {
+                  bayes_cols <- colnames(pred_bayes_OOF)
+                  bayes_methods <- unique(sub("\\.pred_.*$", "", bayes_cols))
+                  for (m in bayes_methods) {
+                    cols <- grep(paste0("^", m, "\\.pred_"), bayes_cols, value = TRUE)
+                    if (length(cols) > 0) oof_list[[m]] <- pred_bayes_OOF[, cols, drop = FALSE]
                   }
                 }
-                if(length(oof_raw)==0) stop("No OOF predictions supplied")
 
-                # Align IDs
-                common_ids <- Reduce(intersect, c(lapply(oof_raw, rownames), list(names(y_all))))
-                if(length(common_ids) < 5) stop("Insufficient overlap between phenotype and OOF IDs")
+                if (length(oof_list) == 0) stop("No OOF predictions provided")
+
+                # -----------------------------
+                # 4. Align IDs
+                # -----------------------------
+                common_ids <- Reduce(intersect, c(lapply(oof_list, rownames), list(names(y_all))))
+                if (length(common_ids) < 5) stop("Insufficient overlap between phenotype and OOF IDs")
                 y <- y_all[common_ids]
 
-                # Stage-1 stacking: within each GP method
+                # -----------------------------
+                # 5. Stage-1 stacking: within GP method
+                # -----------------------------
                 method_preds <- list()
-                for(m in names(oof_raw)){
-                  X <- oof_raw[[m]][common_ids,,drop=FALSE]
-                  yhat <- stage1_stack(X, y, alpha)
+                for (m in names(oof_list)) {
+                  X <- oof_list[[m]][common_ids, , drop = FALSE]
+
+                  if (ncol(X) == 1) {
+                    # Single kernel: use column directly
+                    yhat <- as.numeric(X[, 1])
+                  } else {
+                    # Multi-kernel: elastic net / OLS
+                    yhat <- elastic_stack(X, y, method = stacking_method)
+                  }
+
                   names(yhat) <- common_ids
                   method_preds[[m]] <- yhat
                 }
 
-                # Stage-1 correlations
-                method_cor <- sapply(method_preds, function(p) cor_safe(y,p))
+                # -----------------------------
+                # 6. Predictive ability per method
+                # -----------------------------
+                method_cor <- sapply(method_preds, function(p) cor_safe(y, p))
 
-                # Stage-2 stacking across GP methods
+                # -----------------------------
+                # 7. Stage-2 stacking: across GP methods
+                # -----------------------------
                 X2 <- do.call(cbind, method_preds)
-                pred_stack <- stage1_stack(X2, y, alpha)
+                pred_stack <- elastic_stack(X2, y, method = stacking_method)
                 pred_stack_cor <- cor_safe(y, pred_stack)
 
+                # -----------------------------
+                # 8. Return
+                # -----------------------------
                 list(
-                  pred_all       = do.call(cbind, oof_raw),
-                  pred_stage1    = method_preds,
+                  pred_all       = do.call(cbind, oof_list),
+                  method_preds   = method_preds,
                   method_cor     = method_cor,
                   pred_stack     = pred_stack,
                   pred_stack_cor = pred_stack_cor,
+                  lambda         = alpha * var(y, na.rm = TRUE),
                   seed           = seed
                 )
               }
