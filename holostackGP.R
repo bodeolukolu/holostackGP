@@ -3681,6 +3681,24 @@ holostackGP <- function(
               # ---------------------------------------------
               # Two-step ridge stacking for multi-kernel, multi-GP predictions
               # ---------------------------------------------
+              # ---- enforce rownames on all OOF objects ----
+              set_rownames_safe <- function(df, ids) {
+                if (is.null(df)) return(NULL)
+                if (is.null(rownames(df))) {
+                  if (nrow(df) != length(ids))
+                    stop("Row mismatch when assigning rownames to OOF file")
+                  rownames(df) <- ids
+                }
+                df
+              }
+
+              ids <- Y.raw$Taxa
+
+              pred_gblup_OOF  <- set_rownames_safe(pred_gblup_OOF, ids)
+              pred_rrblup_OOF <- set_rownames_safe(pred_rrblup_OOF, ids)
+              pred_rkhs_OOF   <- set_rownames_safe(pred_rkhs_OOF, ids)
+              pred_bayes_OOF  <- set_rownames_safe(pred_bayes_OOF, ids)
+
               stack_predictions_cv <- function(
                 trait,
                 gp_model = c("gBLUP", "GBLUP", "gGBLUP"),
