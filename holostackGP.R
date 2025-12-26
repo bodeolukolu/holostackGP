@@ -3835,7 +3835,7 @@ holostackGP <- function(
               }
               # Assign row names in Y.raw from Taxa column
               row.names(Y.raw) <- Y.raw$Taxa
-              res <- stack_predictions_cv(
+              stack_result <- stack_predictions_cv(
                 trait            = trait,
                 gp_model         = gp_model,
                 Y.raw            = Y.raw,
