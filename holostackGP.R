@@ -843,10 +843,12 @@ holostackGP <- function(
               K_AxA <- (K_AxA + t(K_AxA)) / 2
               K_DxD <- (K_DxD + t(K_DxD)) / 2
               kernels <- list(A = K_A, D = K_D, AxD = K_AxD, AxA = K_AxA, DxD = K_DxD)
+              return(kernels)
             }
             if(gp_model == "gBLUP"){
               K_M <- metagKIx
               kernels <- list(M=K_M)
+              return(kernels)
             }
             if(gp_model == "gGBLUP"){
               K_M <- metagKIx
@@ -874,6 +876,7 @@ holostackGP <- function(
               K_AxDxM <- (K_AxDxM + t(K_AxDxM)) / 2
               K_M <- (K_M + t(K_M)) / 2
               kernels <- list(A = K_A, D = K_D, AxD = K_AxD, AxA = K_AxA, DxD = K_DxD, AxAxM = K_AxAxM, DxDxM = K_DxDxM, AxDxM = K_AxDxM, M = K_M)
+              return(kernels)
             }
           }
 
