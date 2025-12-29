@@ -1986,7 +1986,8 @@ holostackGP <- function(
                         }
 
                         # Wrapper to run all models in parallel
-                        run_parallel_stack <- function(Y_train, X_train, covariate = NULL, mgeno_scaled_train, nIter, burnIn, n.cores = ncores) {
+                        run_parallel_stack <- function(Y_train, X_train, covariate = NULL, mgeno_scaled_train, Y_test, X_test, mgeno_scaled_test,
+                                                       nIter, burnIn, n.cores = ncores) {
                           # If covariate is NULL, make sure X_train is also NULL
                           if (is.null(covariate)) {X_train <- NULL}
                           # If X_train exists but has zero columns, set it to NULL
@@ -2416,7 +2417,7 @@ holostackGP <- function(
 
                         # Wrapper to run all models in parallel
                         run_parallel_stack <- function(Y_train, X_train, covariate = NULL, geno.A_scaled_train, geno.D_scaled_train, mgeno_scaled_train,
-                                                       Y_test, X_test, covariate = NULL, geno.A_scaled_test, geno.D_scaled_test, mgeno_scaled_test, nIter, burnIn, n.cores = ncores) {
+                                                       Y_test, X_test, geno.A_scaled_test, geno.D_scaled_test, mgeno_scaled_test, nIter, burnIn, n.cores = ncores) {
                           # If covariate is NULL, make sure X_train is also NULL
                           if (is.null(covariate)) {X_train <- NULL}
                           # If X_train exists but has zero columns, set it to NULL
@@ -2804,7 +2805,8 @@ holostackGP <- function(
                         }
 
                         # Wrapper to run all models in parallel
-                        run_parallel_stack <- function(Y_train, X_train, covariate = NULL, geno_scaled_train, mgeno_scaled_train, nIter, burnIn, n.cores = ncores) {
+                        run_parallel_stack <- function(Y_train, X_train, covariate = NULL, geno_scaled_train, mgeno_scaled_train,
+                                                       Y_test, X_test, geno_scaled_test, mgeno_scaled_test, nIter, burnIn, n.cores = ncores) {
                           # If covariate is NULL, make sure X_train is also NULL
                           if (is.null(covariate)) {X_train <- NULL}
                           # If X_train exists but has zero columns, set it to NULL
