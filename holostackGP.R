@@ -3,7 +3,6 @@
 holostackGP <- function(
     wdir = "./",
     projname="proj_GP",
-    MTME=FALSE,
     phenofile=NULL,
     genofile=NULL,
     metagenomefile=NULL,
@@ -16,7 +15,6 @@ holostackGP <- function(
     k_fold=5,
     maf=0.02,
     geno_missing_rate=0.2,
-    gwas_pred=FALSE,
     subsample_markers=NULL,
     topHits=100,
     gene_model="Full",           # "Additive", "Dominance", "metagenome or microbiome", "Full"
@@ -67,7 +65,8 @@ holostackGP <- function(
   # Step 1: Specify covariate if required and import data.
   setwd(wdir)
   GP_run_title <- projname
-  MTME <- MTME
+  MTME <- FALSE
+  gwas_pred=FALSE
   traits <- traits
   if (is.null(covariate)) {
     covariate <- NULL
@@ -685,7 +684,7 @@ holostackGP <- function(
           nIter <- 15000           # number of iterations: Bayesian methods using BGLR package
           burnIn <- 5000          # number of burnin iterations: Bayesian methods using BGLR package
           verboseBGLR <- FALSE
-
+          rownames(Y.raw) <- Y.raw$Taxa
 
           # format genomic/metagenomic relationship matrix
           if(gp_model == "GBLUP" || gp_model == "gGBLUP"){
@@ -824,7 +823,6 @@ holostackGP <- function(
             mgeno_scaled <- scale(mgeno, center = TRUE, scale = TRUE)
             rownames(mgeno_scaled) <- common_ids
           }
-          Y.raw <- as.numeric(Y.raw[[1]])
 
           # compute epistatic kernels
           if (gene_model == "Full" || gene_model == "All"){
@@ -988,9 +986,6 @@ holostackGP <- function(
                 Y_train <- Y.raw[Y.raw$Taxa %in% train_ids, trait]
                 Y_test  <- Y.raw[Y.raw$Taxa %in% test_ids, trait]
 
-                # Subset covariates
-                cov_split <- split_Xcov(Xcov_all, train_ids, test_ids)
-
                 ## ============================================================
                 ## Subset relationship matrices (n × n)
                 ## ============================================================
@@ -1054,12 +1049,6 @@ holostackGP <- function(
                   nrow(geno.A_scaled_test)  == length(test_ids)
                 )
               }
-              if (!is.null(covariate)){
-                  cov_split <- split_Xcov(Xcov_all, train_ids, test_ids)
-                  X_train <- cov_split$X_train
-                  X_test  <- cov_split$X_test
-                } else {X_train <- NULL; X_test <- NULL}
-
               if(is.null(myCV)){
                 if (gene_model == "Additive" || gene_model == "Dominance"){
                   myCV <- as.data.frame(myKI[,1]); myCV$dummy <- "0.95"
@@ -1155,7 +1144,13 @@ holostackGP <- function(
                   if (gene_model == "Full" || gene_model == "All"){
                     # GBLUP  with rrBLUP package
                     pred_list <- list()
+
                     for (kernel_name in names(kernels_train)) {
+                      if (!is.null(covariate)){
+                      cov_split <- split_Xcov(Xcov_all, train_ids, test_ids)
+                      X_train <- as.data.frame(cov_split$X_train)
+                      X_test  <- as.data.frame(cov_split$X_test)
+                    } else {X_train <- NULL; X_test <- NULL}
                       K_train <- kernels_train[[kernel_name]]   # train × train
                       K <- K_train
                       K_test  <- kernels_test[[kernel_name]]    # test  × train
@@ -1223,6 +1218,11 @@ holostackGP <- function(
                     pred_gblup_OOF <- rbind(pred_gblup_OOF,pred_gblup_all)
 
                     if (!is.null(Additional_models)){
+                      if (!is.null(covariate)){
+                        cov_split <- split_Xcov(Xcov_all, train_ids, test_ids)
+                        X_train <- as.data.frame(cov_split$X_train)
+                        X_test  <- as.data.frame(cov_split$X_test)
+                      } else {X_train <- NULL; X_test <- NULL}
                       # rrBLUP marker effects model: K_A
                       train_ids <- which(!is.na(Y_train))
                       y_train <- Y_train[train_ids]
@@ -1296,6 +1296,11 @@ holostackGP <- function(
                       # RHKs with BGLR package
                       pred_list <- list()
                       for (kernel_name in names(kernels_train)) {
+                        if (!is.null(covariate)){
+                          cov_split <- split_Xcov(Xcov_all, train_ids, test_ids)
+                          X_train <- as.data.frame(cov_split$X_train)
+                          X_test  <- as.data.frame(cov_split$X_test)
+                        } else {X_train <- NULL; X_test <- NULL}
                         K_train <- kernels_train[[kernel_name]]   # train × train
                         K <- K_train
                         K_test  <- kernels_test[[kernel_name]]    # test  × train
@@ -1347,10 +1352,17 @@ holostackGP <- function(
 
                       # Bayesian-based genomic predictions
                       bayes_models <- c("BRR", "BayesA", "BayesB", "BayesC", "BL")  # BL = Bayesian Lasso
+                      if (!is.null(covariate)){
+                        cov_split <- split_Xcov(Xcov_all, train_ids, test_ids)
+                        X_train <- as.data.frame(cov_split$X_train)
+                        X_test  <- as.data.frame(cov_split$X_test)
+                      } else {X_train <- NULL; X_test <- NULL}
+                      Xcov_df <- X_train
                       gc()
                       if(any(grepl("Bayes",unlist(Additional_models)))){
                         # Function to fit a single Bayesian model for one phenotype and one or more multiple covariates
-                        run_independent_bayes <- function(model_name, Y_train, X_train = NULL, geno.A_scaled_train, geno.D_scaled_train, nIter, burnIn) {
+                        run_independent_bayes <- function(model_name, Y_train, X_train = NULL, geno.A_scaled_train, geno.D_scaled_train,
+                                                          Y_test, X_test = NULL, geno.A_scaled_test, geno.D_scaled_test, Xcov_mat = NULL, nIter, burnIn) {
                           suppressPackageStartupMessages(library(BGLR))
                           covTraits <- character(0)
                           if (!is.null(X_train) && ncol(X_train) > 0) {covTraits <- colnames(X_train)}
@@ -1358,7 +1370,7 @@ holostackGP <- function(
                           gebv_list <- list()
                           if (length(covTraits) > 0) {
                             for (covt in covTraits) {
-                              y <- X_train[[covt]]
+                              y <- Xcov_df[[covt]]
                               ok <- !is.na(y)
                               fm <- BGLR(y = y[ok], ETA = list(list(X = geno.A_scaled_train[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
                               b <- fm$ETA[[1]]$b
@@ -1437,11 +1449,12 @@ holostackGP <- function(
                           pred_D <- as.numeric(marker_part + fixed_part)
                           # pred_D <- as.numeric(geno.D_scaled_train[test_idx, , drop = FALSE] %*% b_markersD + X_test %*% b_fixedD)
                           # ---- Return predictions for test set ----
-                          return(data.frame(A = pred_A, D = pred_D, row.names = rownames(Y.ttrain)[test_idx]))
+                          return(cbind(A = as.numeric(pred_A), D = as.numeric(pred_D))
+                          )
                         }
-
                         # Wrapper to run all models in parallel
-                        run_parallel_stack <- function(Y_train, X_train, covariate = NULL, geno.A_scaled_train, geno.D_scaled_train, nIter, burnIn, n.cores = ncores) {
+                        run_parallel_stack <- function(Y_train, X_train, covariate = NULL, geno.A_scaled_train, geno.D_scaled_train,
+                                                       Y_test, X_test = NULL, geno.A_scaled_test, geno.D_scaled_test, nIter, burnIn, n.cores = ncores) {
                           # If covariate is NULL, make sure X_train is also NULL
                           if (is.null(covariate)) {X_train <- NULL}
                           # If X_train exists but has zero columns, set it to NULL
@@ -1453,16 +1466,28 @@ holostackGP <- function(
                             suppressPackageStartupMessages(library(BGLR))
                             NULL
                           })
-                          parallel::clusterExport(cl, varlist = c("Y_train", "X_train", "geno.A_scaled_train", "geno.D_scaled_train", "nIter", "burnIn", "run_independent_bayes", "prepare_covariates"), envir = environment())
+                          parallel::clusterExport(cl, varlist = c("Y_train", "X_train", "geno.A_scaled_train", "geno.D_scaled_train",
+                                                                  "X_test", "geno.A_scaled_test", "geno.D_scaled_test",
+                                                                  "nIter", "burnIn", "run_independent_bayes", "prepare_covariates"), envir = environment())
                           preds_list <- parallel::parLapply(cl, bayes_models, function(model) {
-                            run_independent_bayes(model, Y_train = Y_train, X_train = X_train, geno.A_scaled_train = geno.A_scaled_train, geno.D_scaled_train = geno.D_scaled_train, nIter = nIter, burnIn = burnIn)
+                            run_independent_bayes(model, Y_train = Y_train, X_train = X_train, geno.A_scaled_train = geno.A_scaled_train, geno.D_scaled_train = geno.D_scaled_train,
+                                                  Y_test, X_test = NULL, geno.A_scaled_test, geno.D_scaled_test, nIter = nIter, burnIn = burnIn)
                           })
                           names(preds_list) <- bayes_models
                           return(preds_list)
                         }
                         # Run all Bayesian models in parallel
-                        preds_stack <- run_parallel_stack(Y_train = Y_train, X_train = X_train, geno.A_scaled_train = geno.A_scaled_train, geno.D_scaled_train = geno.D_scaled_train, nIter = nIter, burnIn = burnIn, n.cores = ncores)
-                        pred_bayes_all <- as.data.frame(preds_stack)
+                        preds_stack <- run_parallel_stack(Y_train = Y_train, X_train = X_train, geno.A_scaled_train = geno.A_scaled_train, geno.D_scaled_train = geno.D_scaled_train,
+                                                          Y_test = Y_test, X_test = X_test, geno.A_scaled_test = geno.A_scaled_test, geno.D_scaled_test = geno.D_scaled_test,
+                                                          nIter = nIter, burnIn = burnIn, n.cores = ncores)
+                        pred_bayes_all <- do.call(
+                          cbind,
+                          lapply(names(preds_stack), function(m) {
+                            df <- preds_stack[[m]]
+                            colnames(df) <- paste0(m, "_", colnames(df))  # BRR_A, BRR_D, etc.
+                            df
+                          })
+                        )
                         rownames(pred_bayes_all) <- test_ids
                         pred_bayes_OOF <- rbind( pred_bayes_OOF,pred_bayes_all)
                       }
@@ -1470,6 +1495,11 @@ holostackGP <- function(
 
                   } else {
                     # GBLUP with rrBLUP package
+                    if (!is.null(covariate)){
+                      cov_split <- split_Xcov(Xcov_all, train_ids, test_ids)
+                      X_train <- as.data.frame(cov_split$X_train)
+                      X_test  <- as.data.frame(cov_split$X_test)
+                    } else {X_train <- NULL; X_test <- NULL}
                     covTraits <- character(0)
                     {if (!is.null(X_train) && ncol(X_train) > 0) {covTraits <- colnames(X_train)}
                       gebv_list <- list()
@@ -1529,6 +1559,11 @@ holostackGP <- function(
                     pred_gblup_OOF <- rbind(pred_gblup_OOF,pred_gblup)
 
                     if (!is.null(Additional_models)){
+                      if (!is.null(covariate)){
+                        cov_split <- split_Xcov(Xcov_all, train_ids, test_ids)
+                        X_train <- as.data.frame(cov_split$X_train)
+                        X_test  <- as.data.frame(cov_split$X_test)
+                      } else {X_train <- NULL; X_test <- NULL}
                       # rrBLUP marker effects model
                       train_ids <- which(!is.na(Y_train))
                       y_train <- Y_train[train_ids]
@@ -1570,6 +1605,11 @@ holostackGP <- function(
                       pred_rrblup_OOF <- rbind(pred_rrblup_OOF,pred_rrblup)
 
                       # RHKs with BGLR package
+                      if (!is.null(covariate)){
+                        cov_split <- split_Xcov(Xcov_all, train_ids, test_ids)
+                        X_train <- as.data.frame(cov_split$X_train)
+                        X_test  <- as.data.frame(cov_split$X_test)
+                      } else {X_train <- NULL; X_test <- NULL}
                       covTraits <- character(0)
                       if (!is.null(X_train) && ncol(X_train) > 0) {covTraits <- colnames(X_train)}
                       gebv_list <- list()
@@ -1615,8 +1655,15 @@ holostackGP <- function(
                       bayes_models <- c("BRR", "BayesA", "BayesB", "BayesC", "BL")  # BL = Bayesian Lasso
                       gc()
                       if(any(grepl("Bayes",unlist(Additional_models)))){
+                        if (!is.null(covariate)){
+                          cov_split <- split_Xcov(Xcov_all, train_ids, test_ids)
+                          X_train <- as.data.frame(cov_split$X_train)
+                          X_test  <- as.data.frame(cov_split$X_test)
+                        } else {X_train <- NULL; X_test <- NULL}
+                        Xcov_df <- X_train
                         # Function to fit a single Bayesian model for one phenotype and one or more multiple covariates
-                        run_independent_bayes <- function(model_name, Y_train, X_train = NULL, geno_scaled_train, nIter, burnIn) {
+                        run_independent_bayes <- function(model_name, Y_train, X_train = NULL, geno_scaled_train,
+                                                          Y_test, X_test = NULL, geno_scaled_test, Xcov_mat = NULL, nIter, burnIn) {
                           suppressPackageStartupMessages(library(BGLR))
                           covTraits <- character(0)
                           if (!is.null(X_train) && ncol(X_train) > 0) {covTraits <- colnames(X_train)}
@@ -1624,7 +1671,7 @@ holostackGP <- function(
                           gebv_list <- list()
                           if (length(covTraits) > 0) {
                             for (covt in covTraits) {
-                              y <- X_train[[covt]]
+                              y <- Xcov_df[[covt]]
                               ok <- !is.na(y)
                               fm <- BGLR(y = y[ok], ETA = list(list(X = geno_scaled_train[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
                               b <- fm$ETA[[1]]$b
@@ -1664,7 +1711,8 @@ holostackGP <- function(
                         }
 
                         # Wrapper to run all models in parallel
-                        run_parallel_stack <- function(Y_train, X_train, covariate = NULL, geno_scaled_train, nIter, burnIn, n.cores = ncores) {
+                        run_parallel_stack <- function(Y_train, X_train, covariate = NULL, geno_scaled_train,
+                                                       Y_test, X_test = NULL, geno_scaled_test, Xcov_mat = NULL, nIter, burnIn, n.cores = ncores) {
                           # If covariate is NULL, make sure X_train is also NULL
                           if (is.null(covariate)) {X_train <- NULL}
                           # If X_train exists but has zero columns, set it to NULL
@@ -1676,16 +1724,19 @@ holostackGP <- function(
                             suppressPackageStartupMessages(library(BGLR))
                             NULL
                           })
-                          parallel::clusterExport(cl, varlist = c("Y_train", "X_train", "geno_scaled_train", "nIter", "burnIn", "run_independent_bayes", "prepare_covariates"), envir = environment())
+                          parallel::clusterExport(cl, varlist = c("Y_train", "X_train", "geno_scaled_train", "Y_test", "X_test", "geno_scaled_test",
+                                                                  "nIter", "burnIn", "run_independent_bayes", "prepare_covariates"), envir = environment())
                           preds_list <- parallel::parLapply(cl, bayes_models, function(model) {
-                            run_independent_bayes(model, Y_train = Y_train, X_train = X_train, geno_scaled_train = geno_scaled_train, nIter = nIter, burnIn = burnIn)
+                            run_independent_bayes(model, Y_train = Y_train, X_train = X_train, geno_scaled_train = geno_scaled_train,
+                                                  Y_test = Y_test, X_test = X_test, geno_scaled_test = geno_scaled_test, nIter = nIter, burnIn = burnIn)
                           })
                           names(preds_list) <- bayes_models
                           return(preds_list)
                         }
 
                         # Run all Bayesian models in parallel
-                        preds <- run_parallel_stack(Y_train = Y_train, X_train = X_train, geno_scaled_train = geno_scaled_train, nIter = nIter, burnIn = burnIn, n.cores = ncores)
+                        preds <- run_parallel_stack(Y_train = Y_train, X_train = X_train, geno_scaled_train = geno_scaled_train,
+                                                    Y_test = Y_test, X_test = X_test, geno_scaled_test = geno_scaled_test, Xcov_mat = NULL, nIter = nIter, burnIn = burnIn, n.cores = ncores)
                         pred_bayes_all <- as.data.frame(preds)
                         rownames(pred_bayes_all) <- test_ids
                         pred_bayes_OOF <- rbind(pred_bayes_OOF,pred_bayes_all)
@@ -1695,6 +1746,11 @@ holostackGP <- function(
                 }
                 if(gp_model == "gBLUP"){
                     # GBLUP  with rrBLUP package
+                    if (!is.null(covariate)){
+                      cov_split <- split_Xcov(Xcov_all, train_ids, test_ids)
+                      X_train <- as.data.frame(cov_split$X_train)
+                      X_test  <- as.data.frame(cov_split$X_test)
+                    } else {X_train <- NULL; X_test <- NULL}
                     pred_list <- list()
                     for (kernel_name in names(kernels_train)) {
                       K_train <- kernels_train[[kernel_name]]   # train × train
@@ -1764,6 +1820,17 @@ holostackGP <- function(
                     pred_gblup_OOF <- rbind(pred_gblup_OOF,pred_gblup_all)
 
                     if (!is.null(Additional_models)){
+                      if (!is.null(covariate)){
+                        cov_split <- split_Xcov(Xcov_all, train_ids, test_ids)
+                        X_train <- as.data.frame(cov_split$X_train)
+                        X_test  <- as.data.frame(cov_split$X_test)
+                      } else {X_train <- NULL; X_test <- NULL}
+                      if (!is.null(covariate)){
+                        cov_split <- split_Xcov(Xcov_all, train_ids, test_ids)
+                        X_train <- as.data.frame(cov_split$X_train)
+                        X_test  <- as.data.frame(cov_split$X_test)
+                      } else {X_train <- NULL; X_test <- NULL}
+                      Xcov_df <- X_train
                       # rrBLUP marker effects model: K_M
                       train_ids <- which(!is.na(Y_train))
                       y_train <- Y_train[train_ids]
@@ -1801,6 +1868,11 @@ holostackGP <- function(
                       pred_rrblup_OOF <- rbind(pred_rrblup_OOF,pred_rrblup)
 
                       # RHKs with BGLR package
+                      if (!is.null(covariate)){
+                        cov_split <- split_Xcov(Xcov_all, train_ids, test_ids)
+                        X_train <- as.data.frame(cov_split$X_train)
+                        X_test  <- as.data.frame(cov_split$X_test)
+                      } else {X_train <- NULL; X_test <- NULL}
                       pred_list <- list()
                       for (kernel_name in names(kernels_train)) {
                         K_train <- kernels_train[[kernel_name]]   # train × train
@@ -1856,8 +1928,15 @@ holostackGP <- function(
                       bayes_models <- c("BRR", "BayesA", "BayesB", "BayesC", "BL")  # BL = Bayesian Lasso
                       gc()
                       if(any(grepl("Bayes",unlist(Additional_models)))){
+                        if (!is.null(covariate)){
+                          cov_split <- split_Xcov(Xcov_all, train_ids, test_ids)
+                          X_train <- as.data.frame(cov_split$X_train)
+                          X_test  <- as.data.frame(cov_split$X_test)
+                        } else {X_train <- NULL; X_test <- NULL}
+                        Xcov_df <- X_train
                         # Function to fit a single Bayesian model for one phenotype and one or more multiple covariates
-                        run_independent_bayes <- function(model_name, Y_train, X_train = NULL, mgeno_scaled_train, nIter, burnIn) {
+                        run_independent_bayes <- function(model_name, Y_train, X_train = NULL, mgeno_scaled_train,
+                                                          Y_test, X_test = NULL, mgeno_scaled_test, Xcov_mat = NULL, nIter, burnIn) {
                           suppressPackageStartupMessages(library(BGLR))
                           covTraits <- character(0)
                           if (!is.null(X_train) && ncol(X_train) > 0) {covTraits <- colnames(X_train)}
@@ -1865,7 +1944,7 @@ holostackGP <- function(
                           gebv_list <- list()
                           if (length(covTraits) > 0) {
                             for (covt in covTraits) {
-                              y <- X_train[[covt]]
+                              y <- Xcov_df[[covt]]
                               ok <- !is.na(y)
                               fm <- BGLR(y = y[ok], ETA = list(list(X = mgeno_scaled_train[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
                               b <- fm$ETA[[1]]$b
@@ -1919,16 +1998,19 @@ holostackGP <- function(
                             suppressPackageStartupMessages(library(BGLR))
                             NULL
                           })
-                          parallel::clusterExport(cl, varlist = c("Y_train", "X_train", "mgeno_scaled_train", "nIter", "burnIn", "run_independent_bayes", "prepare_covariates"), envir = environment())
+                          parallel::clusterExport(cl, varlist = c("Y_train", "X_train", "mgeno_scaled_train", "Y_test", "X_test", "mgeno_scaled_test",
+                                                                  "nIter", "burnIn", "run_independent_bayes", "prepare_covariates"), envir = environment())
                           preds_list <- parallel::parLapply(cl, bayes_models, function(model) {
-                            run_independent_bayes(model, Y_train = Y_train, X_train = X_train,mgeno_scaled_train = mgeno_scaled_train, nIter = nIter, burnIn = burnIn)
+                            run_independent_bayes(model, Y_train = Y_train, X_train = X_train,mgeno_scaled_train = mgeno_scaled_train,
+                                                  Y_test = Y_test, X_test = X_test, mgeno_scaled_test = mgeno_scaled_test, nIter = nIter, burnIn = burnIn)
                           })
                           names(preds_list) <- bayes_models
                           return(preds_list)
                         }
 
                         # Run all Bayesian models in parallel
-                        preds <- run_parallel_stack(Y_train = Y_train, X_train = X_train, mgeno_scaled_train = mgeno_scaled_train, nIter = nIter, burnIn = burnIn, n.cores = ncores)
+                        preds <- run_parallel_stack(Y_train = Y_train, X_train = X_train, mgeno_scaled_train = mgeno_scaled_train,
+                                                    Y_test = Y_test, X_test = X_test, mgeno_scaled_test = mgeno_scaled_test, nIter = nIter, burnIn = burnIn, n.cores = ncores)
                         pred_bayes_all <- as.data.frame(preds)
                         rownames(pred_bayes_all) <- test_ids
                         pred_bayes_OOF <- rbind(pred_bayes_OOF,pred_bayes_all)
@@ -1938,6 +2020,11 @@ holostackGP <- function(
                 if(gp_model == "gGBLUP"){
                   if (gene_model == "Full" || gene_model == "All"){
                     # GBLUP  with rrBLUP package
+                    if (!is.null(covariate)){
+                      cov_split <- split_Xcov(Xcov_all, train_ids, test_ids)
+                      X_train <- as.data.frame(cov_split$X_train)
+                      X_test  <- as.data.frame(cov_split$X_test)
+                    } else {X_train <- NULL; X_test <- NULL}
                     pred_list <- list()
                     for (kernel_name in names(kernels_train)) {
                       K_train <- kernels_train[[kernel_name]]   # train × train
@@ -2008,6 +2095,11 @@ holostackGP <- function(
 
                     if (!is.null(Additional_models)){
                       # rrBLUP marker effects model: K_A
+                      if (!is.null(covariate)){
+                        cov_split <- split_Xcov(Xcov_all, train_ids, test_ids)
+                        X_train <- as.data.frame(cov_split$X_train)
+                        X_test  <- as.data.frame(cov_split$X_test)
+                      } else {X_train <- NULL; X_test <- NULL}
                       train_ids <- which(!is.na(Y_train))
                       y_train <- Y_train[train_ids]
                       geno.A_scaled_train <- as.matrix(geno.A_scaled_train)
@@ -2041,6 +2133,11 @@ holostackGP <- function(
                       pred_rrblup_A <- as.vector(Z_test %*% model_rrblup$u)
 
                       # rrBLUP marker effects model: K_D
+                      if (!is.null(covariate)){
+                        cov_split <- split_Xcov(Xcov_all, train_ids, test_ids)
+                        X_train <- as.data.frame(cov_split$X_train)
+                        X_test  <- as.data.frame(cov_split$X_test)
+                      } else {X_train <- NULL; X_test <- NULL}
                       train_ids <- which(!is.na(Y_train))
                       y_train <- Y_train[train_ids]
                       geno.D_scaled_train <- as.matrix(geno.D_scaled_train)
@@ -2074,6 +2171,11 @@ holostackGP <- function(
                       pred_rrblup_D <- as.vector(Z_test %*% model_rrblup$u)
 
                       # rrBLUP marker effects model: K_M
+                      if (!is.null(covariate)){
+                        cov_split <- split_Xcov(Xcov_all, train_ids, test_ids)
+                        X_train <- as.data.frame(cov_split$X_train)
+                        X_test  <- as.data.frame(cov_split$X_test)
+                      } else {X_train <- NULL; X_test <- NULL}
                       train_ids <- which(!is.na(Y_train))
                       y_train <- Y_train[train_ids]
                       mgeno_scaled_train <- as.matrix(mgeno_scaled_train)
@@ -2114,6 +2216,11 @@ holostackGP <- function(
                       # RHKs with BGLR package
                       pred_list <- list()
                       for (kernel_name in names(kernels_train)) {
+                        if (!is.null(covariate)){
+                          cov_split <- split_Xcov(Xcov_all, train_ids, test_ids)
+                          X_train <- as.data.frame(cov_split$X_train)
+                          X_test  <- as.data.frame(cov_split$X_test)
+                        } else {X_train <- NULL; X_test <- NULL}
                         K_train <- kernels_train[[kernel_name]]   # train × train
                         K <- K_train
                         K_test  <- kernels_test[[kernel_name]]    # test  × train
@@ -2167,8 +2274,15 @@ holostackGP <- function(
                       bayes_models <- c("BRR", "BayesA", "BayesB", "BayesC", "BL")  # BL = Bayesian Lasso
                       gc()
                       if(any(grepl("Bayes",unlist(Additional_models)))){
+                        if (!is.null(covariate)){
+                          cov_split <- split_Xcov(Xcov_all, train_ids, test_ids)
+                          X_train <- as.data.frame(cov_split$X_train)
+                          X_test  <- as.data.frame(cov_split$X_test)
+                        } else {X_train <- NULL; X_test <- NULL}
+                        Xcov_df <- X_train
                         # Function to fit a single Bayesian model for one phenotype and one or more multiple covariates
-                        run_independent_bayes <- function(model_name, Y_train, X_train = NULL, geno.A_scaled_train, geno.D_scaled_train, mgeno_scaled_train, nIter, burnIn) {
+                        run_independent_bayes <- function(model_name, Y_train, X_train = NULL, geno.A_scaled_train, geno.D_scaled_train, mgeno_scaled_train,
+                                                          Y_test, X_test = NULL, geno.A_scaled_test, geno.D_scaled_test, mgeno_scaled_test, Xcov_mat = NULL, nIter, burnIn) {
                           suppressPackageStartupMessages(library(BGLR))
                           covTraits <- character(0)
                           if (!is.null(X_train) && ncol(X_train) > 0) {covTraits <- colnames(X_train)}
@@ -2176,7 +2290,7 @@ holostackGP <- function(
                           gebv_list <- list()
                           if (length(covTraits) > 0) {
                             for (covt in covTraits) {
-                              y <- X_train[[covt]]
+                              y <- Xcov_df[[covt]]
                               ok <- !is.na(y)
                               fm <- BGLR(y = y[ok], ETA = list(list(X = geno.A_scaled_train[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
                               b <- fm$ETA[[1]]$b
@@ -2301,7 +2415,8 @@ holostackGP <- function(
                         }
 
                         # Wrapper to run all models in parallel
-                        run_parallel_stack <- function(Y_train, X_train, covariate = NULL, geno.A_scaled_train, geno.D_scaled_train, mgeno_scaled_train, nIter, burnIn, n.cores = ncores) {
+                        run_parallel_stack <- function(Y_train, X_train, covariate = NULL, geno.A_scaled_train, geno.D_scaled_train, mgeno_scaled_train,
+                                                       Y_test, X_test, covariate = NULL, geno.A_scaled_test, geno.D_scaled_test, mgeno_scaled_test, nIter, burnIn, n.cores = ncores) {
                           # If covariate is NULL, make sure X_train is also NULL
                           if (is.null(covariate)) {X_train <- NULL}
                           # If X_train exists but has zero columns, set it to NULL
@@ -2313,16 +2428,21 @@ holostackGP <- function(
                             suppressPackageStartupMessages(library(BGLR))
                             NULL
                           })
-                          parallel::clusterExport(cl, varlist = c("Y_train", "X_train", "geno.A_scaled_train", "geno.D_scaled_train", "mgeno_scaled_train", "nIter", "burnIn", "run_independent_bayes", "prepare_covariates"), envir = environment())
+                          parallel::clusterExport(cl, varlist = c("Y_train", "X_train", "geno.A_scaled_train", "geno.D_scaled_train", "mgeno_scaled_train",
+                                                                  "Y_test", "X_test", "geno.A_scaled_test", "geno.D_scaled_test", "mgeno_scaled_test", "nIter", "burnIn", "run_independent_bayes", "prepare_covariates"), envir = environment())
                           preds_list <- parallel::parLapply(cl, bayes_models, function(model) {
-                            run_independent_bayes(model, Y_train = Y_train, X_train = X_train,geno.A_scaled_train = geno.A_scaled_train, geno.D_scaled_train = geno.D_scaled_train, mgeno_scaled_train = mgeno_scaled_train, nIter = nIter, burnIn = burnIn)
+                            run_independent_bayes(model, Y_train = Y_train, X_train = X_train,geno.A_scaled_train = geno.A_scaled_train, geno.D_scaled_train = geno.D_scaled_train, mgeno_scaled_train = mgeno_scaled_train,
+                                                  Y_test = Y_test, X_test = X_test, geno.A_scaled_test = geno.A_scaled_test, geno.D_scaled_test = geno.D_scaled_test, mgeno_scaled_test = mgeno_scaled_test,
+                                                  nIter = nIter, burnIn = burnIn)
                           })
                           names(preds_list) <- bayes_models
                           return(preds_list)
                         }
 
                         # Run all Bayesian models in parallel
-                        preds_stack <- run_parallel_stack(Y_train = Y_train, X_train = X_train, geno.A_scaled_train = geno.A_scaled_train, geno.D_scaled_train = geno.D_scaled_train, mgeno_scaled_train = mgeno_scaled_train, nIter = nIter, burnIn = burnIn, n.cores = ncores)
+                        preds_stack <- run_parallel_stack(Y_train = Y_train, X_train = X_train, geno.A_scaled_train = geno.A_scaled_train, geno.D_scaled_train = geno.D_scaled_train, mgeno_scaled_train = mgeno_scaled_train,
+                                                          Y_test = Y_test, X_test = X_test, geno.A_scaled_test = geno.A_scaled_test, geno.D_scaled_test = geno.D_scaled_test, mgeno_scaled_test = mgeno_scaled_test,
+                                                          nIter = nIter, burnIn = burnIn, n.cores = ncores)
                         pred_bayes_all <- as.data.frame(preds_stack)
                         rownames(pred_bayes_all) <- test_ids
                         pred_bayes_OOF <- rbind( pred_bayes_OOF,pred_bayes_all)
@@ -2331,6 +2451,11 @@ holostackGP <- function(
                     }
                   } else {
                     # GBLUP with rrBLUP package
+                    if (!is.null(covariate)){
+                      cov_split <- split_Xcov(Xcov_all, train_ids, test_ids)
+                      X_train <- as.data.frame(cov_split$X_train)
+                      X_test  <- as.data.frame(cov_split$X_test)
+                    } else {X_train <- NULL; X_test <- NULL}
                     {
                       covTraits <- character(0)
                       if (!is.null(X_train) && ncol(X_train) > 0) {covTraits <- colnames(X_train)}
@@ -2414,6 +2539,11 @@ holostackGP <- function(
 
                     if (!is.null(Additional_models)){
                       # metagenomic RHKs with BGLR package
+                      if (!is.null(covariate)){
+                        cov_split <- split_Xcov(Xcov_all, train_ids, test_ids)
+                        X_train <- as.data.frame(cov_split$X_train)
+                        X_test  <- as.data.frame(cov_split$X_test)
+                      } else {X_train <- NULL; X_test <- NULL}
                       covTraits <- character(0)
                       if (!is.null(X_train) && ncol(X_train) > 0) {covTraits <- colnames(X_train)}
                       gebv_list <- list()
@@ -2452,6 +2582,11 @@ holostackGP <- function(
                       pred_rkhs_m <- as.numeric( K_test_train %*% u_train)
 
                       # genomic RHKs with BGLR package
+                      if (!is.null(covariate)){
+                        cov_split <- split_Xcov(Xcov_all, train_ids, test_ids)
+                        X_train <- as.data.frame(cov_split$X_train)
+                        X_test  <- as.data.frame(cov_split$X_test)
+                      } else {X_train <- NULL; X_test <- NULL}
                       gebv_list <- list()
                       for(covt in covTraits){
                         y <- X_train[[covt]]
@@ -2493,6 +2628,11 @@ holostackGP <- function(
                       pred_rkhs_OOF <- rbind(pred_rkhs_OOF,pred_rkhs_all)
 
                       # metagenomic rrBLUP marker effects model
+                      if (!is.null(covariate)){
+                        cov_split <- split_Xcov(Xcov_all, train_ids, test_ids)
+                        X_train <- as.data.frame(cov_split$X_train)
+                        X_test  <- as.data.frame(cov_split$X_test)
+                      } else {X_train <- NULL; X_test <- NULL}
                       train_ids <- which(!is.na(Y_train))
                       y_train <- Y_train[train_ids]
                       geno_scaled_train <- as.matrix(mgeno_scaled_train)
@@ -2565,8 +2705,15 @@ holostackGP <- function(
                       bayes_models <- c("BRR", "BayesA", "BayesB", "BayesC", "BL")  # BL = Bayesian Lasso
                       gc()
                       if(any(grepl("Bayes",unlist(Additional_models)))){
+                        if (!is.null(covariate)){
+                          cov_split <- split_Xcov(Xcov_all, train_ids, test_ids)
+                          X_train <- as.data.frame(cov_split$X_train)
+                          X_test  <- as.data.frame(cov_split$X_test)
+                        } else {X_train <- NULL; X_test <- NULL}
+                        Xcov_df <- X_train
                         # Function to fit a single Bayesian model for one phenotype and one or more multiple covariates
-                        run_independent_bayes <- function(model_name, Y_train, X_train = NULL, geno_scaled_train, mgeno_scaled_train, nIter, burnIn) {
+                        run_independent_bayes <- function(model_name, Y_train, X_train = NULL, geno_scaled_train, mgeno_scaled_train,
+                                                          Y_test, X_test = NULL, geno_scaled_test, mgeno_scaled_test, Xcov_mat = NULL, nIter, burnIn) {
                           suppressPackageStartupMessages(library(BGLR))
                           covTraits <- character(0)
                           if (!is.null(X_train) && ncol(X_train) > 0) {covTraits <- colnames(X_train)}
@@ -2574,7 +2721,7 @@ holostackGP <- function(
                           gebv_list <- list()
                           if (length(covTraits) > 0) {
                             for (covt in covTraits) {
-                              y <- X_train[[covt]]
+                              y <- Xcov_df[[covt]]
                               ok <- !is.na(y)
                               fm <- BGLR(y = y[ok], ETA = list(list(X = geno_scaled_train[ok, , drop = FALSE], model = model_name)), nIter = nIter, burnIn = burnIn, verbose = FALSE)
                               b <- fm$ETA[[1]]$b
@@ -2669,16 +2816,21 @@ holostackGP <- function(
                             suppressPackageStartupMessages(library(BGLR))
                             NULL
                           })
-                          parallel::clusterExport(cl, varlist = c("Y_train", "X_train", "geno_scaled_train","mgeno_scaled_train", "nIter", "burnIn", "run_independent_bayes", "prepare_covariates"), envir = environment())
+                          parallel::clusterExport(cl, varlist = c("Y_train", "X_train", "geno_scaled_train","mgeno_scaled_train",
+                                                                  "Y_test", "X_tes", "geno_scaled_tes","mgeno_scaled_tes", "nIter", "burnIn", "run_independent_bayes", "prepare_covariates"), envir = environment())
                           preds_list <- parallel::parLapply(cl, bayes_models, function(model) {
-                            run_independent_bayes(model, Y_train = Y_train, X_train = X_train, geno_scaled_train = geno_scaled_train, mgeno_scaled_train = mgeno_scaled_train, nIter = nIter, burnIn = burnIn)
+                            run_independent_bayes(model, Y_train = Y_train, X_train = X_train, geno_scaled_train = geno_scaled_train, mgeno_scaled_train = mgeno_scaled_train,
+                                                  Y_test = Y_test, X_test = X_test, geno_scaled_test = geno_scaled_test, mgeno_scaled_test = mgeno_scaled_test,
+                                                  nIter = nIter, burnIn = burnIn)
                           })
                           names(preds_list) <- bayes_models
                           return(preds_list)
                         }
 
                         # Run all Bayesian models in parallel
-                        preds_stack <- run_parallel_stack(Y_train = Y_train, X_train = X_train, geno_scaled_train = geno_scaled_train, mgeno_scaled_train = mgeno_scaled_train, nIter = nIter, burnIn = burnIn, n.cores = ncores)
+                        preds_stack <- run_parallel_stack(Y_train = Y_train, X_train = X_train, geno_scaled_train = geno_scaled_train, mgeno_scaled_train = mgeno_scaled_train,
+                                                          Y_test = Y_test, X_test = X_test, geno_scaled_test = geno_scaled_test, mgeno_scaled_test = mgeno_scaled_test,
+                                                          nIter = nIter, burnIn = burnIn, n.cores = ncores)
                         pred_bayes_all <- as.data.frame(preds_stack)
                         rownames(pred_bayes_all) <- test_ids
                         pred_bayes_OOF <- rbind( pred_bayes_OOF,pred_bayes_all)
@@ -2701,38 +2853,23 @@ holostackGP <- function(
               # ---------------------------------------------
               # Two-step Elastic Net stacking for multi-kernel, multi-GP predictions
               # ---------------------------------------------
-
+              # this code uses Elastic Net for step-1 and Step-2 stacking
               stack_predictions_cv <- function(
                 trait,
-                gp_model = c("gBLUP", "GBLUP", "gGBLUP"),
                 Y.raw,
                 pred_gblup_OOF = NULL,
                 pred_rrblup_OOF = NULL,
                 pred_rkhs_OOF  = NULL,
                 pred_bayes_OOF = NULL,
                 id_col = "Taxa",
+                alpha = 0,         # alpha = 0 → ridge, 0 < alpha <= 1 → elastic-net
                 seed = 123
               ) {
 
                 set.seed(seed)
-                gp_model <- match.arg(gp_model)
 
                 ## -----------------------------
-                ## 1. Prepare phenotype
-                ## -----------------------------
-                if (!id_col %in% colnames(Y.raw))
-                  stop("Y.raw must contain ID column: ", id_col)
-
-                rownames(Y.raw) <- Y.raw[[id_col]]
-
-                if (!trait %in% colnames(Y.raw))
-                  stop("Trait not found in Y.raw: ", trait)
-
-                y_all <- Y.raw[[trait]]
-                names(y_all) <- rownames(Y.raw)
-
-                ## -----------------------------
-                ## 2. Utilities
+                ## Utilities
                 ## -----------------------------
                 cor_safe <- function(a, b) {
                   ok <- complete.cases(a, b)
@@ -2741,176 +2878,161 @@ holostackGP <- function(
                   cor(a[ok], b[ok])
                 }
 
-                stage1_stack <- function(X, y) {
-                  X <- as.matrix(X)
-
-                  keep <- apply(X, 2, function(z) sd(z, na.rm = TRUE) > 0)
-                  X <- X[, keep, drop = FALSE]
-
-                  if (ncol(X) == 0)
-                    return(rep(NA_real_, length(y)))
-
-                  if (ncol(X) == 1)
-                    return(as.numeric(X[, 1]))
-
-                  ok <- complete.cases(X, y)
-                  if (sum(ok) < 5)
-                    return(rep(NA_real_, length(y)))
-
-                  fit <- tryCatch(
-                    lm(y[ok] ~ X[ok, , drop = FALSE]),
-                    error = function(e) NULL
-                  )
-
-                  yhat <- rep(NA_real_, length(y))
-
-                  if (!is.null(fit)) {
-                    yhat[ok] <- predict(fit, newdata = as.data.frame(X[ok, , drop = FALSE]))
-                  }
-
-                  if (all(is.na(yhat[ok]))) {
-                    yhat[ok] <- rowMeans(X[ok, , drop = FALSE], na.rm = TRUE)
-                  }
-
-                  yhat
-                }
-
-                elastic_net_stack <- function(X, y) {
-                  X <- as.matrix(X)
-                  ok <- complete.cases(X, y)
-                  if (sum(ok) < 5) return(rep(NA_real_, length(y)))
-
-                  fit <- tryCatch(
-                    glmnet::cv.glmnet(X[ok, , drop = FALSE], y[ok], alpha = 0.5),
-                    error = function(e) NULL
-                  )
-
-                  yhat <- rep(NA_real_, length(y))
-                  if (!is.null(fit))
-                    yhat[ok] <- as.numeric(
-                      predict(fit, newx = X[ok, , drop = FALSE], s = "lambda.min")
-                    )
-
-                  yhat
-                }
+                ## -----------------------------
+                ## 1. Phenotype
+                ## -----------------------------
+                rownames(Y.raw) <- Y.raw[[id_col]]
+                y <- Y.raw[[trait]]
+                names(y) <- rownames(Y.raw)
 
                 ## -----------------------------
-                ## 3. Collect all OOF columns
+                ## 2. Combine kernel-level OOF predictions
                 ## -----------------------------
-                oof_all <- list(
-                  pred_gblup_OOF,
-                  pred_rrblup_OOF,
-                  pred_rkhs_OOF,
-                  pred_bayes_OOF
+                oof_list <- list(pred_gblup_OOF, pred_rrblup_OOF,
+                                 pred_rkhs_OOF, pred_bayes_OOF)
+
+                # convert each to numeric matrix, remove NULLs
+                oof_list <- lapply(oof_list, function(x) {
+                  if (is.null(x)) return(NULL)
+                  as.matrix(x)
+                })
+
+                pred_all <- do.call(cbind, Filter(Negate(is.null), oof_list))
+
+                common_ids <- intersect(rownames(pred_all), names(y))
+                pred_all <- pred_all[common_ids, , drop = FALSE]
+                y <- y[common_ids]
+
+                ## -----------------------------
+                ## 3. Parse GP methods
+                ## -----------------------------
+                gp_method <- sub("[\\._].*$", "", colnames(pred_all))
+                methods <- unique(gp_method)
+
+                ## -----------------------------
+                ## 4. Step-1: kernel-level EN stacking (no pruning)
+                ## -----------------------------
+                pred_all_stack_1 <- matrix(
+                  NA_real_,
+                  nrow = nrow(pred_all),
+                  ncol = length(methods),
+                  dimnames = list(rownames(pred_all), methods)
                 )
 
-                oof_all <- Filter(Negate(is.null), oof_all)
-                if (length(oof_all) == 0)
-                  stop("No OOF predictions supplied")
-
-                oof_all <- do.call(cbind, oof_all)
-
-                ## -----------------------------
-                ## 4. Parse GP method from column names
-                ## -----------------------------
-                method_map <- sub("\\..*$", "", colnames(oof_all))
-                methods <- unique(method_map)
-
-                ## -----------------------------
-                ## 5. Align IDs
-                ## -----------------------------
-                common_ids <- intersect(rownames(oof_all), names(y_all))
-                if (length(common_ids) < 5)
-                  stop("Insufficient overlap between phenotype and OOF predictions")
-
-                y <- y_all[common_ids]
-                oof_all <- oof_all[common_ids, , drop = FALSE]
-
-                ## -----------------------------
-                ## 6. Stage-1: within-method stacking
-                ## -----------------------------
-                method_preds <- list()
-                method_cor   <- numeric(length(methods))
-                names(method_cor) <- methods
+                pa_stage1 <- setNames(rep(NA_real_, length(methods)), methods)
+                pred_all_poststack <- list()
 
                 for (m in methods) {
-                  cols <- which(method_map == m)
-                  X <- oof_all[, cols, drop = FALSE]
+                  X <- pred_all[, gp_method == m, drop = FALSE]
+                  X <- as.matrix(X)  # ensure numeric
 
-                  yhat <- stage1_stack(X, y)
-                  method_preds[[m]] <- yhat
-                  method_cor[m] <- cor_safe(y, yhat)
+                  ok <- complete.cases(X, y)
+                  if (sum(ok) < 5 || ncol(X) == 0) next
+
+                  # EN/ridge stacking within kernel
+                  fit <- glmnet::cv.glmnet(
+                    X[ok, , drop = FALSE],
+                    y[ok],
+                    alpha = alpha
+                  )
+
+                  yhat <- rep(NA_real_, length(y))
+                  yhat[ok] <- as.numeric(predict(fit, X[ok, , drop = FALSE], s = "lambda.min"))
+
+                  pred_all_stack_1[, m] <- yhat
+                  pa_stage1[m] <- cor_safe(y, yhat)
+                  pred_all_poststack[[m]] <- X
+                }
+
+                # Keep only kernels with valid predictions
+                keep_gp <- apply(pred_all_stack_1, 2, function(z) any(!is.na(z)))
+                pred_all_stack_1_poststack <- pred_all_stack_1[, keep_gp, drop = FALSE]
+
+                ## -----------------------------
+                ## 5. Step-2: cross-kernel EN stacking (no pruning)
+                ## -----------------------------
+                pred_mstacked <- rep(NA_real_, length(y))
+                pa_mstacked <- NA_real_
+
+                if (ncol(pred_all_stack_1_poststack) >= 1) {
+
+                  ok2 <- complete.cases(pred_all_stack_1_poststack, y)
+                  if (sum(ok2) >= 5) {
+
+                    X2 <- as.matrix(pred_all_stack_1_poststack[ok2, , drop = FALSE])
+
+                    fit2 <- glmnet::cv.glmnet(
+                      X2,
+                      y[ok2],
+                      alpha = alpha
+                    )
+
+                    pred_mstacked[ok2] <- as.numeric(predict(fit2, X2, s = "lambda.min"))
+                    pa_mstacked <- cor_safe(y, pred_mstacked)
+                  }
                 }
 
                 ## -----------------------------
-                ## 7. Stage-2: across-method stacking
-                ## -----------------------------
-                X2 <- do.call(cbind, method_preds)
-                pred_stack <- elastic_net_stack(X2, y)
-                pred_stack_cor <- cor_safe(y, pred_stack)
-
-                ## -----------------------------
-                ## 8. Return
+                ## 6. Return
                 ## -----------------------------
                 list(
-                  pred_stack     = pred_stack,
-                  pred_stack_cor = pred_stack_cor,
-                  method_preds   = method_preds,
-                  method_cor     = method_cor,
-                  seed           = seed
+                  pred_all = pred_all,                            # all kernel-level predictions
+                  pred_all_poststack = pred_all_poststack,        # raw predictors per kernel
+                  pred_all_stack_1 = pred_all_stack_1,            # kernel-level stacked predictions
+                  pred_all_stack_1_poststack = pred_all_stack_1_poststack,
+                  pred_mstacked = pred_mstacked,                  # final stacked prediction
+                  pa_stage1 = pa_stage1,                          # kernel-level PA
+                  pa_mstacked = pa_mstacked,                      # final stacked PA
+                  seed = seed
                 )
               }
 
-
-              stack_result <- stack_predictions_cv(
+                stack_result <- stack_predictions_cv(
                 trait = trait,
-                gp_model = gp_model,
                 Y.raw = Y.raw,
                 pred_gblup_OOF = pred_gblup_OOF,
                 pred_rrblup_OOF = pred_rrblup_OOF,
                 pred_rkhs_OOF = pred_rkhs_OOF,
-                pred_bayes_OOF = pred_bayes_OOF,
-                alpha = 0.5,
-                seed = 123
+                pred_bayes_OOF = pred_bayes_OOF
               )
             }
 
+            # ------------------------
+            # Extract results (correct)
+            # ------------------------
+            pred_all                    <- stack_result$pred_all
+            # pred_all_postprune          <- as.data.frame(stack_result$pred_all_postprune)
+            pred_all_stack_1             <- stack_result$pred_all_stack_1
+            pred_all_stack_1_postprune   <- stack_result$pred_all_stack_1_postprune
+            pred_stack                   <- stack_result$pred_mstacked
+            r.mStacked                   <- stack_result$pa_mstacked
+            pa_stage1 <- stack_result$pa_stage1  # named vector of GP-level PA
 
-            # Extract results
-            pred_all       <- stack_result$pred_all      # all individual GP method predictions merged
-            pred_stack     <- stack_result$pred_stack    # final stacked prediction
-            pred_stack_cor <- stack_result$pred_stack_cor
-            base_cor       <- stack_result$base_cor      # correlations for base models (GBLUP, rrBLUP, RKHS)
-            bayes_cor      <- stack_result$bayes_cor     # correlations for Bayesian models (BRR, BayesA/B/C, BL)
 
             # ------------------------
             # Store correlations in replication matrices
             # ------------------------
-            r.GBLUP <- if ("GBLUP" %in% names(base_cor)) base_cor[["GBLUP"]] else NA
-            r.rrBLUP <- if ("rrBLUP" %in% names(base_cor)) base_cor[["rrBLUP"]] else NA
-            r.RKHS  <- if ("RKHS" %in% names(base_cor)) base_cor[["RKHS"]] else NA
-
-            r.BRR    <- if (!is.null(bayes_cor) && "BRR" %in% names(bayes_cor)) bayes_cor["BRR"] else NA
-            r.BayesA <- if (!is.null(bayes_cor) && "BayesA" %in% names(bayes_cor)) bayes_cor["BayesA"] else NA
-            r.BayesB <- if (!is.null(bayes_cor) && "BayesB" %in% names(bayes_cor)) bayes_cor["BayesB"] else NA
-            r.BayesC <- if (!is.null(bayes_cor) && "BayesC" %in% names(bayes_cor)) bayes_cor["BayesC"] else NA
-            r.BayesL <- if (!is.null(bayes_cor) && "BL" %in% names(bayes_cor)) bayes_cor["BL"] else NA
-
-            r.mStacked <- pred_stack_cor
+            r.GBLUP  <- if ("GBLUP"  %in% names(pa_stage1)) pa_stage1["GBLUP"]  else NA_real_
+            r.rrBLUP <- if ("rrBLUP" %in% names(pa_stage1)) pa_stage1["rrBLUP"] else NA_real_
+            r.RKHS   <- if ("RKHS"   %in% names(pa_stage1)) pa_stage1["RKHS"]   else NA_real_
+            r.BRR    <- if ("BRR"    %in% names(pa_stage1)) pa_stage1["BRR"]    else NA_real_
+            r.BayesA <- if ("BayesA" %in% names(pa_stage1)) pa_stage1["BayesA"] else NA_real_
+            r.BayesB <- if ("BayesB" %in% names(pa_stage1)) pa_stage1["BayesB"] else NA_real_
+            r.BayesC <- if ("BayesC" %in% names(pa_stage1)) pa_stage1["BayesC"] else NA_real_
+            r.BayesL <- if ("BL"     %in% names(pa_stage1)) pa_stage1["BL"]     else NA_real_
 
             # ------------------------
             # Store correlations in replication matrices
             # ------------------------
-            storage.GBLUP[rep, 1] <- r.GBLUP
-            storage.rrBLUP[rep, 1] <- r.rrBLUP
-            storage.RKHS[rep, 1] <- r.RKHS
-            storage.BRR[rep, 1] <- r.BRR
-            storage.BayesA[rep, 1] <- r.BayesA
-            storage.BayesB[rep, 1] <- r.BayesB
-            storage.BayesC[rep, 1] <- r.BayesC
-            storage.BayesL[rep, 1] <- r.BayesL
+            storage.GBLUP[rep, 1]   <- r.GBLUP
+            storage.rrBLUP[rep, 1]  <- r.rrBLUP
+            storage.RKHS[rep, 1]    <- r.RKHS
+            storage.BRR[rep, 1]     <- r.BRR
+            storage.BayesA[rep, 1]  <- r.BayesA
+            storage.BayesB[rep, 1]  <- r.BayesB
+            storage.BayesC[rep, 1]  <- r.BayesC
+            storage.BayesL[rep, 1]  <- r.BayesL
             storage.mStacked[rep, 1] <- r.mStacked
-
 
             if(!exists("pop_data")){pop_data <- data.frame(matrix(nrow = 2, ncol = 0))}
             if (gwas_Gpred == TRUE) {
@@ -2945,7 +3067,11 @@ holostackGP <- function(
             }
             gc()
             outfile_predall <- paste("../",GP_run_title,"/",outdir,"ALL_PREDICTIONS.txt",sep="")
+            outfile_predall_postprune <- paste("../",GP_run_title,"/",outdir,"ALL_PREDICTIONS_postprune.txt",sep="")
+            outfile_predall_kStacked <- paste("../",GP_run_title,"/",outdir,"ALL_PREDICTIONS_kStacked.txt",sep="")
             write.table(pred_all, outfile_predall, col.names = !file.exists(outfile_predall), row.names=FALSE, quote = FALSE, sep = "\t", append=file.exists(outfile_predall))
+            write.table(pred_all_postprune, outfile_predall_postprune, col.names = !file.exists(outfile_predall), row.names=FALSE, quote = FALSE, sep = "\t", append=file.exists(outfile_predall))
+            write.table(pred_all_stack_1, outfile_predall_kStacked, col.names = !file.exists(outfile_predall), row.names=FALSE, quote = FALSE, sep = "\t", append=file.exists(outfile_predall_kStacked))
           }#End of for (rep in 1:t)
 
           stderror <- function(x) sd(x)/sqrt(length(x))
