@@ -1032,12 +1032,17 @@ holostackGP <- function(
                 ## ============================================================
                 ## Subset epistatic kernels (n × n)
                 ## ============================================================
-                kernels_train <- lapply(kernels, function(K) {
-                  K[train_ids, train_ids, drop = FALSE]
-                })
-                kernels_test <- lapply(kernels, function(K) {
-                  K[test_ids, train_ids, drop = FALSE]
-                })
+                train_idx <- match(train_ids, rownames(kernels[[1]]))
+                test_idx  <- match(test_ids, rownames(kernels[[1]]))
+                kernels_train <- lapply(kernels, function(K) K[train_idx, train_idx, drop = FALSE])
+                kernels_test  <- lapply(kernels, function(K) K[test_idx, train_idx, drop = FALSE])
+                #
+                # kernels_train <- lapply(kernels, function(K) {
+                #   K[train_ids, train_ids, drop = FALSE]
+                # })
+                # kernels_test <- lapply(kernels, function(K) {
+                #   K[test_ids, train_ids, drop = FALSE]
+                # })
 
                 ## ------------------------------------------------------------
                 ## Sanity checks
