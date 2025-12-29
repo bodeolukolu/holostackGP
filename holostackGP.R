@@ -1053,8 +1053,8 @@ holostackGP <- function(
                   nrow(geno.A_scaled_train) == length(train_ids),
                   nrow(geno.A_scaled_test)  == length(test_ids)
                 )
-
-                if (!is.null(covariate)){
+              }
+              if (!is.null(covariate)){
                   cov_split <- split_Xcov(Xcov_all, train_ids, test_ids)
                   X_train <- cov_split$X_train
                   X_test  <- cov_split$X_test
@@ -2873,7 +2873,7 @@ holostackGP <- function(
                 alpha = 0.5,
                 seed = 123
               )
-          }
+            }
 
 
             # Extract results
