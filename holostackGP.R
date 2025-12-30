@@ -1752,7 +1752,14 @@ holostackGP <- function(
                         # Run all Bayesian models in parallel
                         preds <- run_parallel_stack(Y_train = Y_train, X_train = X_train, geno_scaled_train = geno_scaled_train,
                                                     Y_test = Y_test, X_test = X_test, geno_scaled_test = geno_scaled_test, Xcov_mat = NULL, nIter = nIter, burnIn = burnIn, n.cores = ncores)
-                        pred_bayes_all <- as.data.frame(preds)
+                        pred_bayes_all <- do.call(
+                          cbind,
+                          lapply(names(preds_stack), function(m) {
+                            df <- preds_stack[[m]]
+                            colnames(df) <- paste0(m, "_", colnames(df))  # BRR_A, BRR_D, etc.
+                            df
+                          })
+                        )
                         rownames(pred_bayes_all) <- test_ids
                         pred_bayes_OOF <- rbind(pred_bayes_OOF,pred_bayes_all)
                       }
@@ -2027,7 +2034,14 @@ holostackGP <- function(
                         # Run all Bayesian models in parallel
                         preds <- run_parallel_stack(Y_train = Y_train, X_train = X_train, mgeno_scaled_train = mgeno_scaled_train,
                                                     Y_test = Y_test, X_test = X_test, mgeno_scaled_test = mgeno_scaled_test, nIter = nIter, burnIn = burnIn, n.cores = ncores)
-                        pred_bayes_all <- as.data.frame(preds)
+                        pred_bayes_all <- do.call(
+                          cbind,
+                          lapply(names(preds_stack), function(m) {
+                            df <- preds_stack[[m]]
+                            colnames(df) <- paste0(m, "_", colnames(df))  # BRR_A, BRR_D, etc.
+                            df
+                          })
+                        )
                         rownames(pred_bayes_all) <- test_ids
                         pred_bayes_OOF <- rbind(pred_bayes_OOF,pred_bayes_all)
                       }
@@ -2459,7 +2473,14 @@ holostackGP <- function(
                         preds_stack <- run_parallel_stack(Y_train = Y_train, X_train = X_train, geno.A_scaled_train = geno.A_scaled_train, geno.D_scaled_train = geno.D_scaled_train, mgeno_scaled_train = mgeno_scaled_train,
                                                           Y_test = Y_test, X_test = X_test, geno.A_scaled_test = geno.A_scaled_test, geno.D_scaled_test = geno.D_scaled_test, mgeno_scaled_test = mgeno_scaled_test,
                                                           nIter = nIter, burnIn = burnIn, n.cores = ncores)
-                        pred_bayes_all <- as.data.frame(preds_stack)
+                        pred_bayes_all <- do.call(
+                          cbind,
+                          lapply(names(preds_stack), function(m) {
+                            df <- preds_stack[[m]]
+                            colnames(df) <- paste0(m, "_", colnames(df))  # BRR_A, BRR_D, etc.
+                            df
+                          })
+                        )
                         rownames(pred_bayes_all) <- test_ids
                         pred_bayes_OOF <- rbind( pred_bayes_OOF,pred_bayes_all)
                       }
@@ -2848,7 +2869,14 @@ holostackGP <- function(
                         preds_stack <- run_parallel_stack(Y_train = Y_train, X_train = X_train, geno_scaled_train = geno_scaled_train, mgeno_scaled_train = mgeno_scaled_train,
                                                           Y_test = Y_test, X_test = X_test, geno_scaled_test = geno_scaled_test, mgeno_scaled_test = mgeno_scaled_test,
                                                           nIter = nIter, burnIn = burnIn, n.cores = ncores)
-                        pred_bayes_all <- as.data.frame(preds_stack)
+                        pred_bayes_all <- do.call(
+                          cbind,
+                          lapply(names(preds_stack), function(m) {
+                            df <- preds_stack[[m]]
+                            colnames(df) <- paste0(m, "_", colnames(df))  # BRR_A, BRR_D, etc.
+                            df
+                          })
+                        )
                         rownames(pred_bayes_all) <- test_ids
                         pred_bayes_OOF <- rbind( pred_bayes_OOF,pred_bayes_all)
                       }
