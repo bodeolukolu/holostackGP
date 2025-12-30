@@ -987,7 +987,7 @@ holostackGP <- function(
 
                 # Subset phenotype
                 Y.train <- Y.raw[, trait]
-                names(Y.masked) <- Y.raw$Taxa
+                names(Y.train) <- Y.raw$Taxa
                 Y.train[test_ids] <- NA
                 Y.train <- as.data.frame(Y.train)
                 Y_test  <- Y.raw[Y.raw$Taxa %in% test_ids, trait]
