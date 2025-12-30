@@ -825,7 +825,7 @@ holostackGP <- function(
           }
 
           # compute epistatic kernels
-          if (gene_model == "Full" || gene_model == "All"){
+          if (gene_model == "Full" || gene_model == "All" || gene_model == metagenome){
             if(gp_model == "GBLUP"){
               K_A <- myKI.A
               K_D <- myKI.D
@@ -844,23 +844,15 @@ holostackGP <- function(
               K_DxD <- (K_DxD + t(K_DxD)) / 2
               kernels <- list(A = K_A, D = K_D, AxD = K_AxD, AxA = K_AxA, DxD = K_DxD)
 
-              assign("kernels", kernels, envir = .GlobalEnv)
-              # Optional: assign individual matrices as well
-              for(nm in names(kernels)) {
-                assign(nm, kernels[[nm]], envir = .GlobalEnv)
+              return(kernels)
               }
-            }
             if(gp_model == "gBLUP"){
               K_M <- metagKIx
               K_M <- (K_M + t(K_M)) / 2
-              kernels <- list(M=K_M)
 
-              assign("kernels", kernels, envir = .GlobalEnv)
-              # Optional: assign individual matrices as well
-              for(nm in names(kernels)) {
-                assign(nm, kernels[[nm]], envir = .GlobalEnv)
+              kernels <- list(M = K_M)
+              return(kernels)
               }
-            }
             if(gp_model == "gGBLUP"){
               K_M <- metagKIx
               K_A <- myKI.A
@@ -888,12 +880,8 @@ holostackGP <- function(
               K_M <- (K_M + t(K_M)) / 2
               kernels <- list(A = K_A, D = K_D, AxD = K_AxD, AxA = K_AxA, DxD = K_DxD, AxAxM = K_AxAxM, DxDxM = K_DxDxM, AxDxM = K_AxDxM, M = K_M)
 
-              assign("kernels", kernels, envir = .GlobalEnv)
-              # Optional: assign individual matrices as well
-              for(nm in names(kernels)) {
-                assign(nm, kernels[[nm]], envir = .GlobalEnv)
+              return(kernels)
               }
-            }
           }
 
           for(rep in seq(from=1, to=t, by=1)){
