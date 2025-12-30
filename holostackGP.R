@@ -1009,7 +1009,7 @@ holostackGP <- function(
                 ## Metagenomic kernel (gBLUP / gGBLUP)
                 if (gp_model %in% c("gBLUP", "gGBLUP")) {
                   metagKIx_train <- metagKIx
-                  metagKIx_test  <- metagKIx[test_ids,  train_ids, drop = FALSE]
+                  metagKIx_test  <- metagKIx[test_ids, , drop = FALSE]
                 }
 
                 ## ============================================================
@@ -1213,8 +1213,8 @@ holostackGP <- function(
                         X_test  <- as.data.frame(cov_split$X_test)
                       } else {X_train <- NULL; X_test <- NULL}
                       # rrBLUP marker effects model: K_A
-                      train_ids <- which(!is.na(Y_train))
-                      y_train <- Y_train[train_ids]
+                      y_train   <- as.numeric(Y_train[train_ids, 1])
+                      names(y_train) <- train_ids
                       geno.A_scaled_train <- as.matrix(geno.A_scaled_train)
                       mode(geno.A_scaled_train) <- "numeric"
                       # --- SNP preparation ---
@@ -1230,7 +1230,7 @@ holostackGP <- function(
                         stopifnot(!anyNA(Z_clean), !any(is.infinite(Z_clean)))
                         return(Z_clean)
                       }
-                      Z_train <- prepare_rrblup_matrix(geno.A_scaled_train, y_train)
+                      Z_train <- prepare_rrblup_matrix(geno.A_scaled_train[train_ids, ], y_train)
 
                       # Usage: safely assign or NULL
                       Xcov_mat <- prepare_covariates(Y.ttrain[, -1, drop = FALSE])
@@ -1246,8 +1246,8 @@ holostackGP <- function(
                       pred_rrblup_A <- as.vector(Z_test %*% model_rrblup$u)
 
                       # rrBLUP marker effects model: K_D
-                      train_ids <- which(!is.na(Y_train))
-                      y_train <- Y_train[train_ids]
+                      y_train   <- as.numeric(Y_train[train_ids, 1])
+                      names(y_train) <- train_ids
                       geno.D_scaled_train <- as.matrix(geno.D_scaled_train)
                       mode(geno.D_scaled_train) <- "numeric"
                       # --- SNP preparation ---
@@ -1263,7 +1263,7 @@ holostackGP <- function(
                         stopifnot(!anyNA(Z_clean), !any(is.infinite(Z_clean)))
                         return(Z_clean)
                       }
-                      Z_train <- prepare_rrblup_matrix(geno.D_scaled_train, y_train)
+                      Z_train <- prepare_rrblup_matrix(geno.D_scaled_train[train_ids, ], y_train)
 
                       # Usage: safely assign or NULL
                       Xcov_mat <- prepare_covariates(Y.ttrain[, -1, drop = FALSE])
@@ -1329,7 +1329,7 @@ holostackGP <- function(
                         fit <- BGLR(y = y_train, ETA = ETA, nIter = nIter, burnIn = burnIn, verbose = FALSE)
                         u_train <- as.numeric(fit$ETA[[1]]$u)
                         names(u_train) <- train_ids
-                        pred_test <- as.vector(K_test %*% u_train)
+                        pred_test <- as.vector(K_test[test_ids,train_ids] %*% u_train)
                         names(pred_test) <- test_ids
                         pred_list[[kernel_name]] <- as.numeric(pred_test)
                       }
@@ -1554,8 +1554,8 @@ holostackGP <- function(
                         X_test  <- as.data.frame(cov_split$X_test)
                       } else {X_train <- NULL; X_test <- NULL}
                       # rrBLUP marker effects model
-                      train_ids <- which(!is.na(Y_train))
-                      y_train <- Y_train[train_ids]
+                      y_train   <- as.numeric(Y_train[train_ids, 1])
+                      names(y_train) <- train_ids
                       # Ensure genotype matrix is numeric
                       geno_scaled_train <- as.matrix(geno_scaled_train)
                       mode(geno_scaled_train) <- "numeric"
@@ -1572,7 +1572,7 @@ holostackGP <- function(
                         stopifnot(!anyNA(Z_clean), !any(is.infinite(Z_clean)))
                         return(Z_clean)
                       }
-                      Z_train <- prepare_rrblup_matrix(geno_scaled_train, y_train)
+                      Z_train <- prepare_rrblup_matrix(geno_scaled_train[train_ids, ], y_train)
 
                       # Usage: safely assign or NULL
                       Xcov_mat <- prepare_covariates(Y.ttrain[, -1, drop = FALSE])
@@ -1635,7 +1635,7 @@ holostackGP <- function(
                       fit <- BGLR(y = y_train, ETA = ETA, nIter = nIter, burnIn = burnIn, verbose = FALSE)
                       u_train <- as.numeric(fit$ETA[[1]]$u)
                       K_test_train <- myKIx_train[test_idx, train_idx]
-                      pred_rkhs <- as.data.frame(as.numeric( K_test_train %*% u_train))
+                      pred_rkhs <- as.data.frame(as.numeric( K_test[test_ids,train_ids] %*% u_train))
                       rownames(pred_rkhs) <- test_ids
                       colnames(pred_rkhs) <- "RKHS"
                       pred_rkhs_OOF <- rbind(pred_rkhs_OOF,pred_rkhs)
@@ -1829,8 +1829,8 @@ holostackGP <- function(
                       } else {X_train <- NULL; X_test <- NULL}
                       Xcov_df <- X_train
                       # rrBLUP marker effects model: K_M
-                      train_ids <- which(!is.na(Y_train))
-                      y_train <- Y_train[train_ids]
+                      y_train   <- as.numeric(Y_train[train_ids, 1])
+                      names(y_train) <- train_ids
                       mgeno_scaled_train <- as.matrix(mgeno_scaled_train)
                       mode(mgeno_scaled_train) <- "numeric"
                       # --- SNP preparation ---
@@ -1846,7 +1846,7 @@ holostackGP <- function(
                         stopifnot(!anyNA(Z_clean), !any(is.infinite(Z_clean)))
                         return(Z_clean)
                       }
-                      Z_train <- prepare_rrblup_matrix(mgeno_scaled_train, y_train)
+                      Z_train <- prepare_rrblup_matrix(mgeno_scaled_train[train_ids, ], y_train)
 
                       # Usage: safely assign or NULL
                       Xcov_mat <- prepare_covariates(Y.ttrain[, -1, drop = FALSE])
@@ -1911,7 +1911,7 @@ holostackGP <- function(
                         fit <- BGLR(y = y_train, ETA = ETA, nIter = nIter, burnIn = burnIn, verbose = FALSE)
                         u_train <- as.numeric(fit$ETA[[1]]$u)
                         names(u_train) <- train_ids
-                        pred_test <- as.vector(K_test %*% u_train)
+                        pred_test <- as.vector(K_test[test_ids,train_ids] %*% u_train)
                         names(pred_test) <- test_ids
                         pred_list[[kernel_name]] <- as.numeric(pred_test)
                       }
@@ -2105,8 +2105,8 @@ holostackGP <- function(
                         X_train <- as.data.frame(cov_split$X_train)
                         X_test  <- as.data.frame(cov_split$X_test)
                       } else {X_train <- NULL; X_test <- NULL}
-                      train_ids <- which(!is.na(Y_train))
-                      y_train <- Y_train[train_ids]
+                      y_train   <- as.numeric(Y_train[train_ids, 1])
+                      names(y_train) <- train_ids
                       geno.A_scaled_train <- as.matrix(geno.A_scaled_train)
                       mode(geno.A_scaled_train) <- "numeric"
                       # --- SNP preparation ---
@@ -2122,7 +2122,7 @@ holostackGP <- function(
                         stopifnot(!anyNA(Z_clean), !any(is.infinite(Z_clean)))
                         return(Z_clean)
                       }
-                      Z_train <- prepare_rrblup_matrix(geno.A_scaled_train, y_train)
+                      Z_train <- prepare_rrblup_matrix(geno.A_scaled_train[train_ids, ], y_train)
 
                       # Usage: safely assign or NULL
                       Xcov_mat <- prepare_covariates(Y.ttrain[, -1, drop = FALSE])
@@ -2143,8 +2143,8 @@ holostackGP <- function(
                         X_train <- as.data.frame(cov_split$X_train)
                         X_test  <- as.data.frame(cov_split$X_test)
                       } else {X_train <- NULL; X_test <- NULL}
-                      train_ids <- which(!is.na(Y_train))
-                      y_train <- Y_train[train_ids]
+                      y_train   <- as.numeric(Y_train[train_ids, 1])
+                      names(y_train) <- train_ids
                       geno.D_scaled_train <- as.matrix(geno.D_scaled_train)
                       mode(geno.D_scaled_train) <- "numeric"
                       # --- SNP preparation ---
@@ -2160,7 +2160,7 @@ holostackGP <- function(
                         stopifnot(!anyNA(Z_clean), !any(is.infinite(Z_clean)))
                         return(Z_clean)
                       }
-                      Z_train <- prepare_rrblup_matrix(geno.D_scaled_train, y_train)
+                      Z_train <- prepare_rrblup_matrix(geno.D_scaled_train[train_ids, ], y_train)
 
                       # Usage: safely assign or NULL
                       Xcov_mat <- prepare_covariates(Y.ttrain[, -1, drop = FALSE])
@@ -2181,8 +2181,8 @@ holostackGP <- function(
                         X_train <- as.data.frame(cov_split$X_train)
                         X_test  <- as.data.frame(cov_split$X_test)
                       } else {X_train <- NULL; X_test <- NULL}
-                      train_ids <- which(!is.na(Y_train))
-                      y_train <- Y_train[train_ids]
+                      y_train   <- as.numeric(Y_train[train_ids, 1])
+                      names(y_train) <- train_ids
                       mgeno_scaled_train <- as.matrix(mgeno_scaled_train)
                       mode(mgeno_scaled_train) <- "numeric"
                       # --- SNP preparation ---
@@ -2198,7 +2198,7 @@ holostackGP <- function(
                         stopifnot(!anyNA(Z_clean), !any(is.infinite(Z_clean)))
                         return(Z_clean)
                       }
-                      Z_train <- prepare_rrblup_matrix(mgeno_scaled_train, y_train)
+                      Z_train <- prepare_rrblup_matrix(mgeno_scaled_train[train_ids, ], y_train)
 
                       # Usage: safely assign or NULL
                       Xcov_mat <- prepare_covariates(Y.ttrain[, -1, drop = FALSE])
@@ -2265,7 +2265,7 @@ holostackGP <- function(
                         fit <- BGLR(y = y_train, ETA = ETA, nIter = nIter, burnIn = burnIn, verbose = FALSE)
                         u_train <- as.numeric(fit$ETA[[1]]$u)
                         names(u_train) <- train_ids
-                        pred_test <- as.vector(K_test %*% u_train)
+                        pred_test <- as.vector(K_test[test_ids,train_ids] %*% u_train)
                         pred_list[[kernel_name]] <- as.numeric(pred_test)
                       }
                       pred_rkhs_all <- do.call(cbind, pred_list)
@@ -2592,7 +2592,7 @@ holostackGP <- function(
                       ## Step 5: fit final model
                       fit <- BGLR(y = y_train, ETA = ETA, nIter = nIter, burnIn = burnIn, verbose = FALSE)
                       u_train <- as.numeric(fit$ETA[[1]]$u)
-                      pred_rkhs_m <- as.numeric( K_test_train %*% u_train)
+                      pred_rkhs_m <- as.numeric( K_test[test_ids,train_ids] %*% u_train)
 
                       # genomic RHKs with BGLR package
                       if (!is.null(covariate)){
@@ -2634,7 +2634,7 @@ holostackGP <- function(
                       fit <- BGLR(y = y_train, ETA = ETA, nIter = nIter, burnIn = burnIn, verbose = FALSE)
                       u_train <- as.numeric(fit$ETA[[1]]$u)
                       K_test_train <- myKIx_test[test_idx, train_idx]
-                      pred_rkhs_g <-as.numeric( K_test_train %*% u_train)
+                      pred_rkhs_g <-as.numeric( K_test[test_ids,train_ids] %*% u_train)
 
                       pred_rkhs_all <- data.frame(RKHS.G  = pred_rkhs_g, RKHS.M  = pred_rkhs_m)
                       rownames(pred_rkhs_all) <- test_ids
@@ -2646,8 +2646,8 @@ holostackGP <- function(
                         X_train <- as.data.frame(cov_split$X_train)
                         X_test  <- as.data.frame(cov_split$X_test)
                       } else {X_train <- NULL; X_test <- NULL}
-                      train_ids <- which(!is.na(Y_train))
-                      y_train <- Y_train[train_ids]
+                      y_train   <- as.numeric(Y_train[train_ids, 1])
+                      names(y_train) <- train_ids
                       geno_scaled_train <- as.matrix(mgeno_scaled_train)
                       mode(mgeno_scaled_train) <- "numeric"
                       prepare_rrblup_matrix <- function(Z, y) {
@@ -2663,7 +2663,7 @@ holostackGP <- function(
 
                         return(Z_clean)
                       }
-                      Z_train <- prepare_rrblup_matrix(mgeno_scaled_train, y_train)
+                      Z_train <- prepare_rrblup_matrix(mgeno_scaled_train[train_ids, ], y_train)
                       if (is.list(Xcov) && !is.data.frame(Xcov)) {
                         Xcov_df <- as.data.frame(do.call(cbind, Xcov))
                       } else {
@@ -2677,8 +2677,8 @@ holostackGP <- function(
                       pred_rrblup_m <- as.vector(Z_test %*% model_rrblup$u)
 
                       # genomic rrBLUP marker effects model
-                      train_ids <- which(!is.na(Y_train))
-                      y_train <- Y_train[train_ids]
+                      y_train   <- as.numeric(Y_train[train_ids, 1])
+                      names(y_train) <- train_ids
                       geno_scaled_train <- as.matrix(geno_scaled_train)
                       mode(geno_scaled_train) <- "numeric"
                       # --- SNP preparation ---
@@ -2694,7 +2694,7 @@ holostackGP <- function(
                         stopifnot(!anyNA(Z_clean), !any(is.infinite(Z_clean)))
                         return(Z_clean)
                       }
-                      Z_train <- prepare_rrblup_matrix(geno_scaled_train, y_train)
+                      Z_train <- prepare_rrblup_matrix(geno_scaled_train[train_ids, ], y_train)
 
                       # Usage: safely assign or NULL
                       Xcov_mat <- prepare_covariates(Y.ttrain[, -1, drop = FALSE])
