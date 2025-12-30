@@ -945,13 +945,13 @@ holostackGP <- function(
                                  "BayesC.A", "BayesC.D", "BayesC.DM", "BL.A", "BL.D", "BL.M")
                   pred_bayes_OOF <- data.frame(matrix(ncol = length(col_names), nrow = 0)); colnames(pred_bayes_OOF) <- col_names
                 } else {
-                  col_names <- c("GBLUP", "GBLUP.M")
+                  col_names <- c("GBLUP.G", "GBLUP.M")
                   pred_gblup_OOF <- data.frame(matrix(ncol = length(col_names), nrow = 0)); colnames(pred_gblup_OOF) <- col_names
-                  col_names <- c("rrBLUP", "rrBLUP.M")
+                  col_names <- c("rrBLUP.G", "rrBLUP.M")
                   pred_rrblup_OOF <- data.frame(matrix(ncol = length(col_names), nrow = 0)); colnames(pred_rrblup_OOF) <- col_names
-                  col_names <- c("RKHS", "RKHS.M")
+                  col_names <- c("RKHS.G", "RKHS.M")
                   pred_rkhs_OOF <- data.frame(matrix(ncol = length(col_names), nrow = 0)); colnames(pred_rkhs_OOF) <- col_names
-                  col_names <- c("BRR", "BRR.M", "BayesA", "BayesA.M", "BayesB", "BayesB.M", "BayesC", "BayesC.M", "BL", "BL.M")
+                  col_names <- c("BRR.G", "BRR.M", "BayesA.G", "BayesA.M", "BayesB.G", "BayesB.M", "BayesC.G", "BayesC.M", "BL.G", "BL.M")
                   pred_bayes_OOF <- data.frame(matrix(ncol = length(col_names), nrow = 0)); colnames(pred_bayes_OOF) <- col_names
                 }
               }
@@ -1499,7 +1499,7 @@ holostackGP <- function(
                           cbind,
                           lapply(names(preds_stack), function(m) {
                             df <- preds_stack[[m]]
-                            colnames(df) <- paste0(m, "_", colnames(df))  # BRR_A, BRR_D, etc.
+                            colnames(df) <- paste0(m, ".", colnames(df))
                             df
                           })
                         )
@@ -1722,7 +1722,8 @@ holostackGP <- function(
                           marker_part <- if (!is.null(b_markers)) geno_scaled_test %*% b_markers else 0
                           fixed_part  <- if (!is.null(b_fixed))   X_test %*% b_fixed else 0
                           pred <- as.numeric(marker_part + fixed_part)
-                          return(data.frame(pred = pred, row.names = rownames(Y.ttrain)[test_idx]))
+                          return(cbind(G = as.numeric(pred))
+                          )
                         }
 
                         # Wrapper to run all models in parallel
@@ -1756,7 +1757,7 @@ holostackGP <- function(
                           cbind,
                           lapply(names(preds_stack), function(m) {
                             df <- preds_stack[[m]]
-                            colnames(df) <- paste0(m, "_", colnames(df))  # BRR_A, BRR_D, etc.
+                            colnames(df) <- paste0(m)
                             df
                           })
                         )
@@ -2002,9 +2003,9 @@ holostackGP <- function(
                           marker_part <- if (!is.null(b_markersM)) mgeno_scaled_test %*% b_markersM else 0
                           fixed_part  <- if (!is.null(b_fixedM))   X_test %*% b_fixedM else 0
                           pred_M <- as.numeric(marker_part + fixed_part)
-
                           # ---- Return predictions for test set ----
-                          return(data.frame(pred_M = pred_M, row.names = rownames(Y.ttrain)[test_idx]))
+                          return(cbind(M = as.numeric(pred_M))
+                          )
                         }
 
                         # Wrapper to run all models in parallel
@@ -2038,7 +2039,7 @@ holostackGP <- function(
                           cbind,
                           lapply(names(preds_stack), function(m) {
                             df <- preds_stack[[m]]
-                            colnames(df) <- paste0(m, "_", colnames(df))  # BRR_A, BRR_D, etc.
+                            colnames(df) <- paste0(m)
                             df
                           })
                         )
@@ -2441,7 +2442,8 @@ holostackGP <- function(
                           fixed_part  <- if (!is.null(b_fixedM))   X_test %*% b_fixedM else 0
                           pred_M <- as.numeric(marker_part + fixed_part)
                           # ---- Return predictions for test set ----
-                          return(data.frame(A = pred_A, D = pred_D, M = pred_M, row.names = rownames(Y.ttrain)[test_idx]))
+                          return(cbind(A = as.numeric(pred_A), D = as.numeric(pred_D), M = as.numeric(pred_M))
+                          )
                         }
 
                         # Wrapper to run all models in parallel
@@ -2477,7 +2479,7 @@ holostackGP <- function(
                           cbind,
                           lapply(names(preds_stack), function(m) {
                             df <- preds_stack[[m]]
-                            colnames(df) <- paste0(m, "_", colnames(df))  # BRR_A, BRR_D, etc.
+                            colnames(df) <- paste0(m, ".", colnames(df))
                             df
                           })
                         )
@@ -2733,7 +2735,7 @@ holostackGP <- function(
                       Z_test <- scale(Z_test, center = colMeans(geno_scaled_test[test_ids, kept_snps]), scale = FALSE)
                       pred_rrblup_g <- as.vector(Z_test %*% model_rrblup$u)
 
-                      pred_rrblup_all <- data.frame(RKHS.G  = pred_rrblup_g, RKHS.M  = pred_rrblup_m)
+                      pred_rrblup_all <- data.frame(rrBLUP.G  = pred_rrblup_g, rrBLUP.M  = pred_rrblup_m)
                       rownames(pred_rrblup_all) <- test_ids
                       pred_rrblup_OOF <- rbind(pred_rrblup_OOF,pred_rrblup_all)
 
@@ -2836,8 +2838,8 @@ holostackGP <- function(
                           marker_part <- if (!is.null(b_markers)) mgeno_scaled_test %*% b_markers else 0
                           fixed_part  <- if (!is.null(b_fixed))   X_test %*% b_fixed else 0
                           pred_m <- as.numeric(marker_part + fixed_part)
-
-                          return(data.frame(G = pred_g, M = pred_m, row.names = rownames(Y.ttrain)[test_idx]))
+                          return(cbind(G = as.numeric(pred_G), M = as.numeric(pred_M))
+                          )
                         }
 
                         # Wrapper to run all models in parallel
@@ -2873,7 +2875,7 @@ holostackGP <- function(
                           cbind,
                           lapply(names(preds_stack), function(m) {
                             df <- preds_stack[[m]]
-                            colnames(df) <- paste0(m, "_", colnames(df))  # BRR_A, BRR_D, etc.
+                            colnames(df) <- paste0(m, ".", colnames(df))  # BRR_A, BRR_D, etc.
                             df
                           })
                         )
