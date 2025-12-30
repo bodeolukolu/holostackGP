@@ -1726,8 +1726,8 @@ holostackGP <- function(
                                                     Y_test = Y_test, X_test = X_test, geno_scaled_test = geno_scaled_test, Xcov_mat = NULL, nIter = nIter, burnIn = burnIn, n.cores = ncores)
                         pred_bayes_all <- do.call(
                           cbind,
-                          lapply(names(preds_stack), function(m) {
-                            df <- preds_stack[[m]]
+                          lapply(names(preds), function(m) {
+                            df <- preds[[m]]
                             colnames(df) <- paste0(m)
                             df
                           })
@@ -1809,7 +1809,7 @@ holostackGP <- function(
                     }
                     pred_gblup_all <- do.call(cbind, lapply(pred_list, function(x) x[, 1, drop = FALSE]))
                     colnames(pred_gblup_all) <- names(pred_list)
-                    rownames(pred_gblup) <- "GBLUP"
+                    colnames(pred_gblup) <- "GBLUP"
                     rownames(pred_gblup_all) <- test_ids
                     pred_gblup_OOF <- rbind(pred_gblup_OOF,pred_gblup_all)
 
@@ -2008,8 +2008,8 @@ holostackGP <- function(
                                                     Y_test = Y_test, X_test = X_test, mgeno_scaled_test = mgeno_scaled_test, nIter = nIter, burnIn = burnIn, n.cores = ncores)
                         pred_bayes_all <- do.call(
                           cbind,
-                          lapply(names(preds_stack), function(m) {
-                            df <- preds_stack[[m]]
+                          lapply(names(preds), function(m) {
+                            df <- preds[[m]]
                             colnames(df) <- paste0(m)
                             df
                           })
