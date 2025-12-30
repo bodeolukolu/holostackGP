@@ -1610,7 +1610,7 @@ holostackGP <- function(
                       # --- Prediction ---
                       kept_snps <- colnames(Z_train)
                       # Align test set to training SNPs (safe check)
-                      Z_test <- geno_scaled_train[test_ids, kept_snps, drop = FALSE]
+                      Z_test <- geno_scaled_test
                       Z_test <- scale(Z_test,
                                       center = colMeans(geno_scaled_train[train_ids, kept_snps]),
                                       scale = FALSE)
@@ -2220,7 +2220,7 @@ holostackGP <- function(
                       model_rrblup <- rrBLUP::mixed.solve(y = y_train, Z = Z_train, X = Xcov_mat)
                       # --- Prediction ---
                       kept_snps <- colnames(Z_train)
-                      Z_test <- mgeno_scaled_train[test_ids, kept_snps, drop = FALSE]
+                      Z_test <- mgeno_scaled_test
                       Z_test <- scale(Z_test, center = colMeans(mgeno_scaled_test[test_ids, kept_snps]), scale = FALSE)
                       pred_rrblup_M <- as.vector(Z_test %*% model_rrblup$u)
 
