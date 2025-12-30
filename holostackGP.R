@@ -1018,12 +1018,12 @@ holostackGP <- function(
                 if (gp_model %in% c("GBLUP", "gGBLUP")) {
                   if (gene_model %in% c("Full", "All")) {
                     geno.A_scaled_train <- geno.A_scaled
-                    geno.A_scaled_test  <- geno.A_scaled[test_ids,  train_ids, drop = FALSE]
+                    geno.A_scaled_test  <- geno.A_scaled[test_ids,  , drop = FALSE]
                     geno.D_scaled_train <- geno.D_scaled
-                    geno.D_scaled_test  <- geno.D_scaled[test_ids,  train_ids, drop = FALSE]
+                    geno.D_scaled_test  <- geno.D_scaled[test_ids,  , drop = FALSE]
                   } else {
                     geno_scaled_train <- geno_scaled
-                    geno_scaled_test  <- geno_scaled[test_ids,  train_ids, drop = FALSE]
+                    geno_scaled_test  <- geno_scaled[test_ids,  , drop = FALSE]
                   }
                 }
                 ## Metagenomic genotype matrix (n × p)
@@ -1036,7 +1036,7 @@ holostackGP <- function(
                 ## Subset epistatic kernels (n × n)
                 ## ============================================================
                 kernels_train <- kernels
-                kernels_test <- lapply(kernels, function(K) {K[test_ids, train_ids, drop = FALSE]})
+                kernels_test <- lapply(kernels, function(K) {K[test_ids, , drop = FALSE]})
               }
               if(is.null(myCV)){
                 if (gene_model == "Additive" || gene_model == "Dominance"){
