@@ -1029,7 +1029,7 @@ holostackGP <- function(
                 ## Metagenomic genotype matrix (n × p)
                 if (gp_model %in% c("gBLUP", "gGBLUP")) {
                   mgeno_scaled_train <- mgeno_scaled
-                  mgeno_scaled_test  <- mgeno_scaled[test_ids, train_ids, drop = FALSE]
+                  mgeno_scaled_test  <- mgeno_scaled[test_ids, , drop = FALSE]
                 }
 
                 ## ============================================================
