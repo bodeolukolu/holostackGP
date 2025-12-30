@@ -825,7 +825,7 @@ holostackGP <- function(
           }
 
           # compute epistatic kernels
-          if (gene_model == "Full" || gene_model == "All" || gene_model == metagenome){
+          if (gene_model == "Full" || gene_model == "All" || gene_model == "metagenome"){
             if(gp_model == "GBLUP"){
               K_A <- myKI.A
               K_D <- myKI.D
