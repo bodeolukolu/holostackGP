@@ -852,6 +852,7 @@ holostackGP <- function(
             }
             if(gp_model == "gBLUP"){
               K_M <- metagKIx
+              K_M <- (K_M + t(K_M)) / 2
               kernels <- list(M=K_M)
 
               assign("kernels", kernels, envir = .GlobalEnv)
@@ -3017,9 +3018,9 @@ holostackGP <- function(
             # Extract results (correct)
             # ------------------------
             pred_all                    <- stack_result$pred_all
-            # pred_all_postprune          <- as.data.frame(stack_result$pred_all_postprune)
+            pred_all_postprune          <- as.data.frame(stack_result$pred_all_postprune)
             pred_all_stack_1             <- stack_result$pred_all_stack_1
-            pred_all_stack_1_postprune   <- stack_result$pred_all_stack_1_postprune
+            # pred_all_stack_1_postprune   <- stack_result$pred_all_stack_1_postprune
             pred_stack                   <- stack_result$pred_mstacked
             r.mStacked                   <- stack_result$pa_mstacked
             pa_stage1 <- stack_result$pa_stage1  # named vector of GP-level PA
