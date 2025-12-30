@@ -2880,15 +2880,12 @@ holostackGP <- function(
                 pred_rkhs_OOF  = NULL,
                 pred_bayes_OOF = NULL,
                 id_col = "Taxa",
-                alpha = 0,         # alpha = 0 → ridge, 0 < alpha <= 1 → elastic-net
+                alpha = 0,
                 seed = 123
               ) {
 
                 set.seed(seed)
 
-                ## -----------------------------
-                ## Utilities
-                ## -----------------------------
                 cor_safe <- function(a, b) {
                   ok <- complete.cases(a, b)
                   if (sum(ok) < 5) return(NA_real_)
@@ -2897,19 +2894,18 @@ holostackGP <- function(
                 }
 
                 ## -----------------------------
-                ## 1. Phenotype
+                ## Phenotype
                 ## -----------------------------
                 rownames(Y.raw) <- Y.raw[[id_col]]
                 y <- Y.raw[[trait]]
                 names(y) <- rownames(Y.raw)
 
                 ## -----------------------------
-                ## 2. Combine kernel-level OOF predictions
+                ## Combine OOF predictions
                 ## -----------------------------
                 oof_list <- list(pred_gblup_OOF, pred_rrblup_OOF,
-                                 pred_rkhs_OOF, pred_bayes_OOF)
+                                 pred_rkhs_OOF,  pred_bayes_OOF)
 
-                # convert each to numeric matrix, remove NULLs
                 oof_list <- lapply(oof_list, function(x) {
                   if (is.null(x)) return(NULL)
                   as.matrix(x)
@@ -2922,13 +2918,13 @@ holostackGP <- function(
                 y <- y[common_ids]
 
                 ## -----------------------------
-                ## 3. Parse GP methods
+                ## Parse GP methods
                 ## -----------------------------
                 gp_method <- sub("[\\._].*$", "", colnames(pred_all))
                 methods <- unique(gp_method)
 
                 ## -----------------------------
-                ## 4. Step-1: kernel-level EN stacking (no pruning)
+                ## Step-1: kernel-level stacking
                 ## -----------------------------
                 pred_all_stack_1 <- matrix(
                   NA_real_,
@@ -2938,16 +2934,26 @@ holostackGP <- function(
                 )
 
                 pa_stage1 <- setNames(rep(NA_real_, length(methods)), methods)
-                pred_all_poststack <- list()
+                pred_all_postprune <- list()
 
                 for (m in methods) {
-                  X <- pred_all[, gp_method == m, drop = FALSE]
-                  X <- as.matrix(X)  # ensure numeric
 
+                  X <- as.matrix(pred_all[, gp_method == m, drop = FALSE])
+                  if (ncol(X) == 0) next
+
+                  ## ---- SINGLE KERNEL CASE ----
+                  if (ncol(X) == 1) {
+                    yhat <- X[, 1]
+                    pred_all_stack_1[, m] <- yhat
+                    pa_stage1[m] <- cor_safe(y, yhat)
+                    pred_all_postprune[[m]] <- X
+                    next
+                  }
+
+                  ## ---- MULTI-KERNEL CASE ----
                   ok <- complete.cases(X, y)
-                  if (sum(ok) < 5 || ncol(X) == 0) next
+                  if (sum(ok) < 5) next
 
-                  # EN/ridge stacking within kernel
                   fit <- glmnet::cv.glmnet(
                     X[ok, , drop = FALSE],
                     y[ok],
@@ -2955,19 +2961,21 @@ holostackGP <- function(
                   )
 
                   yhat <- rep(NA_real_, length(y))
-                  yhat[ok] <- as.numeric(predict(fit, X[ok, , drop = FALSE], s = "lambda.min"))
+                  yhat[ok] <- as.numeric(
+                    predict(fit, X[ok, , drop = FALSE], s = "lambda.min")
+                  )
 
                   pred_all_stack_1[, m] <- yhat
                   pa_stage1[m] <- cor_safe(y, yhat)
-                  pred_all_poststack[[m]] <- X
+                  pred_all_postprune[[m]] <- X
                 }
 
-                # Keep only kernels with valid predictions
+                ## Keep valid methods
                 keep_gp <- apply(pred_all_stack_1, 2, function(z) any(!is.na(z)))
                 pred_all_stack_1_poststack <- pred_all_stack_1[, keep_gp, drop = FALSE]
 
                 ## -----------------------------
-                ## 5. Step-2: cross-kernel EN stacking (no pruning)
+                ## Step-2: cross-method stacking
                 ## -----------------------------
                 pred_mstacked <- rep(NA_real_, length(y))
                 pa_mstacked <- NA_real_
@@ -2979,31 +2987,39 @@ holostackGP <- function(
 
                     X2 <- as.matrix(pred_all_stack_1_poststack[ok2, , drop = FALSE])
 
-                    fit2 <- glmnet::cv.glmnet(
-                      X2,
-                      y[ok2],
-                      alpha = alpha
-                    )
+                    ## If only one method survives, just copy it
+                    if (ncol(X2) == 1) {
+                      pred_mstacked[ok2] <- X2[, 1]
+                    } else {
+                      fit2 <- glmnet::cv.glmnet(
+                        X2,
+                        y[ok2],
+                        alpha = alpha
+                      )
+                      pred_mstacked[ok2] <- as.numeric(
+                        predict(fit2, X2, s = "lambda.min")
+                      )
+                    }
 
-                    pred_mstacked[ok2] <- as.numeric(predict(fit2, X2, s = "lambda.min"))
                     pa_mstacked <- cor_safe(y, pred_mstacked)
                   }
                 }
 
                 ## -----------------------------
-                ## 6. Return
+                ## Return
                 ## -----------------------------
                 list(
-                  pred_all = pred_all,                            # all kernel-level predictions
-                  pred_all_poststack = pred_all_poststack,        # raw predictors per kernel
-                  pred_all_stack_1 = pred_all_stack_1,            # kernel-level stacked predictions
+                  pred_all = pred_all,
+                  pred_all_postprune = pred_all_postprune,
+                  pred_all_stack_1 = pred_all_stack_1,
                   pred_all_stack_1_poststack = pred_all_stack_1_poststack,
-                  pred_mstacked = pred_mstacked,                  # final stacked prediction
-                  pa_stage1 = pa_stage1,                          # kernel-level PA
-                  pa_mstacked = pa_mstacked,                      # final stacked PA
+                  pred_mstacked = pred_mstacked,
+                  pa_stage1 = pa_stage1,
+                  pa_mstacked = pa_mstacked,
                   seed = seed
                 )
               }
+
 
                 stack_result <- stack_predictions_cv(
                 trait = trait,
