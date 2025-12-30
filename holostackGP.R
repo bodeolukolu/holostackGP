@@ -1033,18 +1033,7 @@ holostackGP <- function(
                 kernels_train <- lapply(kernels, function(K) {K[train_ids, train_ids, drop = FALSE]})
                 kernels_test <- lapply(kernels, function(K) {K[test_ids, train_ids, drop = FALSE]})
 
-                ## ------------------------------------------------------------
-                ## Sanity checks
-                stopifnot(
-                  nrow(myKI.A_train) == length(train_ids),
-                  ncol(myKI.A_train) == length(train_ids),
-                  nrow(myKI.A_test)  == length(test_ids),
-                  ncol(myKI.A_test)  == length(train_ids)
-                )
-                stopifnot(
-                  nrow(geno.A_scaled_train) == length(train_ids),
-                  nrow(geno.A_scaled_test)  == length(test_ids)
-                )
+
               }
               if(is.null(myCV)){
                 if (gene_model == "Additive" || gene_model == "Dominance"){
