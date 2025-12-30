@@ -652,6 +652,7 @@ holostackGP <- function(
               predG <- rbind(colnames(predG),predG); colnames(predG) <- c(1:ncol(predG))
             }
           }
+
           if (!is.null(covariate)){
             Y.cov <- myY[,c("Taxa",covariate)]
             Y.cov <- merge(Y.raw, Y.cov, by="Taxa")
@@ -938,6 +939,7 @@ holostackGP <- function(
                 }
               }
             }
+
             parse_Xcov <- function(Y.cov, id_col = "Taxa") {
               if (is.null(Y.cov)) return(NULL)
               if (!id_col %in% colnames(Y.cov))
@@ -957,16 +959,16 @@ holostackGP <- function(
             split_Xcov <- function(Xcov, train_ids, test_ids) {
               if (is.null(Xcov))
                 return(list(X_train = NULL, X_test = NULL))
-              X_train <- Xcov[train_ids, , drop = FALSE]
+              X_train <- Xcov
+              names(X_train) <- Y.cov$Taxa
+              X_train[test_ids] <- NA
+              X_train <- as.data.frame(X_train)
               X_test  <- Xcov[test_ids,  , drop = FALSE]
               # Center using training data only
               mu <- colMeans(X_train, na.rm = TRUE)
               X_train <- sweep(X_train, 2, mu, "-")
               X_test  <- sweep(X_test,  2, mu, "-")
-              list(
-                X_train = X_train,
-                X_test  = X_test
-              )
+              list(X_train = X_train, X_test  = X_test)
             }
 
             ## (1) Create folds per replicate
@@ -984,7 +986,10 @@ holostackGP <- function(
                 train_ids <- Y.raw$Taxa[ fold_id != kfold ]
 
                 # Subset phenotype
-                Y_train <- Y.raw[Y.raw$Taxa %in% train_ids, trait]
+                Y.train <- Y.raw[, trait]
+                names(Y.masked) <- Y.raw$Taxa
+                Y.train[test_ids] <- NA
+                Y.train <- as.data.frame(Y.train)
                 Y_test  <- Y.raw[Y.raw$Taxa %in% test_ids, trait]
 
                 ## ============================================================
@@ -1032,8 +1037,6 @@ holostackGP <- function(
                 ## ============================================================
                 kernels_train <- kernels
                 kernels_test <- lapply(kernels, function(K) {K[test_ids, train_ids, drop = FALSE]})
-
-
               }
               if(is.null(myCV)){
                 if (gene_model == "Additive" || gene_model == "Dominance"){
