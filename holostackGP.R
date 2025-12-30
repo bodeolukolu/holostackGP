@@ -992,18 +992,18 @@ holostackGP <- function(
                 ## ============================================================
                 if (gp_model %in% c("GBLUP", "gGBLUP")) {
                   if (gene_model %in% c("Full", "All")) {
-                    myKI.A_train <- myKI.A[train_ids, train_ids, drop = FALSE]
+                    myKI.A_train <- myKI.A
                     myKI.A_test  <- myKI.A[test_ids,  train_ids, drop = FALSE]
-                    myKI.D_train <- myKI.D[train_ids, train_ids, drop = FALSE]
+                    myKI.D_train <- myKI.D
                     myKI.D_test  <- myKI.D[test_ids,  train_ids, drop = FALSE]
                   } else {
-                    myKIx_train <- myKIx[train_ids, train_ids, drop = FALSE]
+                    myKIx_train <- myKIx
                     myKIx_test  <- myKIx[test_ids,  train_ids, drop = FALSE]
                   }
                 }
                 ## Metagenomic kernel (gBLUP / gGBLUP)
                 if (gp_model %in% c("gBLUP", "gGBLUP")) {
-                  metagKIx_train <- metagKIx[train_ids, train_ids, drop = FALSE]
+                  metagKIx_train <- metagKIx
                   metagKIx_test  <- metagKIx[test_ids,  train_ids, drop = FALSE]
                 }
 
@@ -1012,25 +1012,25 @@ holostackGP <- function(
                 ## ============================================================
                 if (gp_model %in% c("GBLUP", "gGBLUP")) {
                   if (gene_model %in% c("Full", "All")) {
-                    geno.A_scaled_train <- geno.A_scaled[train_ids, , drop = FALSE]
+                    geno.A_scaled_train <- geno.A_scaled
                     geno.A_scaled_test  <- geno.A_scaled[test_ids,  , drop = FALSE]
-                    geno.D_scaled_train <- geno.D_scaled[train_ids, , drop = FALSE]
+                    geno.D_scaled_train <- geno.D_scaled
                     geno.D_scaled_test  <- geno.D_scaled[test_ids,  , drop = FALSE]
                   } else {
-                    geno_scaled_train <- geno_scaled[train_ids, , drop = FALSE]
+                    geno_scaled_train <- geno_scaled
                     geno_scaled_test  <- geno_scaled[test_ids,  , drop = FALSE]
                   }
                 }
                 ## Metagenomic genotype matrix (n × p)
                 if (gp_model %in% c("gBLUP", "gGBLUP")) {
-                  mgeno_scaled_train <- mgeno_scaled[train_ids, , drop = FALSE]
+                  mgeno_scaled_train <- mgeno_scaled
                   mgeno_scaled_test  <- mgeno_scaled[test_ids,  , drop = FALSE]
                 }
 
                 ## ============================================================
                 ## Subset epistatic kernels (n × n)
                 ## ============================================================
-                kernels_train <- lapply(kernels, function(K) {K[train_ids, train_ids, drop = FALSE]})
+                kernels_train <- kernels
                 kernels_test <- lapply(kernels, function(K) {K[test_ids, train_ids, drop = FALSE]})
 
 
@@ -1227,7 +1227,7 @@ holostackGP <- function(
                         stopifnot(!anyNA(Z_clean), !any(is.infinite(Z_clean)))
                         return(Z_clean)
                       }
-                      Z_train <- prepare_rrblup_matrix(geno.A_scaled_train[train_ids, ], y_train)
+                      Z_train <- prepare_rrblup_matrix(geno.A_scaled_train, y_train)
 
                       # Usage: safely assign or NULL
                       Xcov_mat <- prepare_covariates(Y.ttrain[, -1, drop = FALSE])
@@ -1260,7 +1260,7 @@ holostackGP <- function(
                         stopifnot(!anyNA(Z_clean), !any(is.infinite(Z_clean)))
                         return(Z_clean)
                       }
-                      Z_train <- prepare_rrblup_matrix(geno.D_scaled_train[train_ids, ], y_train)
+                      Z_train <- prepare_rrblup_matrix(geno.D_scaled_train, y_train)
 
                       # Usage: safely assign or NULL
                       Xcov_mat <- prepare_covariates(Y.ttrain[, -1, drop = FALSE])
@@ -1569,7 +1569,7 @@ holostackGP <- function(
                         stopifnot(!anyNA(Z_clean), !any(is.infinite(Z_clean)))
                         return(Z_clean)
                       }
-                      Z_train <- prepare_rrblup_matrix(geno_scaled_train[train_ids, ], y_train)
+                      Z_train <- prepare_rrblup_matrix(geno_scaled_train, y_train)
 
                       # Usage: safely assign or NULL
                       Xcov_mat <- prepare_covariates(Y.ttrain[, -1, drop = FALSE])
@@ -1583,7 +1583,7 @@ holostackGP <- function(
                       # Align test set to training SNPs (safe check)
                       Z_test <- geno_scaled_test
                       Z_test <- scale(Z_test,
-                                      center = colMeans(geno_scaled_train[train_ids, kept_snps]),
+                                      center = colMeans(geno_scaled_train),
                                       scale = FALSE)
                       pred_rrblup <- as.data.frame(as.vector(Z_test %*% model_rrblup$u))
                       rownames(pred_rrblup) <- test_ids
@@ -1843,7 +1843,7 @@ holostackGP <- function(
                         stopifnot(!anyNA(Z_clean), !any(is.infinite(Z_clean)))
                         return(Z_clean)
                       }
-                      Z_train <- prepare_rrblup_matrix(mgeno_scaled_train[train_ids, ], y_train)
+                      Z_train <- prepare_rrblup_matrix(mgeno_scaled_train, y_train)
 
                       # Usage: safely assign or NULL
                       Xcov_mat <- prepare_covariates(Y.ttrain[, -1, drop = FALSE])
@@ -2119,7 +2119,7 @@ holostackGP <- function(
                         stopifnot(!anyNA(Z_clean), !any(is.infinite(Z_clean)))
                         return(Z_clean)
                       }
-                      Z_train <- prepare_rrblup_matrix(geno.A_scaled_train[train_ids, ], y_train)
+                      Z_train <- prepare_rrblup_matrix(geno.A_scaled_train, y_train)
 
                       # Usage: safely assign or NULL
                       Xcov_mat <- prepare_covariates(Y.ttrain[, -1, drop = FALSE])
@@ -2157,7 +2157,7 @@ holostackGP <- function(
                         stopifnot(!anyNA(Z_clean), !any(is.infinite(Z_clean)))
                         return(Z_clean)
                       }
-                      Z_train <- prepare_rrblup_matrix(geno.D_scaled_train[train_ids, ], y_train)
+                      Z_train <- prepare_rrblup_matrix(geno.D_scaled_train, y_train)
 
                       # Usage: safely assign or NULL
                       Xcov_mat <- prepare_covariates(Y.ttrain[, -1, drop = FALSE])
@@ -2195,7 +2195,7 @@ holostackGP <- function(
                         stopifnot(!anyNA(Z_clean), !any(is.infinite(Z_clean)))
                         return(Z_clean)
                       }
-                      Z_train <- prepare_rrblup_matrix(mgeno_scaled_train[train_ids, ], y_train)
+                      Z_train <- prepare_rrblup_matrix(mgeno_scaled_train, y_train)
 
                       # Usage: safely assign or NULL
                       Xcov_mat <- prepare_covariates(Y.ttrain[, -1, drop = FALSE])
@@ -2660,7 +2660,7 @@ holostackGP <- function(
 
                         return(Z_clean)
                       }
-                      Z_train <- prepare_rrblup_matrix(mgeno_scaled_train[train_ids, ], y_train)
+                      Z_train <- prepare_rrblup_matrix(mgeno_scaled_train, y_train)
                       if (is.list(Xcov) && !is.data.frame(Xcov)) {
                         Xcov_df <- as.data.frame(do.call(cbind, Xcov))
                       } else {
@@ -2691,7 +2691,7 @@ holostackGP <- function(
                         stopifnot(!anyNA(Z_clean), !any(is.infinite(Z_clean)))
                         return(Z_clean)
                       }
-                      Z_train <- prepare_rrblup_matrix(geno_scaled_train[train_ids, ], y_train)
+                      Z_train <- prepare_rrblup_matrix(geno_scaled_train, y_train)
 
                       # Usage: safely assign or NULL
                       Xcov_mat <- prepare_covariates(Y.ttrain[, -1, drop = FALSE])
